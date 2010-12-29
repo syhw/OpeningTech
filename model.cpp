@@ -1,6 +1,6 @@
 #include <pl.h>
 #include <iostream>
-#include <sstream>
+#include <vector>
 #include "enums_name_tables.h"
 using namespace std;
 
@@ -43,21 +43,13 @@ int main()
     /**********************************************************************
       VARIABLES SPECIFICATION
      **********************************************************************/
-    std::vector<plSymbol> buildings_ttc;
-    std::vector<plSymbol> buildings_obs;
+    plSymbol X("X", plIntegerType(0, NB_PROTOSS_X_VALUES));
     std::vector<plSymbol> observed;
-    std::vector<plSymbol> lambdas;
-    std::stringstream out;
+    plSymbol lambda("lambda", PL_BINARY_TYPE);
     for (unsigned int i = 0; i < NB_PROTOSS_BUILDINGS; i++)
     {
-        // tech tree constraints
-        buildings_ttc.push_back(plSymbol(protoss_buildings_name[i], PL_BINARY_TYPE));
-        // observations constraints
-        buildings_obs.push_back(plSymbol(protoss_buildings_name[i], PL_BINARY_TYPE));
         // what has been observed
         observed.push_back(plSymbol(protoss_buildings_name[i], PL_BINARY_TYPE));
-        out << "lambda_" << protoss_buildings_name[i];
-        lambdas.push_back(plSymbol(out.str(), PL_BINARY_TYPE));
     }
     //plSymbol OpeningTerran("OpeningTerran", VALUES);
     plSymbol OpeningProtoss("OpeningProtoss", plLabelType(protoss_openings));
@@ -69,9 +61,9 @@ int main()
       PARAMETRIC FORM SPECIFICATION
      **********************************************************************/
 
-    // Specification of P(A)
-    plProbValue tableA[] = {0.4, 0.6};
-    plProbTable P_A(A, tableA);
+    // Specification of P(OpeningProtoss)
+    plProbValue tableOpeningProtoss[] = {0.4, 0.6};
+    plProbTable P_OpeningProtoss(OpeningProtoss, tableOpeningProtoss);
 
     //li Specification of P(B)
     plProbValue tableB[] = {0.18, 0.82};

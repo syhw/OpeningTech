@@ -1,5 +1,5 @@
-#include <vector>
-#include <string>
+#ifndef ENUMS_NAME_TABLES
+#define ENUMS_NAME_TABLES
 
 #define TERRAN_X_UNITS \
     X(Terran_Marine, (const char*) "Terran_Marine") \
@@ -217,3 +217,4 @@ enum Spells
     Spell_Dark_Swarm
 };
 
+#endif
