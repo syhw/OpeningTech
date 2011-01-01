@@ -197,7 +197,7 @@ const char* zerg_units_name[] =
 #define X(a, b) a,
 enum Zerg_Buildings
 {
-    ZERG_X_BUILGINS
+    ZERG_X_BUILDINGS
 };
 #undef X
 

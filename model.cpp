@@ -2,7 +2,16 @@
 #include <iostream>
 #include <vector>
 #include "enums_name_tables.h"
+#include "x_values.h"
 using namespace std;
+
+void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
+{
+    // if X is possible w.r.t. observations
+    lambda[0] = 1; // true
+    // else
+    lambda[0] = 0; // false
+}
 
 int main() 
 {
@@ -60,70 +69,31 @@ int main()
     /**********************************************************************
       PARAMETRIC FORM SPECIFICATION
      **********************************************************************/
-
     // Specification of P(OpeningProtoss)
-    plProbValue tableOpeningProtoss[] = {0.4, 0.6};
-    plProbTable P_OpeningProtoss(OpeningProtoss, tableOpeningProtoss);
+    std::vector<plProbValue> tableOpeningProtoss;
+    for (unsigned int i = 0; i < protoss_openings.size(); i++) 
+        tableOpeningProtoss.push_back(1.0); // TOLEARN
+    plProbTable P_OpeningProtoss(OpeningProtoss, tableOpeningProtoss, false);
 
-    //li Specification of P(B)
-    plProbValue tableB[] = {0.18, 0.82};
-    plProbTable P_B(B, tableB);
+    // Specification of P(X) (possible tech trees)
+    std::vector<plProbValue> tableX;
+    for (unsigned int i = 0; i < NB_PROTOSS_X_VALUES; i++)
+        tableX.push_back(1.0); // TOLEARN
+    plProbTable P_X(X, tableX, false);
 
-    // Specification of P(C)
-    plProbValue tableC[] = {0.75, 0.25};
-    plProbTable P_C(C, tableC);
+    // Specification of P(O_1..NB_PROTOSS_BUILDINGS)
+    std::vector<plProbTable> P_Observed;
+    plProbValue tmp_table[] = {0.5, 0.5}; // TOLEARN (per observation)
+    for (unsigned int i = 0; i < NB_PROTOSS_BUILDINGS; i++)
+        P_Observed.push_back(plProbTable(observed[i], tmp_table, true));
 
-    // Specification of P(D | A B)
-    plProbValue tableD_knowingA_B[] = {0.6, 0.4,  // P(D | [A=f]^[B=f])
-        0.3, 0.7,  // P(D | [A=f]^[B=t])
-        0.1, 0.9,  // P(D | [A=t]^[B=f])
-        0.5, 0.5}; // P(D | [A=t]^[B=t])
-    plDistributionTable P_D(D,A^B,tableD_knowingA_B);
-
-    // Specification of P(E | C D)
-    plProbValue tableE_knowingC_D[] = {0.59, 0.41,  // P(E | [C=f]^[D=f])
-        0.25, 0.75,  // P(E | [C=f]^[D=t])
-        0.8,  0.2,   // P(E | [C=t]^[D=f])
-        0.35, 0.65}; // P(E | [C=t]^[D=t])
-    plDistributionTable P_E(E,C^D,tableE_knowingC_D);
-
-    /**********************************************************************
-      DECOMPOSITION
-     **********************************************************************/
-    plJointDistribution jd(A^B^C^D^E, P_A*P_B*P_C*P_D*P_E);
-    jd.draw_graph("bayesian_network.fig");
-    cout<<"OK\n";
-    /**********************************************************************
-      PROGRAM QUESTION
-     **********************************************************************/
-    // Get the inferred conditional Distribution representing P(C B | E D)
-    plCndDistribution CndP_CB;
-    jd.ask(CndP_CB, C^B, E^D);
-
-    // Create the value representing the evidence = [E=true]^[D=false]
-    plValues evidence(E^D);
-    evidence[E] = true;
-    evidence[D] = false;
-
-    // Get the Distribution representing P(C B | [E=true]^[D=false] )
-    plDistribution P_CB;
-    CndP_CB.instantiate(P_CB,evidence);
-
-    // Get the normalized Distribution representing P(C B | [E=true]^[D=false] )
-    plDistribution  T_P_CB;
-    P_CB.compile(T_P_CB);
-
-    // Display the result
-    cout << T_P_CB << endl;
-    plSerializer my_serializer();
-    my_serializer.add_object("P_CB", P_CB);
-    my_serializer.save("test.xml");
-
-    // On Windows (Visual C++, MinGW) only.
-#if defined(WIN32) || defined(_WIN32)
-    cout << "Press any key to terminate..." << endl;
-    getchar();
-#endif
-
+    // Specification of P(lambda | X, O_1..NB_PROTOSS_BUILDINGS)
+    plVariablesConjunction conjObs;
+    for (std::vector<plSymbol>::const_iterator it = observed.begin();
+            it != observed.end(); ++it)
+        conjObs ^= (*it);
+    plExternalFunction coherence(lambda, X^conjObs, test_X_possible);
+    plFunctionalDirac P_lambda(lambda, X^conjObs, coherence);
+    // P_lambda = 1 if lambda=coherence(X, observed), 0 otherwise
     return 0;
 }
