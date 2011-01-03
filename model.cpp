@@ -5,12 +5,27 @@
 #include "x_values.h"
 using namespace std;
 
+std::vector<std::vector<plProbValue> > mean_Time_Protoss_when_X_and_Opening;
+std::vector<std::vector<plProbValue> > stddev_Time_Protoss_when_X_and_Opening;
+
 void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
 {
     // if X is possible w.r.t. observations
     lambda[0] = 1; // true
     // else
     lambda[0] = 0; // false
+}
+
+void mean_Time_Protoss(plValues& Time, const plValues& X_Opening)
+{
+    // mean_Time_Protoss[X][Opening]
+    Time[0] = mean_Time_Protoss_when_X_and_Opening[X_Opening[0]][X_Opening[1]];
+}
+
+void stddev_Time_Protoss(plValues& Time, const plValues& X_Opening)
+{
+    // stddev_Time_Protoss[X][Opening]
+    Time[0] = stddev_Time_Protoss_when_X_and_Opening[X_Opening[0]][X_Opening[1]];
 }
 
 int main() 
@@ -82,10 +97,14 @@ int main()
     plProbTable P_X(X, tableX, false);
 
     // Specification of P(O_1..NB_PROTOSS_BUILDINGS)
+    plComputableObjectList listObs;
     std::vector<plProbTable> P_Observed;
     plProbValue tmp_table[] = {0.5, 0.5}; // TOLEARN (per observation)
     for (unsigned int i = 0; i < NB_PROTOSS_BUILDINGS; i++)
+    {
         P_Observed.push_back(plProbTable(observed[i], tmp_table, true));
+        listObs *= plProbTable(observed[i], tmp_table, true);
+    }
 
     // Specification of P(lambda | X, O_1..NB_PROTOSS_BUILDINGS)
     plVariablesConjunction conjObs;
@@ -95,5 +114,58 @@ int main()
     plExternalFunction coherence(lambda, X^conjObs, test_X_possible);
     plFunctionalDirac P_lambda(lambda, X^conjObs, coherence);
     // P_lambda = 1 if lambda=coherence(X, observed), 0 otherwise
+    
+    // Specification of P(T | X, OpeningProtoss)
+    // LEARNT FROM THE REPLAYS
+    // plBellShape (const plSymbol &V, plFloat m, plFloat sd)
+    //      Constructs a plBellShape on the Variable V, with mean equals to m and standard deviation equals to sd. 
+    //          plCndBellShape (const plSymbol &left, const plVariablesConjunction &right, const plExternalFunction &fm, const plExternalFunction &fsd)
+    //              Constructs a plCndBellShape distribution on Variable left in which both mean and standard deviation are fixed using users's External Functions. 
+    plExternalFunction mean(Time, X^OpeningProtoss, mean_Time_Protoss);
+    plExternalFunction stddev(Time, X^OpeningProtoss, stddev_Time_Protoss);
+    plCndBellShape P_Time(Time, X^OpeningProtoss, mean, stddev);
+
+
+    /**********************************************************************
+      DECOMPOSITION
+     **********************************************************************/
+    plJointDistribution jd(X^conjObs^lambda^OpeningProtoss^Time, 
+            P_X*listObs*P_lambda*P_OpeningProtoss*P_Time);
+    jd.draw_graph("jd.fig");
+    cout<<"OK\n";
+    /**********************************************************************
+      PROGRAM QUESTION
+     **********************************************************************/
+    /*
+    // Get the inferred conditional Distribution representing P(C B | E D)
+    plCndDistribution CndP_CB;
+    jd.ask(CndP_CB, C^B, E^D);
+
+    // Create the value representing the evidence = [E=true]^[D=false]
+    plValues evidence(E^D);
+    evidence[E] = true;
+    evidence[D] = false;
+
+    // Get the Distribution representing P(C B | [E=true]^[D=false] )
+    plDistribution P_CB;
+    CndP_CB.instantiate(P_CB,evidence);
+
+    // Get the normalized Distribution representing P(C B | [E=true]^[D=false] )
+    plDistribution  T_P_CB;
+    P_CB.compile(T_P_CB);
+
+    // Display the result
+    cout << T_P_CB << endl;
+    plSerializer my_serializer();
+    my_serializer.add_object("P_CB", P_CB);
+    my_serializer.save("test.xml");
+
+    // On Windows (Visual C++, MinGW) only.
+#if defined(WIN32) || defined(_WIN32)
+    cout << "Press any key to terminate..." << endl;
+    getchar();
+#endif
+    /* */
+
     return 0;
 }
