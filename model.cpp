@@ -16,7 +16,7 @@ void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
     lambda[0] = 0; // false
 }
 
-void mean_Time_Protoss(plValues& Time, const plValues& X_Opening)
+/*void mean_Time_Protoss(plValues& Time, const plValues& X_Opening)
 {
     // mean_Time_Protoss[X][Opening]
     Time[0] = mean_Time_Protoss_when_X_and_Opening[X_Opening[0]][X_Opening[1]];
@@ -26,7 +26,7 @@ void stddev_Time_Protoss(plValues& Time, const plValues& X_Opening)
 {
     // stddev_Time_Protoss[X][Opening]
     Time[0] = stddev_Time_Protoss_when_X_and_Opening[X_Opening[0]][X_Opening[1]];
-}
+}*/
 
 int main() 
 {
@@ -41,9 +41,8 @@ int main()
     terran_openings.push_back("BBS"); // rax-rax-supply
     terran_openings.push_back("unkown");
 
-
     std::vector<std::string> protoss_openings;
-    protoss_openings.push_back("fast_legs"); // core-citadel-gates-legs
+    /*protoss_openings.push_back("fast_legs"); // core-citadel-gates-legs
     protoss_openings.push_back("fast_DT"); // citadel-archives-DT
     protoss_openings.push_back("fast_air"); // gate-core-stargates
     protoss_openings.push_back("fast_expand"); // nexus first
@@ -52,7 +51,14 @@ int main()
     protoss_openings.push_back("goons"); // gate-core-gates-range (NonY)
     protoss_openings.push_back("proxy_gates"); // pylon-gates @enemy
     protoss_openings.push_back("photon_rush"); // forge-pylon @enemy
-    protoss_openings.push_back("unknown");
+    protoss_openings.push_back("unknown");*/
+    protoss_openings.push_back("FastLegs");
+    protoss_openings.push_back("FastDT");
+    protoss_openings.push_back("FastObs");
+    protoss_openings.push_back("ReaverDrop");
+    protoss_openings.push_back("Carrier");
+    protoss_openings.push_back("FastExpand");
+    protoss_openings.push_back("Unknown");
 
 
     std::vector<std::string> zerg_openings;
@@ -67,7 +73,7 @@ int main()
     /**********************************************************************
       VARIABLES SPECIFICATION
      **********************************************************************/
-    plSymbol X("X", plIntegerType(0, NB_PROTOSS_X_VALUES));
+    plSymbol X("X", plIntegerType(0, NB_PROTOSS_X_VALUES)); // or sample learn
     std::vector<plSymbol> observed;
     plSymbol lambda("lambda", PL_BINARY_TYPE);
     for (unsigned int i = 0; i < NB_PROTOSS_BUILDINGS; i++)
@@ -79,7 +85,7 @@ int main()
     plSymbol OpeningProtoss("OpeningProtoss", plLabelType(protoss_openings));
     //plSymbol OpeningZerg("OpeningZerg", VALUES);
 
-    plSymbol Time("Time", plIntegerType(1,600));
+    plSymbol Time("Time", plIntegerType(1,900));
 
     /**********************************************************************
       PARAMETRIC FORM SPECIFICATION
@@ -117,20 +123,25 @@ int main()
     
     // Specification of P(T | X, OpeningProtoss)
     // LEARNT FROM THE REPLAYS
-    // plBellShape (const plSymbol &V, plFloat m, plFloat sd)
-    //      Constructs a plBellShape on the Variable V, with mean equals to m and standard deviation equals to sd. 
-    //          plCndBellShape (const plSymbol &left, const plVariablesConjunction &right, const plExternalFunction &fm, const plExternalFunction &fsd)
-    //              Constructs a plCndBellShape distribution on Variable left in which both mean and standard deviation are fixed using users's External Functions. 
-    plExternalFunction mean(Time, X^OpeningProtoss, mean_Time_Protoss);
-    plExternalFunction stddev(Time, X^OpeningProtoss, stddev_Time_Protoss);
-    plCndBellShape P_Time(Time, X^OpeningProtoss, mean, stddev);
+    ///plExternalFunction mean(Time, X^OpeningProtoss, mean_Time_Protoss);
+    ///plExternalFunction stddev(Time, X^OpeningProtoss, stddev_Time_Protoss);
+    ///plCndBellShape P_Time(Time, X^OpeningProtoss, mean, stddev);
+    plCndLearnObject<plCndBellShape> time_learner(Time, X^OpeningProtoss);
+    plValues vals(time_learner.get_variables());
+    for (line in file)
+    {
+        vals[OpeningProtoss] = 
+        if (!time_learner.add_point())
+            cout << "point not added" << endl;
+    }
 
 
     /**********************************************************************
       DECOMPOSITION
      **********************************************************************/
     plJointDistribution jd(X^conjObs^lambda^OpeningProtoss^Time, 
-            P_X*listObs*P_lambda*P_OpeningProtoss*P_Time);
+            P_X*listObs*P_lambda*P_OpeningProtoss
+            *time_learner.get_computable_object()); //P_Time);
     jd.draw_graph("jd.fig");
     cout<<"OK\n";
     /**********************************************************************
