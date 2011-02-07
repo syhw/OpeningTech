@@ -3,6 +3,7 @@
 #include <vector>
 #include "enums_name_tables.h"
 #include "x_values.h"
+#include "replays.h"
 using namespace std;
 
 std::vector<std::vector<plProbValue> > mean_Time_Protoss_when_X_and_Opening;
@@ -70,6 +71,10 @@ int main()
     zerg_openings.push_back("fast_lurkers"); // early gaz-lair-hydra den
     zerg_openings.push_back("unknown");
 
+    ///std::vector<std::set<Terran_Buildings> > terran = generate_terran_X_values();
+    std::vector<std::set<Protoss_Buildings> > protoss = generate_protoss_X_values();
+    ///std::vector<std::set<Zerg_Buildings> > zerg = generate_zerg_X_values();
+
     /**********************************************************************
       VARIABLES SPECIFICATION
      **********************************************************************/
@@ -126,13 +131,22 @@ int main()
     ///plExternalFunction mean(Time, X^OpeningProtoss, mean_Time_Protoss);
     ///plExternalFunction stddev(Time, X^OpeningProtoss, stddev_Time_Protoss);
     ///plCndBellShape P_Time(Time, X^OpeningProtoss, mean, stddev);
-    plCndLearnObject<plCndBellShape> time_learner(Time, X^OpeningProtoss);
+    plCndLearnObject<plLearnBellShape> time_learner(Time, X^OpeningProtoss);
     plValues vals(time_learner.get_variables());
-    for (line in file)
+    string input;
+    while (cin)
     {
-        vals[OpeningProtoss] = 
-        if (!time_learner.add_point())
-            cout << "point not added" << endl;
+        getline(cin, input);
+        string tmpOpening = pruneOpeningVal(input);
+        if (tmpOpening != "")
+        {
+            map<unsigned int, Protoss_Buildings> tmpBuildings;
+            getBuildings(input, tmpBuildings);
+            vals[OpeningProtoss] = tmpOpening;
+            //vals[X] = getXVal(input);
+            //if (!time_learner.add_point())
+            //    cout << "point not added" << endl;
+        }
     }
 
 
