@@ -27,5 +27,10 @@ test_getBuildings: all
 	./test_getBuildings < testP.txt | less
 
 clean:
-	rm ./-* ./:* ./[* prefix option illegal mktemp: c++-header *~
+	rm ./-* ./:* ./[* prefix option illegal mktemp: c++-header *~ \
+		test_x_values test_functional_dirac test_getOpeningVal test_getBuildings \
+		protoss_possible_tech_trees.txt \
+		terran_possible_tech_trees.txt \
+		zerg_possible_tech_trees.txt \
+		model
 
