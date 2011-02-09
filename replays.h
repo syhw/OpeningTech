@@ -1,5 +1,8 @@
+#ifndef REPLAYS
+#define REPLAYS
 #include <string>
 #include <iostream>
+#include <map>
 #include <stdlib.h>
 #include "x_values.h"
 
@@ -29,26 +32,28 @@ std::string pruneOpeningVal(std::string& input)
     return r;
 }
 
-int buildingInd(const char* cstr)
+void getBuildings(std::string str, std::multimap<unsigned int, Building>& b)
 {
-    for (unsigned int i = 0; i < NB_PROTOSS_BUILDINGS; i++)
+    while (str.length() > 2)
     {
-        if (!strcmp(cstr, protoss_buildings_name[i]))
-            return i;
-    }
-    return -1;
-}
-
-void getBuildings(std::string str, std::map<unsigned int, Protoss_Buildings>& b)
-{
-    while (str.length())
-    {
-        std::string::size_type begin = str.find_first_of(' ', 0);
+        ///std::cout << "STR: " << str << std::endl;
+        std::string::size_type loc = str.find_first_not_of(' ');
+        std::string::size_type begin = str.find_first_of(' ', loc);
         std::string::size_type end = str.find_first_of(';', begin);
-        b.insert(std::make_pair<unsigned int, Protoss_Buildings>(
+        ///std::cout << str.substr(begin+1, end-begin-1) << " ::: "
+        ///    << "|" << str.substr(loc, begin-loc) << "|"
+        ///    << " [Begin: " << begin << "]"
+        ///    << " [End: " << end << "]"
+        ///    << std::endl;
+        Building tmpBuilding(str.substr(loc, begin-loc).c_str());
+        b.insert(std::make_pair<unsigned int, Building>(
                     atoi(str.substr(begin+1, end-begin-1).c_str()), 
-                    (Protoss_Buildings)buildingInd(str.substr(0, begin).c_str())));
-        str.erase(0, end+1);
+                    tmpBuilding));
+        if (str.length() <= end+1)
+            str.erase();
+        else 
+            str.erase(0, end+1);
     }
 }
 
+#endif

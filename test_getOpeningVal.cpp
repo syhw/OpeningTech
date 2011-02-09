@@ -8,7 +8,7 @@ int main(int argc, const char *argv[])
     while(cin)
     {
         getline(cin, input);
-        cout << getOpeningVal(input);
+        cout << pruneOpeningVal(input);
     }
     return 0;
 }

@@ -140,7 +140,7 @@ int main()
         string tmpOpening = pruneOpeningVal(input);
         if (tmpOpening != "")
         {
-            map<unsigned int, Protoss_Buildings> tmpBuildings;
+            multimap<unsigned int, Building> tmpBuildings;
             getBuildings(input, tmpBuildings);
             vals[OpeningProtoss] = tmpOpening;
             //vals[X] = getXVal(input);

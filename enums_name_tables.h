@@ -1,6 +1,9 @@
 #ifndef ENUMS_NAME_TABLES
 #define ENUMS_NAME_TABLES
 
+#include <string>
+#include <iostream>
+
 #define TERRAN_X_UNITS \
     X(Terran_Marine, (const char*) "Terran_Marine") \
     X(Terran_Ghost,  (const char*) "Terran_Ghost") \
@@ -216,5 +219,85 @@ enum Spells
     Spell_Disruption_Web,
     Spell_Dark_Swarm
 };
+
+class Building
+/// Not happy with this class
+{
+    friend std::ostream& operator <<(std::ostream& os, const Building& b);
+    int _enumValue;
+    int _tableSize;
+    const char** _nameTable;
+public:
+    Building(Protoss_Buildings v)
+        : _enumValue(v)
+        , _nameTable(protoss_buildings_name)
+        , _tableSize(NB_PROTOSS_BUILDINGS)
+    {
+    }
+    Building(Terran_Buildings v)
+        : _enumValue(v)
+        , _nameTable(terran_buildings_name)
+        , _tableSize(NB_TERRAN_BUILDINGS)
+    {
+    }
+    Building(Zerg_Buildings v)
+        : _enumValue(v)
+        , _nameTable(zerg_buildings_name)
+        , _tableSize(NB_ZERG_BUILDINGS)
+    {
+    }
+    Building(const char* buildingName)
+    {
+        if (buildingName[0] == 'P')
+        {
+            _tableSize = NB_PROTOSS_BUILDINGS;
+            _nameTable = protoss_buildings_name;
+        } 
+        else if (buildingName[0] == 'T')
+        {
+            _tableSize = NB_TERRAN_BUILDINGS;
+            _nameTable = terran_buildings_name;
+        } 
+        else if (buildingName[0] == 'Z')
+        {
+            _tableSize = NB_ZERG_BUILDINGS;
+            _nameTable = zerg_buildings_name;
+        } 
+        else
+        {
+            std::cout << 
+                "ERROR: Building constructor failed to determine the race -> "
+                << std::string(buildingName)
+                << std::endl;
+        }
+        for (unsigned int i = 0; i < _tableSize; i++)
+        {
+            if (!strcmp(buildingName, _nameTable[i]))
+            {
+                _enumValue = i;
+                return;
+            }
+        }
+        std::cout << "ERROR: not found this building: "
+            << "|" << std::string(buildingName) << "|"
+            << std::endl;
+    }
+    std::ostream& operator <<(std::ostream& os) const
+    {
+        if (_enumValue < _tableSize)
+            os << std::string(_nameTable[_enumValue]);
+        else
+            os << "ERROR: _enumValue too big: " << _enumValue;
+        return os;
+    }
+};
+inline std::ostream& operator <<(std::ostream& os, const Building& b)
+{
+    if (b._enumValue < b._tableSize)
+        os << std::string(b._nameTable[b._enumValue]);
+    else
+        os << "ERROR: _enumValue too big: " << b._enumValue;
+    return os;
+}
 
 #endif
