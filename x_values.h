@@ -11,8 +11,8 @@ std::vector<std::set<Terran_Buildings> > get_terran_X_values()
 {
     std::vector<std::set<Terran_Buildings> > ret_vector;
     
+    for(int expand = 0; expand <= 1; expand++) {
     for(int supply = 0; supply <= 1; supply++) {
-    for(int supply2 = 0; supply2 <= 1; supply2++) {
     for(int ref = 0; ref <= 1; ref++) {
     for(int rax = 0; rax <= 1; rax++) {
     for(int rax2 = 0; rax2 <= 1; rax2++) {
@@ -33,10 +33,10 @@ std::vector<std::set<Terran_Buildings> > get_terran_X_values()
 
         std::set<Terran_Buildings> tmp_set;
         tmp_set.insert((Terran_Buildings)0); // CC
+        tmp_set.insert((Terran_Buildings)(expand*Terran_Expansion));
         tmp_set.insert((Terran_Buildings)(cs*Terran_Comsat_Station));
         tmp_set.insert((Terran_Buildings)(ns*Terran_Nuclear_Silo)); 
         tmp_set.insert((Terran_Buildings)(supply*Terran_Supply_Depot)); 
-        tmp_set.insert((Terran_Buildings)(supply2*Terran_Supply_Depot2)); 
         tmp_set.insert((Terran_Buildings)(ref*Terran_Refinery)); 
         tmp_set.insert((Terran_Buildings)(rax*Terran_Barracks)); 
         tmp_set.insert((Terran_Buildings)(rax2*Terran_Barracks2)); 
@@ -62,6 +62,7 @@ std::vector<std::set<Protoss_Buildings> > get_protoss_X_values()
 {
     std::vector<std::set<Protoss_Buildings> > ret_vector;
 
+    for(int expand = 0; expand <= 1; expand++) {
     for(int pylon = 0; pylon <= 1; pylon++) {
     for(int pylon2 = 0; pylon2 <= 1; pylon2++) {
     for(int assim = 0; assim <= 1; assim++) {
@@ -82,6 +83,7 @@ std::vector<std::set<Protoss_Buildings> > get_protoss_X_values()
 
     std::set<Protoss_Buildings> tmp_set;
     tmp_set.insert((Protoss_Buildings)0); // Nexus
+    tmp_set.insert((Protoss_Buildings)(expand*Protoss_Expansion)); 
     tmp_set.insert((Protoss_Buildings)(robo*Protoss_Robotics_Facility)); 
     tmp_set.insert((Protoss_Buildings)(pylon*Protoss_Pylon)); 
     tmp_set.insert((Protoss_Buildings)(pylon2*Protoss_Pylon2)); 
@@ -101,7 +103,7 @@ std::vector<std::set<Protoss_Buildings> > get_protoss_X_values()
     tmp_set.insert((Protoss_Buildings)(shield*Protoss_Shield_Battery)); 
     ret_vector.push_back(tmp_set);
 
-    }}}}}}}}}}}}}}}}}
+    }}}}}}}}}}}}}}}}}}
     return ret_vector;
 }
 
@@ -109,8 +111,9 @@ std::vector<std::set<Zerg_Buildings> > get_zerg_X_values()
 {
     std::vector<std::set<Zerg_Buildings> > ret_vector;
     
+    for(int expand = 0; expand <= 1; expand++) {
+    for(int expand2 = 0; expand2 <= 1; expand2++) {
     for(int overlord = 0; overlord <= 1; overlord++) {
-    for(int overlord2 = 0; overlord2 <= 1; overlord2++) {
     for(int extractor = 0; extractor <= 1; extractor++) {
     for(int creep_colony = 0; creep_colony <= 1; creep_colony++) {
     for(int pool = 0; pool <= 1; pool++) {
@@ -132,8 +135,9 @@ std::vector<std::set<Zerg_Buildings> > get_zerg_X_values()
         std::set<Zerg_Buildings> tmp_set;
         tmp_set.insert((Zerg_Buildings)0); // Hatch
         //tmp_set.insert((Zerg_Buildings)(infestedcc*Zerg_Infested_Command_Center)); 
+        tmp_set.insert((Zerg_Buildings)(expand*Zerg_Expansion)); 
+        tmp_set.insert((Zerg_Buildings)(expand2*Zerg_Expansion2)); 
         tmp_set.insert((Zerg_Buildings)(overlord*Zerg_Building_Overlord)); 
-        tmp_set.insert((Zerg_Buildings)(overlord2*Zerg_Building_Overlord2)); 
         tmp_set.insert((Zerg_Buildings)(lair*Zerg_Lair)); 
         tmp_set.insert((Zerg_Buildings)(hive*Zerg_Hive)); 
         tmp_set.insert((Zerg_Buildings)(nydus*Zerg_Nydus_Canal)); 
@@ -151,7 +155,7 @@ std::vector<std::set<Zerg_Buildings> > get_zerg_X_values()
         tmp_set.insert((Zerg_Buildings)(extractor*Zerg_Extractor)); 
         ret_vector.push_back(tmp_set);
 
-    }}}}}}}}}}}}}}}}}//}
+    }}}}}}}}}}}}}}}}}}//}
     return ret_vector;
 }
 

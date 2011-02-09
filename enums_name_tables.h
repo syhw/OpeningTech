@@ -40,10 +40,10 @@ const char* terran_units_name[] =
 
 #define TERRAN_X_BUILDINGS \
     X(Terran_Command_Center, (const char*) "Terran_Command_Center") \
+    X(Terran_Expansion, (const char*) "Terran_Expansion") \
     X(Terran_Comsat_Station, (const char*) "Terran_Comsat_Station") \
     X(Terran_Nuclear_Silo, (const char*) "Terran_Nuclear_Silo") \
     X(Terran_Supply_Depot, (const char*) "Terran_Supply_Depot") \
-    X(Terran_Supply_Depot2, (const char*) "Terran_Supply_Depot2") \
     X(Terran_Refinery, (const char*) "Terran_Refinery") \
     X(Terran_Barracks, (const char*) "Terran_Barracks") \
     X(Terran_Barracks2, (const char*) "Terran_Barracks2") \
@@ -74,7 +74,7 @@ const char* terran_buildings_name[] =
 };
 #undef X
 
-#define NB_TERRAN_BUILDINGS 20 // 18 buildings + supply2 + rax2
+#define NB_TERRAN_BUILDINGS 20 // 18 buildings + rax2 + expand
 
 #define PROTOSS_X_UNITS \
     X(Protoss_Corsair, (const char*) "Protoss_Corsair") \
@@ -112,6 +112,7 @@ const char* protoss_units_name[] =
 
 #define PROTOSS_X_BUILDINGS \
     X(Protoss_Nexus, (const char*) "Protoss_Nexus") \
+    X(Protoss_Expansion, (const char*) "Protoss_Expansion") \
     X(Protoss_Robotics_Facility, (const char*) "Protoss_Robotics_Facility") \
     X(Protoss_Pylon, (const char*) "Protoss_Pylon") \
     X(Protoss_Pylon2, (const char*) "Protoss_Pylon2") \
@@ -144,7 +145,7 @@ const char* protoss_buildings_name[] =
 };
 #undef X
 
-#define NB_PROTOSS_BUILDINGS 18 // 16 buildings + pylon2 + gate2
+#define NB_PROTOSS_BUILDINGS 19 // 16 buildings + pylon2 + gate2 + expand
 
 #define ZERG_X_UNITS \
     X(Zerg_Larva, (const char*) "Zerg_Larva") \
@@ -183,8 +184,10 @@ const char* zerg_units_name[] =
 #define NB_ZERG_UNITS 18
 
 #define ZERG_X_BUILDINGS \
-    X(Zerg_Infested_Command_Center, (const char*) "Zerg_Infested_Command_Center") \
     X(Zerg_Hatchery, (const char*) "Zerg_Hatchery") \
+    X(Zerg_Expansion, (const char*) "Zerg_Expansion") \
+    X(Zerg_Expansion2, (const char*) "Zerg_Expansion2") \
+    X(Zerg_Infested_Command_Center, (const char*) "Zerg_Infested_Command_Center") \
     X(Zerg_Lair, (const char*) "Zerg_Lair") \
     X(Zerg_Hive, (const char*) "Zerg_Hive") \
     X(Zerg_Nydus_Canal, (const char*) "Zerg_Nydus_Canal") \
@@ -202,7 +205,6 @@ const char* zerg_units_name[] =
     X(Zerg_Extractor, (const char*) "Zerg_Extractor")\
     \
     X(Zerg_Building_Overlord, (const char*) "Zerg_Building_Overlord") \
-    X(Zerg_Building_Overlord2, (const char*) "Zerg_Building_Overlord2")
 
 #define X(a, b) a,
 enum Zerg_Buildings
@@ -218,7 +220,7 @@ const char* zerg_buildings_name[] =
 };
 #undef X
 
-#define NB_ZERG_BUILDINGS 19 // 17 buildings + 2 overlords
+#define NB_ZERG_BUILDINGS 20 // 17 buildings + overlord + expand + expand2
 
 enum Spells
 {
