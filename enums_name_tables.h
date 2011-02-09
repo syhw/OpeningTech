@@ -43,8 +43,10 @@ const char* terran_units_name[] =
     X(Terran_Comsat_Station, (const char*) "Terran_Comsat_Station") \
     X(Terran_Nuclear_Silo, (const char*) "Terran_Nuclear_Silo") \
     X(Terran_Supply_Depot, (const char*) "Terran_Supply_Depot") \
+    X(Terran_Supply_Depot2, (const char*) "Terran_Supply_Depot2") \
     X(Terran_Refinery, (const char*) "Terran_Refinery") \
     X(Terran_Barracks, (const char*) "Terran_Barracks") \
+    X(Terran_Barracks2, (const char*) "Terran_Barracks2") \
     X(Terran_Academy, (const char*) "Terran_Academy") \
     X(Terran_Factory, (const char*) "Terran_Factory") \
     X(Terran_Starport, (const char*) "Terran_Starport") \
@@ -72,7 +74,7 @@ const char* terran_buildings_name[] =
 };
 #undef X
 
-#define NB_TERRAN_BUILDINGS 18
+#define NB_TERRAN_BUILDINGS 20 // 18 buildings + supply2 + rax2
 
 #define PROTOSS_X_UNITS \
     X(Protoss_Corsair, (const char*) "Protoss_Corsair") \
@@ -112,9 +114,11 @@ const char* protoss_units_name[] =
     X(Protoss_Nexus, (const char*) "Protoss_Nexus") \
     X(Protoss_Robotics_Facility, (const char*) "Protoss_Robotics_Facility") \
     X(Protoss_Pylon, (const char*) "Protoss_Pylon") \
+    X(Protoss_Pylon2, (const char*) "Protoss_Pylon2") \
     X(Protoss_Assimilator, (const char*) "Protoss_Assimilator") \
     X(Protoss_Observatory, (const char*) "Protoss_Observatory") \
     X(Protoss_Gateway, (const char*) "Protoss_Gateway") \
+    X(Protoss_Gateway2, (const char*) "Protoss_Gateway2") \
     X(Protoss_Photon_Cannon, (const char*) "Protoss_Photon_Cannon") \
     X(Protoss_Citadel_of_Adun, (const char*) "Protoss_Citadel_of_Adun") \
     X(Protoss_Cybernetics_Core, (const char*) "Protoss_Cybernetics_Core") \
@@ -140,7 +144,7 @@ const char* protoss_buildings_name[] =
 };
 #undef X
 
-#define NB_PROTOSS_BUILDINGS 16
+#define NB_PROTOSS_BUILDINGS 18 // 16 buildings + pylon2 + gate2
 
 #define ZERG_X_UNITS \
     X(Zerg_Larva, (const char*) "Zerg_Larva") \
@@ -195,7 +199,10 @@ const char* zerg_units_name[] =
     X(Zerg_Creep_Colony, (const char*) "Zerg_Creep_Colony") \
     X(Zerg_Spore_Colony, (const char*) "Zerg_Spore_Colony") \
     X(Zerg_Sunken_Colony, (const char*) "Zerg_Sunken_Colony") \
-    X(Zerg_Extractor, (const char*) "Zerg_Extractor")
+    X(Zerg_Extractor, (const char*) "Zerg_Extractor")\
+    \
+    X(Zerg_Building_Overlord, (const char*) "Zerg_Building_Overlord") \
+    X(Zerg_Building_Overlord2, (const char*) "Zerg_Building_Overlord2")
 
 #define X(a, b) a,
 enum Zerg_Buildings
@@ -211,7 +218,7 @@ const char* zerg_buildings_name[] =
 };
 #undef X
 
-#define NB_ZERG_BUILDINGS 17
+#define NB_ZERG_BUILDINGS 19 // 17 buildings + 2 overlords
 
 enum Spells
 {
@@ -289,6 +296,10 @@ public:
         else
             os << "ERROR: _enumValue too big: " << _enumValue;
         return os;
+    }
+    int getEnumValue() const
+    {
+        return _enumValue;
     }
 };
 inline std::ostream& operator <<(std::ostream& os, const Building& b)

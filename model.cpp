@@ -71,14 +71,14 @@ int main()
     zerg_openings.push_back("fast_lurkers"); // early gaz-lair-hydra den
     zerg_openings.push_back("unknown");
 
-    ///std::vector<std::set<Terran_Buildings> > terran = generate_terran_X_values();
-    std::vector<std::set<Protoss_Buildings> > protoss = generate_protoss_X_values();
-    ///std::vector<std::set<Zerg_Buildings> > zerg = generate_zerg_X_values();
+    ///std::vector<std::set<Terran_Buildings> > terran = get_terran_X_values();
+    std::vector<std::set<Protoss_Buildings> > protoss = get_protoss_X_values();
+    ///std::vector<std::set<Zerg_Buildings> > zerg = get_zerg_X_values();
 
     /**********************************************************************
       VARIABLES SPECIFICATION
      **********************************************************************/
-    plSymbol X("X", plIntegerType(0, NB_PROTOSS_X_VALUES)); // or sample learn
+    plSymbol X("X", plIntegerType(0, protoss.size()));
     std::vector<plSymbol> observed;
     plSymbol lambda("lambda", PL_BINARY_TYPE);
     for (unsigned int i = 0; i < NB_PROTOSS_BUILDINGS; i++)
@@ -103,7 +103,7 @@ int main()
 
     // Specification of P(X) (possible tech trees)
     std::vector<plProbValue> tableX;
-    for (unsigned int i = 0; i < NB_PROTOSS_X_VALUES; i++)
+    for (unsigned int i = 0; i < protoss.size(); i++)
         tableX.push_back(1.0); // TOLEARN
     plProbTable P_X(X, tableX, false);
 
@@ -143,6 +143,13 @@ int main()
             multimap<unsigned int, Building> tmpBuildings;
             getBuildings(input, tmpBuildings);
             vals[OpeningProtoss] = tmpOpening;
+            tmpBuildings.erase(0); // key == 0
+            for (map<unsigned int, Building>::const_iterator it 
+                    = tmpBuildings.begin(); 
+                    it != tmpBuildings.end(); ++it)
+            {
+
+            }
             //vals[X] = getXVal(input);
             //if (!time_learner.add_point())
             //    cout << "point not added" << endl;

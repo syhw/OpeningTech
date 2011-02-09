@@ -3,11 +3,11 @@ PROBT_INCLUDE=/Users/gabrielsynnaeve/these/code/probt/include
 PROBT_LIB=/Users/gabrielsynnaeve/these/code/probt/lib
 
 all:
-	g++ test_x_values.cpp -o test_x_values
+	g++ -ggdb test_x_values.cpp -o test_x_values
 	g++ -arch i386 -I$(PROBT_INCLUDE) test_functional_dirac.cpp \
 		-L$(PROBT_LIB) -lpl -o test_functional_dirac
-	g++ test_getOpeningVal.cpp -o test_getOpeningVal
-	g++ test_getBuildings.cpp -o test_getBuildings
+	g++ -ggdb test_getOpeningVal.cpp -o test_getOpeningVal
+	g++ -ggdb test_getBuildings.cpp -o test_getBuildings
 	g++ -arch i386 -I$(PROBT_INCLUDE) model.cpp -L$(PROBT_LIB) -lpl -o model
 
 run:
