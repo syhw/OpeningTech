@@ -168,6 +168,18 @@ std::vector<std::set<Zerg_Buildings> > get_zerg_X_values()
 std::string pruneOpeningVal(std::string& input);
 void getBuildings(std::string str, std::multimap<unsigned int, Building>& b);
 
+// dumbest function evar
+template<class T>
+unsigned int get_X_indice(const std::set<T>& X,
+        const std::vector<std::set<T> >& all_X)
+{
+    for (unsigned int i = 0; i < all_X.size(); ++i)
+    {
+        if (all_X[i] == X)
+            return i;
+    }
+}
+
 template<class T>
 std::vector<std::set<T> > get_X_values(std::ifstream& fin)
 {

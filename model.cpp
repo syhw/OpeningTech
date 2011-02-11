@@ -6,8 +6,8 @@
 #include "replays.h"
 using namespace std;
 
-std::vector<std::vector<plProbValue> > mean_Time_Protoss_when_X_and_Opening;
-std::vector<std::vector<plProbValue> > stddev_Time_Protoss_when_X_and_Opening;
+/// TODO: see if cannot use an iterator in values[] so that we directly
+/// put a std::set instead of std::vector for terran_X/protoss_X/zerg_X
 
 void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
 {
@@ -17,22 +17,10 @@ void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
     lambda[0] = 0; // false
 }
 
-/*void mean_Time_Protoss(plValues& Time, const plValues& X_Opening)
-{
-    // mean_Time_Protoss[X][Opening]
-    Time[0] = mean_Time_Protoss_when_X_and_Opening[X_Opening[0]][X_Opening[1]];
-}
-
-void stddev_Time_Protoss(plValues& Time, const plValues& X_Opening)
-{
-    // stddev_Time_Protoss[X][Opening]
-    Time[0] = stddev_Time_Protoss_when_X_and_Opening[X_Opening[0]][X_Opening[1]];
-}*/
-
 int main() 
 {
     std::vector<std::string> terran_openings;
-    terran_openings.push_back("fast_drop"); // facto-starport-control tower
+    /*terran_openings.push_back("fast_drop"); // facto-starport-control tower
     terran_openings.push_back("full_metal"); // facto x2 + machine shop
     terran_openings.push_back("MM"); // raxes-academy
     terran_openings.push_back("fast_expand"); // CC first
@@ -40,7 +28,14 @@ int main()
     terran_openings.push_back("mech_timing_push"); // facto-armory-facto
     terran_openings.push_back("fast_air"); // starport x2
     terran_openings.push_back("BBS"); // rax-rax-supply
-    terran_openings.push_back("unkown");
+    terran_openings.push_back("unkown");*/
+    terran_openings.push_back("Bio");
+    terran_openings.push_back("TwoFactory");
+    terran_openings.push_back("VultureHarass");
+    terran_openings.push_back("SiegeExpand");
+    terran_openings.push_back("Standard");
+    terran_openings.push_back("FastDropship");
+    terran_openings.push_back("Unknown");
 
     std::vector<std::string> protoss_openings;
     /*protoss_openings.push_back("fast_legs"); // core-citadel-gates-legs
@@ -63,22 +58,29 @@ int main()
 
 
     std::vector<std::string> zerg_openings;
-    zerg_openings.push_back("fast_pool"); // 4-8 pools
+    /*zerg_openings.push_back("fast_pool"); // 4-8 pools
     zerg_openings.push_back("lings"); // early pool + no peons @ extractor
     zerg_openings.push_back("fast_mutas"); // early extractor-lair-spire
     zerg_openings.push_back("mass_hydras"); // expand-hydra den
     zerg_openings.push_back("mutas_into_hydras"); // expand-lair-spire-hatch-hydra
     zerg_openings.push_back("fast_lurkers"); // early gaz-lair-hydra den
-    zerg_openings.push_back("unknown");
+    zerg_openings.push_back("unknown");*/
+    zerg_openings.push_back("TwoHatchMuta");
+    zerg_openings.push_back("ThreeHatchMuta");
+    zerg_openings.push_back("HydraRush");
+    zerg_openings.push_back("Standard");
+    zerg_openings.push_back("HydraMass");
+    zerg_openings.push_back("Lurker");
+    zerg_openings.push_back("Unknown");
 
-    ///std::vector<std::set<Terran_Buildings> > terran = get_terran_X_values();
-    std::vector<std::set<Protoss_Buildings> > protoss = get_protoss_X_values();
-    ///std::vector<std::set<Zerg_Buildings> > zerg = get_zerg_X_values();
+    ///std::vector<std::set<Terran_Buildings> > terran_X = get_terran_X_values();
+    std::vector<std::set<Protoss_Buildings> > protoss_X = get_protoss_X_values();
+    ///std::vector<std::set<Zerg_Buildings> > zerg_X = get_zerg_X_values();
 
     /**********************************************************************
       VARIABLES SPECIFICATION
      **********************************************************************/
-    plSymbol X("X", plIntegerType(0, protoss.size()));
+    plSymbol X("X", plIntegerType(0, protoss_X.size()));
     std::vector<plSymbol> observed;
     plSymbol lambda("lambda", PL_BINARY_TYPE);
     for (unsigned int i = 0; i < NB_PROTOSS_BUILDINGS; i++)
@@ -103,7 +105,7 @@ int main()
 
     // Specification of P(X) (possible tech trees)
     std::vector<plProbValue> tableX;
-    for (unsigned int i = 0; i < protoss.size(); i++)
+    for (unsigned int i = 0; i < protoss_X.size(); i++)
         tableX.push_back(1.0); // TOLEARN
     plProbTable P_X(X, tableX, false);
 
@@ -143,14 +145,16 @@ int main()
             multimap<unsigned int, Building> tmpBuildings;
             getBuildings(input, tmpBuildings);
             vals[OpeningProtoss] = tmpOpening;
-            tmpBuildings.erase(0); // key == 0
+            tmpBuildings.erase(0); // key == 0 i.e. buildings not constructed
+            std::set<Protoss_Buildings> tmpSet;
             for (map<unsigned int, Building>::const_iterator it 
                     = tmpBuildings.begin(); 
                     it != tmpBuildings.end(); ++it)
             {
-
+                tmpSet.insert(static_cast<Protoss_Buildings>(
+                            it->second.getEnumValue()));
             }
-            //vals[X] = getXVal(input);
+            vals[X] = get_X_indice(tmpSet, protoss_X);
             //if (!time_learner.add_point())
             //    cout << "point not added" << endl;
         }
