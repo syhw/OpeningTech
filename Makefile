@@ -11,7 +11,7 @@ all:
 	g++ -arch i386 -I$(PROBT_INCLUDE) model.cpp -L$(PROBT_LIB) -lpl -o model
 
 run:
-	DYLD_LIBRARY_PATH=$(PROBT_LIB):DYLD_LIBRARY_PATH ./model < PvP.txt
+	DYLD_LIBRARY_PATH=$(PROBT_LIB):DYLD_LIBRARY_PATH ./model lPvP.txt tPvP.txt
 	echo $(PROBT_LIB)
 
 debugrun:

@@ -10,6 +10,7 @@ with each line corresponding to a game.
 Usage:
     python transmute.py input.arff output.txt
 """
+### TODO: trunc buildings above 1080sec/18min
 
 import sys
 
@@ -209,12 +210,12 @@ for line in input:
             data = 1
 input.close()
 
-# TODO: use race_possible_tech_trees.txt to compute the possible X for each
-#       replays observations. 
-
 for game in games:
     for (k,v) in game.iteritems():
         if '_' in k:
-            output.write("%s %s; " % (k, v))
+            if "Opening" in k:
+                output.write("%s %s; " % (k, v))
+            else:
+                output.write("%s %s; " % (k, str(int(v)/24)))
     output.write('\n')
 output.close()
