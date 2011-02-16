@@ -1,6 +1,9 @@
 #include <pl.h>
 #include <iostream>
+#include <fstream>
 #include <vector>
+#include <set>
+#include <algorithm>
 #include "enums_name_tables.h"
 #include "x_values.h"
 #include "replays.h"
@@ -8,6 +11,7 @@ using namespace std;
 
 /// TODO: use an iterator in values[] so that we directly
 /// put a std::set instead of std::vector for terran_X/protoss_X/zerg_X
+/// TODO: replace set by unordered_set (TR1 or boost) in a lot of places
 
 std::vector<std::set<Protoss_Buildings> > protoss_X;
 
@@ -15,26 +19,29 @@ void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
 {
     plSymbol X("X", plIntegerType(0, protoss_X.size()));
     // if X is possible w.r.t. observations
-    set<Protoss_Buildings> tmpSet = protoss_X[X_Obs_conj[X]];
-    vector<bool> tmpBuildings;
+    set<Protoss_Buildings> setX = protoss_X[X_Obs_conj[X]];
+    set<Protoss_Buildings> setObs;
+    vector<Protoss_Buildings> intersect;
+    vector<Protoss_Buildings> difference;
     for (unsigned int i = 0; i < NB_PROTOSS_BUILDINGS; ++i)
     {
         plSymbol Obs(protoss_buildings_name[i], PL_BINARY_TYPE);
-        tmpBuildings.push_back(X_Obs_conj[Obs]);
+        if (X_Obs_conj[Obs])
+            setObs.insert(static_cast<Protoss_Buildings>(i));
     }
-    /*for (plVariablesConjunction::const_iterator it = 
-            X_Obs_conj[Obs].begin();
-            it != X_Obs_conj[Obs].end(); ++it)
-    {
-        tmpBuildings.push_back(*it);
-    }*/
-
-    lambda[0] = 1; // true
-    // else
-    lambda[0] = 0; // false
+    sort(intersect.begin(), 
+            set_intersection(setX.begin(), setX.end(), 
+                setObs.begin(), setObs.end(), intersect.begin()));
+    set_difference(setObs.begin(), setObs.end(), intersect.begin(),
+            intersect.end(), 
+            difference.begin());
+    if (difference.empty())
+        lambda[0] = 1; // true
+    else
+        lambda[0] = 0; // false
 }
 
-int main() 
+int main(int argc, const char *argv[])
 {
     std::vector<std::string> terran_openings;
     /*terran_openings.push_back("fast_drop"); // facto-starport-control tower
@@ -109,7 +116,7 @@ int main()
     plSymbol OpeningProtoss("OpeningProtoss", plLabelType(protoss_openings));
     //plSymbol OpeningZerg("OpeningZerg", VALUES);
 
-    plSymbol Time("Time", plIntegerType(1,900));
+    plSymbol Time("Time", plIntegerType(1,1080)); // 18 minutes
 
     /**********************************************************************
       PARAMETRIC FORM SPECIFICATION
@@ -143,19 +150,17 @@ int main()
         ObsConj ^= (*it);
     plExternalFunction coherence(lambda, X^ObsConj, test_X_possible);
     plFunctionalDirac P_lambda(lambda, X^ObsConj, coherence);
-    // P_lambda = 1 if lambda=coherence(X, observed), 0 otherwise
     
     // Specification of P(T | X, OpeningProtoss)
-    // LEARNT FROM THE REPLAYS
-    ///plExternalFunction mean(Time, X^OpeningProtoss, mean_Time_Protoss);
-    ///plExternalFunction stddev(Time, X^OpeningProtoss, stddev_Time_Protoss);
-    ///plCndBellShape P_Time(Time, X^OpeningProtoss, mean, stddev);
     plCndLearnObject<plLearnBellShape> timeLearner(Time, X^OpeningProtoss);
     plValues vals(timeLearner.get_variables());
     string input;
-    while (cin)
+    ifstream inputfile_learn(argv[1]);
+    istream& inputstream = argc > 2 ? inputfile_learn : cin;
+    if (argc > 2)
+        cout << "Learning from: " << argv[1] << endl;
+    while (getline(inputstream, input))
     {
-        getline(cin, input);
         if (input.empty())
             break;
         string tmpOpening = pruneOpeningVal(input);
@@ -178,7 +183,7 @@ int main()
                 vals[Time] = it->first;
                 std::cout << "Time: " << it->first << std::endl;
                 if (!timeLearner.add_point(vals))
-                    cout << "point not added" << endl;
+                    cout << "ERROR: point not added" << endl;
                 vals.reset();
             }
         }
@@ -188,38 +193,60 @@ int main()
     /**********************************************************************
       DECOMPOSITION
      **********************************************************************/
-    plJointDistribution jd(X^ObsConj^lambda^OpeningProtoss^Time, 
-            P_X*listObs*P_lambda*P_OpeningProtoss
-            *timeLearner.get_computable_object()); //P_Time);
+    plVariablesConjunction knownConj = ObsConj^lambda^Time;
+    plJointDistribution jd(X^OpeningProtoss^knownConj,
+            P_X*P_OpeningProtoss*listObs*P_lambda
+            *timeLearner.get_computable_object()); // <=> P_Time);
     jd.draw_graph("jd.fig");
-    cout<<"OK\n";
+    cout << "Joint distribution built." << endl;
 
     /**********************************************************************
       PROGRAM QUESTION
      **********************************************************************/
-    /*
-    // Get the inferred conditional Distribution representing P(C B | E D)
-    plCndDistribution CndP_CB;
-    jd.ask(CndP_CB, C^B, E^D);
+    plCndDistribution Cnd_P_Opening_knowing_rest;
+    jd.ask(Cnd_P_Opening_knowing_rest, OpeningProtoss, knownConj);
 
-    // Create the value representing the evidence = [E=true]^[D=false]
-    plValues evidence(E^D);
-    evidence[E] = true;
-    evidence[D] = false;
+    if (argc < 2)
+        return 0;
+    ifstream inputfile_test(argv[2]);
+    cout << "Testing from: " << argv[2] << endl;
+    while (getline(inputfile_test, input))
+    {
+        plValues evidence(knownConj);
+        evidence[lambda] = 1;
+        if (input.empty())
+            break;
+        string tmpOpening = pruneOpeningVal(input);
+        if (tmpOpening != "")
+        {
+            multimap<unsigned int, Building> tmpBuildings;
+            getBuildings(input, tmpBuildings);
+            tmpBuildings.erase(0); // key == 0 i.e. buildings not constructed
 
-    // Get the Distribution representing P(C B | [E=true]^[D=false] )
-    plDistribution P_CB;
-    CndP_CB.instantiate(P_CB,evidence);
+            // we assume we didn't see any buildings
+            for (unsigned int i = 0; i < NB_PROTOSS_BUILDINGS; ++i)
+                evidence[observed[i]] = 0;
+            // we assume we see the buildings as soon as they get constructed
+            for (map<unsigned int, Building>::const_iterator it 
+                    = tmpBuildings.begin(); 
+                    it != tmpBuildings.end(); ++it)
+            {
+                evidence[observed[it->second.getEnumValue()]] = 1;
+                evidence[Time] = it->first;
 
-    // Get the normalized Distribution representing P(C B | [E=true]^[D=false] )
-    plDistribution  T_P_CB;
-    P_CB.compile(T_P_CB);
+                plDistribution PP_Opening;
+                Cnd_P_Opening_knowing_rest.instantiate(PP_Opening, evidence);
+                plDistribution T_P_Opening;
+                PP_Opening.compile(T_P_Opening);
+                cout << T_P_Opening << endl;
+            }
+        }
+    }
 
-    // Display the result
-    cout << T_P_CB << endl;
-    plSerializer my_serializer();
+
+    /*plSerializer my_serializer();
     my_serializer.add_object("P_CB", P_CB);
-    my_serializer.save("test.xml");
+    my_serializer.save("test.xml");*/
 
     // On Windows (Visual C++, MinGW) only.
 #if defined(WIN32) || defined(_WIN32)
