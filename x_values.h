@@ -169,6 +169,7 @@ std::string pruneOpeningVal(std::string& input);
 void getBuildings(std::string str, std::multimap<unsigned int, Building>& b);
 
 // dumbest function evar
+// (search in O(n) in a vector)
 template<class T>
 unsigned int get_X_indice(const std::set<T>& X,
         const std::vector<std::set<T> >& all_X)

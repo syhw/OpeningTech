@@ -6,12 +6,29 @@
 #include "replays.h"
 using namespace std;
 
-/// TODO: see if cannot use an iterator in values[] so that we directly
+/// TODO: use an iterator in values[] so that we directly
 /// put a std::set instead of std::vector for terran_X/protoss_X/zerg_X
+
+std::vector<std::set<Protoss_Buildings> > protoss_X;
 
 void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
 {
+    plSymbol X("X", plIntegerType(0, protoss_X.size()));
     // if X is possible w.r.t. observations
+    set<Protoss_Buildings> tmpSet = protoss_X[X_Obs_conj[X]];
+    vector<bool> tmpBuildings;
+    for (unsigned int i = 0; i < NB_PROTOSS_BUILDINGS; ++i)
+    {
+        plSymbol Obs(protoss_buildings_name[i], PL_BINARY_TYPE);
+        tmpBuildings.push_back(X_Obs_conj[Obs]);
+    }
+    /*for (plVariablesConjunction::const_iterator it = 
+            X_Obs_conj[Obs].begin();
+            it != X_Obs_conj[Obs].end(); ++it)
+    {
+        tmpBuildings.push_back(*it);
+    }*/
+
     lambda[0] = 1; // true
     // else
     lambda[0] = 0; // false
@@ -120,12 +137,12 @@ int main()
     }
 
     // Specification of P(lambda | X, O_1..NB_PROTOSS_BUILDINGS)
-    plVariablesConjunction conjObs;
+    plVariablesConjunction ObsConj;
     for (std::vector<plSymbol>::const_iterator it = observed.begin();
             it != observed.end(); ++it)
-        conjObs ^= (*it);
-    plExternalFunction coherence(lambda, X^conjObs, test_X_possible);
-    plFunctionalDirac P_lambda(lambda, X^conjObs, coherence);
+        ObsConj ^= (*it);
+    plExternalFunction coherence(lambda, X^ObsConj, test_X_possible);
+    plFunctionalDirac P_lambda(lambda, X^ObsConj, coherence);
     // P_lambda = 1 if lambda=coherence(X, observed), 0 otherwise
     
     // Specification of P(T | X, OpeningProtoss)
@@ -133,18 +150,19 @@ int main()
     ///plExternalFunction mean(Time, X^OpeningProtoss, mean_Time_Protoss);
     ///plExternalFunction stddev(Time, X^OpeningProtoss, stddev_Time_Protoss);
     ///plCndBellShape P_Time(Time, X^OpeningProtoss, mean, stddev);
-    plCndLearnObject<plLearnBellShape> time_learner(Time, X^OpeningProtoss);
-    plValues vals(time_learner.get_variables());
+    plCndLearnObject<plLearnBellShape> timeLearner(Time, X^OpeningProtoss);
+    plValues vals(timeLearner.get_variables());
     string input;
     while (cin)
     {
         getline(cin, input);
+        if (input.empty())
+            break;
         string tmpOpening = pruneOpeningVal(input);
         if (tmpOpening != "")
         {
             multimap<unsigned int, Building> tmpBuildings;
             getBuildings(input, tmpBuildings);
-            vals[OpeningProtoss] = tmpOpening;
             tmpBuildings.erase(0); // key == 0 i.e. buildings not constructed
             std::set<Protoss_Buildings> tmpSet;
             for (map<unsigned int, Building>::const_iterator it 
@@ -153,10 +171,16 @@ int main()
             {
                 tmpSet.insert(static_cast<Protoss_Buildings>(
                             it->second.getEnumValue()));
+                vals[OpeningProtoss] = tmpOpening;
+                std::cout << "Opening: " << tmpOpening << std::endl;
+                vals[X] = get_X_indice(tmpSet, protoss_X);
+                std::cout << "X ind: " << get_X_indice(tmpSet, protoss_X) << std::endl;
+                vals[Time] = it->first;
+                std::cout << "Time: " << it->first << std::endl;
+                if (!timeLearner.add_point(vals))
+                    cout << "point not added" << endl;
+                vals.reset();
             }
-            vals[X] = get_X_indice(tmpSet, protoss_X);
-            //if (!time_learner.add_point())
-            //    cout << "point not added" << endl;
         }
     }
 
@@ -164,11 +188,12 @@ int main()
     /**********************************************************************
       DECOMPOSITION
      **********************************************************************/
-    plJointDistribution jd(X^conjObs^lambda^OpeningProtoss^Time, 
+    plJointDistribution jd(X^ObsConj^lambda^OpeningProtoss^Time, 
             P_X*listObs*P_lambda*P_OpeningProtoss
-            *time_learner.get_computable_object()); //P_Time);
+            *timeLearner.get_computable_object()); //P_Time);
     jd.draw_graph("jd.fig");
     cout<<"OK\n";
+
     /**********************************************************************
       PROGRAM QUESTION
      **********************************************************************/
