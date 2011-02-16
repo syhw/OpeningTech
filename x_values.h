@@ -216,7 +216,8 @@ std::vector<std::set<Terran_Buildings> > get_terran_X_values()
 
 std::vector<std::set<Protoss_Buildings> > get_protoss_X_values()
 {
-    std::ifstream fin("testP.txt");
+    //std::ifstream fin("testP.txt");
+    std::ifstream fin("PvP.txt");
     return get_X_values<Protoss_Buildings>(fin);
 }
 
