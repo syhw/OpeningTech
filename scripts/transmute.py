@@ -1,4 +1,16 @@
 #!/opt/local/bin/python
+
+"""
+3-clauses BSD licence, 
+Copyright 2010-2011 Gabriel Synnaeve
+
+Script that transforms an arff file of SC:BW replays into a txt file 
+with each line corresponding to a game.
+
+Usage:
+    python transmute.py input.arff output.txt
+"""
+
 import sys
 
 input = open(sys.argv[1], 'r')
