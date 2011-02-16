@@ -10,7 +10,6 @@ with each line corresponding to a game.
 Usage:
     python transmute.py input.arff output.txt
 """
-### TODO: trunc buildings above 1080sec/18min
 
 import sys
 
@@ -216,6 +215,9 @@ for game in games:
             if "Opening" in k:
                 output.write("%s %s; " % (k, v))
             else:
-                output.write("%s %s; " % (k, str(int(v)/24)))
+                val = int(v)/24
+                if val > 1079:
+                    val = 0
+                output.write("%s %s; " % (k, str(val)))
     output.write('\n')
 output.close()
