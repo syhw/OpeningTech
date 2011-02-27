@@ -8,7 +8,7 @@ all:
 		-L$(PROBT_LIB) -lpl -o test_functional_dirac
 	g++ -ggdb test_getOpeningVal.cpp -o test_getOpeningVal
 	g++ -ggdb test_getBuildings.cpp -o test_getBuildings
-	g++ -arch i386 -I$(PROBT_INCLUDE) model.cpp -L$(PROBT_LIB) -lpl -o model
+	g++ -ggdb -arch i386 -I$(PROBT_INCLUDE) model.cpp -L$(PROBT_LIB) -lpl -o model
 
 run:
 	DYLD_LIBRARY_PATH=$(PROBT_LIB):DYLD_LIBRARY_PATH ./model lPvP.txt tPvP.txt
@@ -31,10 +31,12 @@ test_getBuildings: all
 	./test_getBuildings < testP.txt | less
 
 clean:
-	rm ./-* ./:* ./[* prefix option illegal mktemp: c++-header *~ \
+	rm -rf ./-* ./:* ./[* prefix option illegal mktemp: c++-header *~ \
+		*.dSYM \
 		test_x_values test_functional_dirac test_getOpeningVal test_getBuildings \
 		protoss_possible_tech_trees.txt \
 		terran_possible_tech_trees.txt \
 		zerg_possible_tech_trees.txt \
-		model
+	 	model \
+		x_values
 
