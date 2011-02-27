@@ -9,36 +9,58 @@
 #include "replays.h"
 using namespace std;
 
+#define DEBUG_OUTPUT 2
+
 /// TODO: use an iterator in values[] so that we directly
 /// put a std::set instead of std::vector for terran_X/protoss_X/zerg_X
 /// TODO: replace set by unordered_set (TR1 or boost) in a lot of places
 
+///std::vector<std::set<Terran_Buildings> > terran_X;
 std::vector<std::set<Protoss_Buildings> > protoss_X;
+///std::vector<std::set<Zerg_Buildings> > zerg_X;
 
+/** 
+ * Test if the given X value (X plSymbol in plValues X_Obs_conj)
+ * is compatible with what obervations have been seen
+ * (observed plSymbol(s) in plValues X_Obs_conj)
+ * {X ^ observed} covers all observed if X is possible
+ * so X is impossible if {observed \ {X ^ observed}} != {}
+ */
 void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
 {
-    plSymbol X("X", plIntegerType(0, protoss_X.size()));
-    // if X is possible w.r.t. observations
-    set<Protoss_Buildings> setX = protoss_X[X_Obs_conj[X]];
+    set<Protoss_Buildings> setX = protoss_X[X_Obs_conj[0]];
     set<Protoss_Buildings> setObs;
-    vector<Protoss_Buildings> intersect;
-    vector<Protoss_Buildings> difference;
-    for (unsigned int i = 0; i < NB_PROTOSS_BUILDINGS; ++i)
+    set<Protoss_Buildings> intersect;
+    //for (plValues::const_iterator it = X_Obs_conj.begin(); ...)
+    for (unsigned int i = 1; i <= NB_PROTOSS_BUILDINGS; ++i)
     {
-        plSymbol Obs(protoss_buildings_name[i], PL_BINARY_TYPE);
-        if (X_Obs_conj[Obs])
+        if (X_Obs_conj[i])
+        {
             setObs.insert(static_cast<Protoss_Buildings>(i));
+            if (setX.count(static_cast<Protoss_Buildings>(i)))
+                intersect.insert(static_cast<Protoss_Buildings>(i));
+        }
     }
-    sort(intersect.begin(), 
-            set_intersection(setX.begin(), setX.end(), 
-                setObs.begin(), setObs.end(), intersect.begin()));
-    set_difference(setObs.begin(), setObs.end(), intersect.begin(),
-            intersect.end(), 
-            difference.begin());
-    if (difference.empty())
+
+    vector<Protoss_Buildings> difference(setObs.size());
+    vector<Protoss_Buildings>::iterator it = 
+        set_difference(setObs.begin(), setObs.end(), 
+                intersect.begin(), intersect.end(), 
+                difference.begin());
+    if (difference.begin() == it)
+    {
+#if DEBUG_OUTPUT > 2
+        cout << "DEBUG: test_X_possible TRUE" << endl;
+#endif
         lambda[0] = 1; // true
+    }
     else
+    {
+#if DEBUG_OUTPUT > 2
+        cout << "DEBUG: test_X_possible FALSE" << endl;
+#endif
         lambda[0] = 0; // false
+    }
 }
 
 int main(int argc, const char *argv[])
@@ -97,9 +119,9 @@ int main(int argc, const char *argv[])
     zerg_openings.push_back("Lurker");
     zerg_openings.push_back("Unknown");
 
-    ///std::vector<std::set<Terran_Buildings> > terran_X = get_terran_X_values();
-    std::vector<std::set<Protoss_Buildings> > protoss_X = get_protoss_X_values();
-    ///std::vector<std::set<Zerg_Buildings> > zerg_X = get_zerg_X_values();
+    /// terran_X = get_terran_X_values();
+    protoss_X = get_protoss_X_values();
+    /// zerg_X = get_zerg_X_values();
 
     /**********************************************************************
       VARIABLES SPECIFICATION
@@ -148,8 +170,9 @@ int main(int argc, const char *argv[])
     for (std::vector<plSymbol>::const_iterator it = observed.begin();
             it != observed.end(); ++it)
         ObsConj ^= (*it);
-    plExternalFunction coherence(lambda, X^ObsConj, test_X_possible);
-    plFunctionalDirac P_lambda(lambda, X^ObsConj, coherence);
+    plVariablesConjunction X_Obs_conj = X^ObsConj;
+    plExternalFunction coherence(lambda, X_Obs_conj, test_X_possible);
+    plFunctionalDirac P_lambda(lambda, X_Obs_conj , coherence);
     
     // Specification of P(T | X, OpeningProtoss)
     plCndLearnObject<plLearnBellShape> timeLearner(Time, X^OpeningProtoss);
@@ -158,7 +181,7 @@ int main(int argc, const char *argv[])
     ifstream inputfile_learn(argv[1]);
     istream& inputstream = argc > 2 ? inputfile_learn : cin;
     if (argc > 2)
-        cout << "Learning from: " << argv[1] << endl;
+        cout << ">>>> Learning from: " << argv[1] << endl;
     while (getline(inputstream, input))
     {
         if (input.empty())
@@ -177,11 +200,19 @@ int main(int argc, const char *argv[])
                 tmpSet.insert(static_cast<Protoss_Buildings>(
                             it->second.getEnumValue()));
                 vals[OpeningProtoss] = tmpOpening;
+#if DEBUG_OUTPUT > 1
                 std::cout << "Opening: " << tmpOpening << std::endl;
+#endif
                 vals[X] = get_X_indice(tmpSet, protoss_X);
-                std::cout << "X ind: " << get_X_indice(tmpSet, protoss_X) << std::endl;
+
+#if DEBUG_OUTPUT > 1
+                std::cout << "X ind: " << get_X_indice(tmpSet, protoss_X) 
+#endif
+                    << std::endl;
                 vals[Time] = it->first;
+#if DEBUG_OUTPUT > 1
                 std::cout << "Time: " << it->first << std::endl;
+#endif
                 if (!timeLearner.add_point(vals))
                     cout << "ERROR: point not added" << endl;
                 vals.reset();
@@ -198,18 +229,24 @@ int main(int argc, const char *argv[])
             P_X*P_OpeningProtoss*listObs*P_lambda
             *timeLearner.get_computable_object()); // <=> P_Time);
     jd.draw_graph("jd.fig");
+#if DEBUG_OUTPUT > 0
     cout << "Joint distribution built." << endl;
+#endif
 
     /**********************************************************************
       PROGRAM QUESTION
      **********************************************************************/
     plCndDistribution Cnd_P_Opening_knowing_rest;
     jd.ask(Cnd_P_Opening_knowing_rest, OpeningProtoss, knownConj);
+#if DEBUG_OUTPUT > 0
+    cout << jd.ask(OpeningProtoss, knownConj) << endl;
+#endif
 
     if (argc < 2)
         return 0;
     ifstream inputfile_test(argv[2]);
-    cout << "Testing from: " << argv[2] << endl;
+    cout << endl;
+    cout << ">>>> Testing from: " << argv[2] << endl;
     while (getline(inputfile_test, input))
     {
         plValues evidence(knownConj);
@@ -223,9 +260,11 @@ int main(int argc, const char *argv[])
             getBuildings(input, tmpBuildings);
             tmpBuildings.erase(0); // key == 0 i.e. buildings not constructed
 
+            evidence[observed[0]] = 1; // the first Nexus/CC/Hatch exists
             // we assume we didn't see any buildings
-            for (unsigned int i = 0; i < NB_PROTOSS_BUILDINGS; ++i)
+            for (unsigned int i = 1; i < NB_PROTOSS_BUILDINGS; ++i)
                 evidence[observed[i]] = 0;
+            
             // we assume we see the buildings as soon as they get constructed
             for (map<unsigned int, Building>::const_iterator it 
                     = tmpBuildings.begin(); 
@@ -233,12 +272,20 @@ int main(int argc, const char *argv[])
             {
                 evidence[observed[it->second.getEnumValue()]] = 1;
                 evidence[Time] = it->first;
+                
+#if DEBUG_OUTPUT > 1
+                cout << "====== evidence ======" << endl;
+                cout << evidence << endl;
+#endif
 
                 plDistribution PP_Opening;
                 Cnd_P_Opening_knowing_rest.instantiate(PP_Opening, evidence);
                 plDistribution T_P_Opening;
                 PP_Opening.compile(T_P_Opening);
+#if DEBUG_OUTPUT > 1
+                cout << "====== P(Opening | evidence) ======" << endl;
                 cout << T_P_Opening << endl;
+#endif
             }
         }
     }
