@@ -4,7 +4,7 @@
 #include <vector>
 #include "enums_name_tables.h"
 
-// #define GENERATE_X_VALUES
+//#define GENERATE_X_VALUES
 #ifdef GENERATE_X_VALUES
 
 std::vector<std::set<Terran_Buildings> > get_terran_X_values()
@@ -168,19 +168,6 @@ std::vector<std::set<Zerg_Buildings> > get_zerg_X_values()
 std::string pruneOpeningVal(std::string& input);
 void getBuildings(std::string str, std::multimap<unsigned int, Building>& b);
 
-// dumbest function evar
-// (search in O(n) in a vector)
-template<class T>
-unsigned int get_X_indice(const std::set<T>& X,
-        const std::vector<std::set<T> >& all_X)
-{
-    for (unsigned int i = 0; i < all_X.size(); ++i)
-    {
-        if (all_X[i] == X)
-            return i;
-    }
-}
-
 template<class T>
 std::vector<std::set<T> > get_X_values(std::ifstream& fin)
 {
@@ -192,8 +179,9 @@ std::vector<std::set<T> > get_X_values(std::ifstream& fin)
         pruneOpeningVal(line);
         std::multimap<unsigned int, Building> buildings;
         getBuildings(line, buildings);
-        buildings.erase(0); // key == 0
+        buildings.erase(0); // key == 0 i.e. buildings not constructed
         std::set<T> tmpSet;
+        tmpSet.insert(static_cast<T>(0)); // first Nexus/CC/Hatch exists
         for (std::multimap<unsigned int, Building>::const_iterator it
                 = buildings.begin();
                 it != buildings.end(); ++it)
@@ -228,5 +216,19 @@ std::vector<std::set<Zerg_Buildings> > get_zerg_X_values()
 }
 
 #endif
+
+// dumbest function evar
+// (search in O(n) in a vector)
+template<class T>
+unsigned int get_X_indice(const std::set<T>& X,
+        const std::vector<std::set<T> >& all_X)
+{
+    for (unsigned int i = 0; i < all_X.size(); ++i)
+    {
+        if (all_X[i] == X)
+            return i;
+    }
+}
+
 
 #endif

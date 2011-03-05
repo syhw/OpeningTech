@@ -49,14 +49,14 @@ void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
                 difference.begin());
     if (difference.begin() == it)
     {
-#if DEBUG_OUTPUT > 2
+#if DEBUG_OUTPUT > 3
         cout << "DEBUG: test_X_possible TRUE" << endl;
 #endif
         lambda[0] = 1; // true
     }
     else
     {
-#if DEBUG_OUTPUT > 2
+#if DEBUG_OUTPUT > 3
         cout << "DEBUG: test_X_possible FALSE" << endl;
 #endif
         lambda[0] = 0; // false
@@ -182,6 +182,8 @@ int main(int argc, const char *argv[])
     istream& inputstream = argc > 2 ? inputfile_learn : cin;
     if (argc > 2)
         cout << ">>>> Learning from: " << argv[1] << endl;
+    map<unsigned int, int> count_X_examples;
+    map<unsigned int, plValues> one_value_per_X;
     while (getline(inputstream, input))
     {
         if (input.empty())
@@ -203,23 +205,74 @@ int main(int argc, const char *argv[])
 #if DEBUG_OUTPUT > 1
                 std::cout << "Opening: " << tmpOpening << std::endl;
 #endif
-                vals[X] = get_X_indice(tmpSet, protoss_X);
-
+                unsigned int tmp_ind = get_X_indice(tmpSet, protoss_X);
+                vals[X] = tmp_ind;
 #if DEBUG_OUTPUT > 1
                 std::cout << "X ind: " << get_X_indice(tmpSet, protoss_X) 
-#endif
                     << std::endl;
+#endif
                 vals[Time] = it->first;
 #if DEBUG_OUTPUT > 1
                 std::cout << "Time: " << it->first << std::endl;
 #endif
+                if (count_X_examples.count(tmp_ind))
+                    count_X_examples[tmp_ind] = count_X_examples[tmp_ind] + 1;
+                else
+                {
+                    count_X_examples.insert(make_pair<unsigned int, int>(
+                                tmp_ind, 0));
+                    one_value_per_X.insert(make_pair<unsigned int, plValues>(
+                                tmp_ind, vals));
+                }
                 if (!timeLearner.add_point(vals))
                     cout << "ERROR: point not added" << endl;
                 vals.reset();
             }
         }
     }
+    for (map<unsigned int, int>::const_iterator it = count_X_examples.begin();
+            it != count_X_examples.end(); ++it)
+    {
+        if (it->second == 0)
+        {
+            cout << "PROBLEM: We never encountered X: ";
+            for (set<Protoss_Buildings>::const_iterator ibn
+                    = protoss_X[it->first].begin();
+                    ibn != protoss_X[it->first].end(); ++ibn)
+            {
+                cout << protoss_buildings_name[*ibn] << ", ";
+            }
+            cout << endl;
+        }
+        else if (it->second == 1)
+        {
+            cout << "PROBLEM: We encountered X only one time: ";
+            for (set<Protoss_Buildings>::const_iterator ibn
+                    = protoss_X[it->first].begin();
+                    ibn != protoss_X[it->first].end(); ++ibn)
+            {
+                cout << protoss_buildings_name[*ibn] << ", ";
+            }
+            cout << endl;
+            // put another (slightly different) value
+            one_value_per_X[it->first][Time] = 
+                one_value_per_X[it->first][Time] + 2; /// totally arbitrary 2
+            timeLearner.add_point(one_value_per_X[it->first]);
+        }
+        else
+        {
+            cout << "PANIPWOBLEM" << endl;
+        }
+    }
+#if DEBUG_OUTPUT > 2
+    cout << timeLearner.get_computable_object() << endl;
+#endif
 
+    ///////////////////////
+    cout << "Continue? (y)" << endl;
+    char lol;
+    cin >> lol;
+    ///////////////////////
 
     /**********************************************************************
       DECOMPOSITION
@@ -280,12 +333,23 @@ int main(int argc, const char *argv[])
 
                 plDistribution PP_Opening;
                 Cnd_P_Opening_knowing_rest.instantiate(PP_Opening, evidence);
+#if DEBUG_OUTPUT > 1
+                cout << "====== P(Opening | rest).instantiate ======" << endl;
+                cout << Cnd_P_Opening_knowing_rest << endl;
+#endif
                 plDistribution T_P_Opening;
                 PP_Opening.compile(T_P_Opening);
 #if DEBUG_OUTPUT > 1
                 cout << "====== P(Opening | evidence) ======" << endl;
                 cout << T_P_Opening << endl;
 #endif
+
+                ///////////////////////
+                cout << "Continue? (y)" << endl;
+                char lol;
+                cin >> lol;
+                ///////////////////////
+
             }
         }
     }
