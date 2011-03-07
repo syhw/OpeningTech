@@ -9,7 +9,7 @@
 #include "replays.h"
 using namespace std;
 
-#define DEBUG_OUTPUT 2
+#define DEBUG_OUTPUT 1
 
 /// TODO: use an iterator in values[] so that we directly
 /// put a std::set instead of std::vector for terran_X/protoss_X/zerg_X
@@ -246,7 +246,7 @@ int main(int argc, const char *argv[])
         }
         else if (it->second == 1)
         {
-            cout << "PROBLEM: We encountered X only one time: ";
+            cout << "(POSSIBLE)PROBLEM: We encountered X only one time: ";
             for (set<Protoss_Buildings>::const_iterator ibn
                     = protoss_X[it->first].begin();
                     ibn != protoss_X[it->first].end(); ++ibn)
@@ -259,20 +259,10 @@ int main(int argc, const char *argv[])
                 one_value_per_X[it->first][Time] + 2; /// totally arbitrary 2
             timeLearner.add_point(one_value_per_X[it->first]);
         }
-        else
-        {
-            cout << "PANIPWOBLEM" << endl;
-        }
     }
 #if DEBUG_OUTPUT > 2
     cout << timeLearner.get_computable_object() << endl;
 #endif
-
-    ///////////////////////
-    cout << "Continue? (y)" << endl;
-    char lol;
-    cin >> lol;
-    ///////////////////////
 
     /**********************************************************************
       DECOMPOSITION
@@ -300,6 +290,7 @@ int main(int argc, const char *argv[])
     ifstream inputfile_test(argv[2]);
     cout << endl;
     cout << ">>>> Testing from: " << argv[2] << endl;
+    unsigned int noreplay = 0;
     while (getline(inputfile_test, input))
     {
         plValues evidence(knownConj);
@@ -312,7 +303,11 @@ int main(int argc, const char *argv[])
             multimap<unsigned int, Building> tmpBuildings;
             getBuildings(input, tmpBuildings);
             tmpBuildings.erase(0); // key == 0 i.e. buildings not constructed
-
+#if DEBUG_OUTPUT == 1
+            cout << "************** Replay number: "
+                << noreplay << " **************" << endl;
+            ++noreplay;
+#endif
             evidence[observed[0]] = 1; // the first Nexus/CC/Hatch exists
             // we assume we didn't see any buildings
             for (unsigned int i = 1; i < NB_PROTOSS_BUILDINGS; ++i)
@@ -341,17 +336,10 @@ int main(int argc, const char *argv[])
 #endif
                 plDistribution T_P_Opening;
                 PP_Opening.compile(T_P_Opening);
-#if DEBUG_OUTPUT > 1
+#if DEBUG_OUTPUT >= 1
                 cout << "====== P(Opening | evidence) ======" << endl;
                 cout << T_P_Opening << endl;
 #endif
-
-                ///////////////////////
-                cout << "Continue? (y)" << endl;
-                char lol;
-                cin >> lol;
-                ///////////////////////
-
             }
         }
     }
