@@ -36,9 +36,9 @@ void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
     {
         if (X_Obs_conj[i])
         {
-            setObs.insert(static_cast<Protoss_Buildings>(i));
-            if (setX.count(static_cast<Protoss_Buildings>(i)))
-                intersect.insert(static_cast<Protoss_Buildings>(i));
+            setObs.insert(static_cast<Protoss_Buildings>(i-1));
+            if (setX.count(static_cast<Protoss_Buildings>(i-1)))
+                intersect.insert(static_cast<Protoss_Buildings>(i-1));
         }
     }
 
@@ -119,9 +119,9 @@ int main(int argc, const char *argv[])
     zerg_openings.push_back("Lurker");
     zerg_openings.push_back("Unknown");
 
-    /// terran_X = get_terran_X_values();
-    protoss_X = get_protoss_X_values();
-    /// zerg_X = get_zerg_X_values();
+    ifstream fin("PvP.txt"); /// match up: Enemy vs Us
+    protoss_X = get_X_values<Protoss_Buildings>(fin); /// Enemy race
+    /// For instance ZvT will get Zerg buildings when Zerg is against Terran
 
     /**********************************************************************
       VARIABLES SPECIFICATION
@@ -336,6 +336,8 @@ int main(int argc, const char *argv[])
 #if DEBUG_OUTPUT > 1
                 cout << "====== P(Opening | rest).instantiate ======" << endl;
                 cout << Cnd_P_Opening_knowing_rest << endl;
+                cout << PP_Opening.get_left_variables() << endl;
+                cout << PP_Opening.get_right_variables() << endl;
 #endif
                 plDistribution T_P_Opening;
                 PP_Opening.compile(T_P_Opening);

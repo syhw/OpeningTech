@@ -70,9 +70,15 @@ void print_set(const std::set<Zerg_Buildings>& s)
 
 int main(int argc, char* argv[])
 {
-    std::vector<std::set<Terran_Buildings> > terran = get_terran_X_values();
-    std::vector<std::set<Protoss_Buildings> > protoss = get_protoss_X_values();
-    std::vector<std::set<Zerg_Buildings> > zerg = get_zerg_X_values();
+    std::ifstream fin1("testT.txt"); /// all protoss matches
+    std::vector<std::set<Terran_Buildings> > terran 
+        = get_X_values<Terran_Buildings>(fin1);
+    std::ifstream fin2("testP.txt"); /// all protoss matches
+    std::vector<std::set<Protoss_Buildings> > protoss 
+        = get_X_values<Protoss_Buildings>(fin2);
+    std::ifstream fin3("testZ.txt"); /// all protoss matches
+    std::vector<std::set<Zerg_Buildings> > zerg 
+        = get_X_values<Zerg_Buildings>(fin3);
 #ifdef FILE_OUTPUT
 std::ofstream terran_fout("terran_possible_tech_trees.txt");
 std::ofstream protoss_fout("protoss_possible_tech_trees.txt");

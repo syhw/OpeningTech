@@ -196,25 +196,6 @@ std::vector<std::set<T> > get_X_values(std::ifstream& fin)
     return ret_vector;
 }
 
-std::vector<std::set<Terran_Buildings> > get_terran_X_values()
-{
-    std::ifstream fin("testT.txt");
-    return get_X_values<Terran_Buildings>(fin);
-}
-
-std::vector<std::set<Protoss_Buildings> > get_protoss_X_values()
-{
-    //std::ifstream fin("testP.txt");
-    std::ifstream fin("PvP.txt");
-    return get_X_values<Protoss_Buildings>(fin);
-}
-
-std::vector<std::set<Zerg_Buildings> > get_zerg_X_values()
-{
-    std::ifstream fin("testZ.txt");
-    return get_X_values<Zerg_Buildings>(fin);
-}
-
 #endif
 
 // dumbest function evar
