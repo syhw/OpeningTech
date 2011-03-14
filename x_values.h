@@ -7,6 +7,9 @@
 //#define GENERATE_X_VALUES
 #ifdef GENERATE_X_VALUES
 
+
+#include <iostream>
+
 std::vector<std::set<Terran_Buildings> > get_terran_X_values()
 {
     std::vector<std::set<Terran_Buildings> > ret_vector;
@@ -166,43 +169,45 @@ std::vector<std::set<Zerg_Buildings> > get_zerg_X_values()
 #include "replays.h"
 
 std::string pruneOpeningVal(std::string& input);
-void getBuildings(std::string str, std::multimap<unsigned int, Building>& b);
+void getBuildings(std::string str, 
+        std::multimap<int, Building>& b,
+        unsigned int cutoffseconds);
 
-template<class T>
-std::vector<std::set<T> > get_X_values(std::ifstream& fin)
+std::vector<std::set<int> > get_X_values(std::ifstream& fin)
 {
-    std::vector<std::set<T> > ret_vector;
-    std::set<std::set<T> > ret_set; // unordered_set
+    std::vector<std::set<int> > ret_vector;
+    std::set<std::set<int> > ret_set; // unordered_set
     std::string line;
     while (getline(fin, line))
     {
         pruneOpeningVal(line);
-        std::multimap<unsigned int, Building> buildings;
+        std::multimap<int, Building> buildings;
         getBuildings(line, buildings);
+        std::cout << "buildings size: " << buildings.size() << std::endl;
         buildings.erase(0); // key == 0 i.e. buildings not constructed
-        std::set<T> tmpSet;
-        tmpSet.insert(static_cast<T>(0)); // first Nexus/CC/Hatch exists
-        for (std::multimap<unsigned int, Building>::const_iterator it
+        std::set<int> tmpSet;
+        tmpSet.insert(0); // first Nexus/CC/Hatch exists
+        for (std::multimap<int, Building>::const_iterator it
                 = buildings.begin();
                 it != buildings.end(); ++it)
         {
-            tmpSet.insert(static_cast<T>(
-                        it->second.getEnumValue()));
+            tmpSet.insert(it->second.getEnumValue());
             ret_set.insert(tmpSet);
         }
     }
     ret_vector.reserve(ret_set.size());
     std::copy(ret_set.begin(), ret_set.end(), std::back_inserter(ret_vector));
+    std::cout << "SIZE OF RET_VECTOR: " << ret_vector.size() << std::endl;
     return ret_vector;
 }
 
 #endif
 
-// dumbest function evar
-// (search in O(n) in a vector)
-template<class T>
-unsigned int get_X_indice(const std::set<T>& X,
-        const std::vector<std::set<T> >& all_X)
+/// dumbest function evar
+/// (search in O(n) in a vector)
+/// TODO CHANGE
+int get_X_indice(const std::set<int>& X,
+        const std::vector<std::set<int> >& all_X)
 {
     for (unsigned int i = 0; i < all_X.size(); ++i)
     {

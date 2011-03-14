@@ -313,18 +313,4 @@ inline std::ostream& operator <<(std::ostream& os, const Building& b)
     return os;
 }
 
-/// print a set of <Race>Buildings with Race \in {Terran, Protoss, Zerg}
-/// through the use of the class Building
-/*template<typename T>
-void printBuildings(const std::set< T >& sb)
-{
-    for (std::set< T >::const_iterator it = sb.begin();
-            it != sb.end(); ++it)
-    {
-        Building b(*it);
-        std::cout << b << ", ";
-    }
-    std::cout << std::endl;
-}*/
-
 #endif

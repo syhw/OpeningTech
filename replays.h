@@ -6,9 +6,6 @@
 #include <stdlib.h>
 #include "x_values.h"
 
-//#define CUTOFF
-//#define CUTOFF_SECONDS 400
-
 std::string pruneOpeningVal(std::string& input)
 {
     // get
@@ -35,7 +32,9 @@ std::string pruneOpeningVal(std::string& input)
     return r;
 }
 
-void getBuildings(std::string str, std::multimap<unsigned int, Building>& b)
+void getBuildings(std::string str, 
+        std::multimap<int, Building>& b,
+        unsigned int cutoffseconds = 0)
 {
     while (str.length() > 2)
     {
@@ -49,12 +48,11 @@ void getBuildings(std::string str, std::multimap<unsigned int, Building>& b)
         ///    << " [End: " << end << "]"
         ///    << std::endl;
         Building tmpBuilding(str.substr(loc, begin-loc).c_str());
-#ifdef CUTOFF
-        if (atoi(str.substr(begin+1, end-begin-1).c_str()) < CUTOFF_SECONDS)
-#endif
-        b.insert(std::make_pair<unsigned int, Building>(
-                    atoi(str.substr(begin+1, end-begin-1).c_str()), 
-                    tmpBuilding));
+        if (cutoffseconds == 0 ||
+                atoi(str.substr(begin+1, end-begin-1).c_str()) < cutoffseconds)
+            b.insert(std::make_pair<int, Building>(
+                        atoi(str.substr(begin+1, end-begin-1).c_str()), 
+                        tmpBuilding));
         if (str.length() <= end+1)
             str.erase();
         else 
