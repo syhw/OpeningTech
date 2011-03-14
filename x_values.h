@@ -183,7 +183,6 @@ std::vector<std::set<int> > get_X_values(std::ifstream& fin)
         pruneOpeningVal(line);
         std::multimap<int, Building> buildings;
         getBuildings(line, buildings);
-        std::cout << "buildings size: " << buildings.size() << std::endl;
         buildings.erase(0); // key == 0 i.e. buildings not constructed
         std::set<int> tmpSet;
         tmpSet.insert(0); // first Nexus/CC/Hatch exists
@@ -197,7 +196,6 @@ std::vector<std::set<int> > get_X_values(std::ifstream& fin)
     }
     ret_vector.reserve(ret_set.size());
     std::copy(ret_set.begin(), ret_set.end(), std::back_inserter(ret_vector));
-    std::cout << "SIZE OF RET_VECTOR: " << ret_vector.size() << std::endl;
     return ret_vector;
 }
 
