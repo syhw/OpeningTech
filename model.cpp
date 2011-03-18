@@ -297,7 +297,6 @@ int main(int argc, const char *argv[])
 
     // Specification of P(X) (possible tech trees)
     std::vector<plProbValue> tableX;
-    cout << "vector_X size: " << vector_X.size() << endl;
     for (unsigned int i = 0; i < vector_X.size(); i++)
         tableX.push_back(1.0); // TOLEARN
     plProbTable P_X(X, tableX, false);
@@ -362,6 +361,28 @@ int main(int argc, const char *argv[])
     /**********************************************************************
       PROGRAM QUESTION
      **********************************************************************/
+    plVariablesConjunction X_Op = X^Opening;
+    for (unsigned int i = 0; i < vector_X.size(); i++) // X
+        for (unsigned int j = 0; j < openings.size(); j++) // Openings
+        {
+            plCndDistribution Cnd_P_Time_knowing_X_Op;
+            jd.ask(Cnd_P_Time_knowing_X_Op, Time, X_Op);
+            //cout << jd.ask(Time, X_Op) << endl;
+            plValues evidence(X_Op);
+            evidence[X] = i;
+            evidence[Opening] = j;
+            plDistribution PP_Time;
+            Cnd_P_Time_knowing_X_Op.instantiate(PP_Time, evidence);
+            cout << "======== P(Time | X, Op) ========" << endl;
+            cout << PP_Time.get_left_variables() << endl;
+            cout << PP_Time.get_right_variables() << endl;
+            //cout << Cnd_P_Time_knowing_X_Op << endl;
+            plDistribution T_P_Time;
+            PP_Time.compile(T_P_Time);
+            cout << T_P_Time << endl;
+        }
+    return 0;
+
     plCndDistribution Cnd_P_Opening_knowing_rest;
     jd.ask(Cnd_P_Opening_knowing_rest, Opening, knownConj);
 #if DEBUG_OUTPUT > 0

@@ -2,10 +2,10 @@
 PROBT_INCLUDE=/Users/gabrielsynnaeve/these/code/probt/include
 PROBT_LIB=/Users/gabrielsynnaeve/these/code/probt/lib
 
-model:
+model: model.cpp
 	g++ -ggdb -arch i386 -I$(PROBT_INCLUDE) model.cpp -L$(PROBT_LIB) -lpl -o model
 
-tests:
+tests: test_x_values.cpp test_functional_dirac.cpp test_lambda.cpp test_getOpeningVal.cpp test_getBuildings.cpp
 	g++ -ggdb test_x_values.cpp -o test_x_values
 	g++ -arch i386 -I$(PROBT_INCLUDE) test_functional_dirac.cpp \
 		-L$(PROBT_LIB) -lpl -o test_functional_dirac
@@ -15,6 +15,7 @@ tests:
 	g++ -ggdb test_getBuildings.cpp -o test_getBuildings
 
 all: tests model
+	make run
 
 run:
 	DYLD_LIBRARY_PATH=$(PROBT_LIB):DYLD_LIBRARY_PATH ./model lPvP.txt tPvP.txt
@@ -40,6 +41,8 @@ test_getBuildings: tests
 	./test_getBuildings < testP.txt | less
 
 runtests: test_x_values test_functional_dirac test_lambda test_getOpeningVal test_getBuildings
+
+.PHONY: model tests
 
 clean:
 	rm -rf ./-* ./:* ./[* prefix option illegal mktemp: c++-header *~ \

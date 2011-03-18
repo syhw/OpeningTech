@@ -11,56 +11,22 @@
 #endif
 
 
+template<typename T>
 #ifdef FILE_OUTPUT
-void print_set(const std::set<Terran_Buildings>& s, std::ofstream& fout)
+void print_set(const std::set<int>& s, std::ofstream& fout)
 #else
-void print_set(const std::set<Terran_Buildings>& s)
+void print_set(const std::set<int>& s)
 #endif
 {
-    for (std::set<Terran_Buildings>::const_iterator it = s.begin(); it != s.end(); ++it)
+    for (std::set<int>::const_iterator it = s.begin(); it != s.end(); ++it)
+    {
+        Building tmpBuilding(static_cast<T>(*it)); 
 #ifdef FILE_OUTPUT
-        fout << terran_buildings_name[*it] << " ";
+        fout << tmpBuilding << " ";
 #else
-        std::cout << terran_buildings_name[*it] << " ";
+        std::cout << tmpBuilding << " ";
 #endif
-#ifdef FILE_OUTPUT
-    fout << std::endl;
-#else
-    std::cout << std::endl;
-#endif
-}
-
-#ifdef FILE_OUTPUT
-void print_set(const std::set<Protoss_Buildings>& s, std::ofstream& fout)
-#else
-void print_set(const std::set<Protoss_Buildings>& s)
-#endif
-{
-    for (std::set<Protoss_Buildings>::const_iterator it = s.begin(); it != s.end(); ++it)
-#ifdef FILE_OUTPUT
-        fout << protoss_buildings_name[*it] << " ";
-#else
-        std::cout << protoss_buildings_name[*it] << " ";
-#endif
-#ifdef FILE_OUTPUT
-    fout << std::endl;
-#else
-    std::cout << std::endl;
-#endif
-}
-
-#ifdef FILE_OUTPUT
-void print_set(const std::set<Zerg_Buildings>& s, std::ofstream& fout)
-#else
-void print_set(const std::set<Zerg_Buildings>& s)
-#endif
-{
-    for (std::set<Zerg_Buildings>::const_iterator it = s.begin(); it != s.end(); ++it)
-#ifdef FILE_OUTPUT
-        fout << zerg_buildings_name[*it] << " ";
-#else
-        std::cout << zerg_buildings_name[*it] << " ";
-#endif
+    }
 #ifdef FILE_OUTPUT
     fout << std::endl;
 #else
@@ -71,29 +37,26 @@ void print_set(const std::set<Zerg_Buildings>& s)
 int main(int argc, char* argv[])
 {
     std::ifstream fin1("testT.txt"); /// all protoss matches
-    std::vector<std::set<Terran_Buildings> > terran 
-        = get_X_values<Terran_Buildings>(fin1);
+    std::vector<std::set<int> > terran = get_X_values(fin1);
     std::ifstream fin2("testP.txt"); /// all protoss matches
-    std::vector<std::set<Protoss_Buildings> > protoss 
-        = get_X_values<Protoss_Buildings>(fin2);
+    std::vector<std::set<int> > protoss = get_X_values(fin2);
     std::ifstream fin3("testZ.txt"); /// all protoss matches
-    std::vector<std::set<Zerg_Buildings> > zerg 
-        = get_X_values<Zerg_Buildings>(fin3);
+    std::vector<std::set<int> > zerg = get_X_values(fin3);
 #ifdef FILE_OUTPUT
 std::ofstream terran_fout("terran_possible_tech_trees.txt");
 std::ofstream protoss_fout("protoss_possible_tech_trees.txt");
 std::ofstream zerg_fout("zerg_possible_tech_trees.txt");
 #endif
 
-    std::set<std::set<Terran_Buildings> > terran_verif;
-    for (std::vector<std::set<Terran_Buildings> >::const_iterator it
+    std::set<std::set<int> > terran_verif;
+    for (std::vector<std::set<int> >::const_iterator it
             = terran.begin(); it != terran.end(); ++it)
     {
 #ifdef PRINTALL
 #ifdef FILE_OUTPUT
-        print_set(*it, terran_fout);
+        print_set<Terran_Buildings>(*it, terran_fout);
 #else
-        print_set(*it);
+        print_set<Terran_Buildings>(*it);
 #endif
 #endif
         terran_verif.insert(*it);
@@ -103,15 +66,15 @@ std::ofstream zerg_fout("zerg_possible_tech_trees.txt");
         std::cout << "TEST FAIL" << std::endl;
     std::cout << "Terran, printed: " << terran.size() << " sets == tech trees" << std::endl;
 
-    std::set<std::set<Protoss_Buildings> > protoss_verif;
-    for (std::vector<std::set<Protoss_Buildings> >::const_iterator it
+    std::set<std::set<int> > protoss_verif;
+    for (std::vector<std::set<int> >::const_iterator it
             = protoss.begin(); it != protoss.end(); ++it)
     {
 #ifdef PRINTALL
 #ifdef FILE_OUTPUT
-        print_set(*it, protoss_fout);
+        print_set<Protoss_Buildings>(*it, protoss_fout);
 #else
-        print_set(*it);
+        print_set<Protoss_Buildings>(*it);
 #endif
 #endif
         protoss_verif.insert(*it);
@@ -121,15 +84,15 @@ std::ofstream zerg_fout("zerg_possible_tech_trees.txt");
         std::cout << "TEST FAIL" << std::endl;
     std::cout << "Protoss, printed: " << protoss.size() << " sets == tech trees" << std::endl;
 
-    std::set<std::set<Zerg_Buildings> > zerg_verif;
-    for (std::vector<std::set<Zerg_Buildings> >::const_iterator it
+    std::set<std::set<int> > zerg_verif;
+    for (std::vector<std::set<int> >::const_iterator it
             = zerg.begin(); it != zerg.end(); ++it)
     {
 #ifdef PRINTALL
 #ifdef FILE_OUTPUT
-        print_set(*it, zerg_fout);
+        print_set<Zerg_Buildings>(*it, zerg_fout);
 #else
-        print_set(*it);
+        print_set<Zerg_Buildings>(*it);
 #endif
 #endif
         zerg_verif.insert(*it);

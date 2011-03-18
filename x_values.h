@@ -169,6 +169,7 @@ std::vector<std::set<Zerg_Buildings> > get_zerg_X_values()
 #include "replays.h"
 
 std::string pruneOpeningVal(std::string& input);
+
 void getBuildings(std::string str, 
         std::multimap<int, Building>& b,
         unsigned int cutoffseconds);
@@ -182,7 +183,7 @@ std::vector<std::set<int> > get_X_values(std::ifstream& fin)
     {
         pruneOpeningVal(line);
         std::multimap<int, Building> buildings;
-        getBuildings(line, buildings);
+        getBuildings(line, buildings, 0); // 0 for cutoffseconds
         buildings.erase(0); // key == 0 i.e. buildings not constructed
         std::set<int> tmpSet;
         tmpSet.insert(0); // first Nexus/CC/Hatch exists

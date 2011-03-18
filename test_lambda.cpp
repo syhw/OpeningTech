@@ -13,15 +13,15 @@ using namespace std;
 //P(lambda|X Protoss_Nexus Protoss_Expansion Protoss_Robotics_Facility Protoss_Pylon Protoss_Pylon2 Protoss_Assimilator Protoss_Observatory Protoss_Gateway Protoss_Gateway2 Protoss_Photon_Cannon Protoss_Citadel_of_Adun Protoss_Cybernetics_Core Protoss_Templar_Archives Protoss_Forge Protoss_Stargate Protoss_Fleet_Beacon Protoss_Arbiter_Tribunal Protoss_Robotics_Support_Bay Protoss_Shield_Battery)
 
 
-std::vector<std::set<Protoss_Buildings> > protoss_X;
+std::vector<std::set<int> > protoss_X;
 
 void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
 {
-    set<Protoss_Buildings> setX = protoss_X[X_Obs_conj[0]];
+    set<int> setX = protoss_X[X_Obs_conj[0]];
 #ifdef PRINT
     ///////////// print 
     cout << ">>> setX: ";
-    for (set<Protoss_Buildings>::const_iterator ibn
+    for (set<int>::const_iterator ibn
             = setX.begin();
             ibn != setX.end(); ++ibn)
     {
@@ -31,22 +31,22 @@ void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
     /////////////
 #endif
 
-    set<Protoss_Buildings> setObs;
-    set<Protoss_Buildings> intersect;
+    set<int> setObs;
+    set<int> intersect;
     //for (plValues::const_iterator it = X_Obs_conj.begin(); ...)
     for (unsigned int i = 1; i <= NB_PROTOSS_BUILDINGS; ++i)
     {
         if (X_Obs_conj[i])
         {
-            setObs.insert(static_cast<Protoss_Buildings>(i-1));
-            if (setX.count(static_cast<Protoss_Buildings>(i-1)))
-                intersect.insert(static_cast<Protoss_Buildings>(i-1));
+            setObs.insert(i-1);
+            if (setX.count(i-1))
+                intersect.insert(i-1);
         }
     }
 #ifdef PRINT
     ///////////// print 
     cout << ">>> setObs: ";
-    for (set<Protoss_Buildings>::const_iterator ibn
+    for (set<int>::const_iterator ibn
             = setObs.begin();
             ibn != setObs.end(); ++ibn)
     {
@@ -56,8 +56,8 @@ void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
     /////////////
 #endif
 
-    vector<Protoss_Buildings> difference(setObs.size());
-    vector<Protoss_Buildings>::iterator it = 
+    vector<int> difference(setObs.size());
+    vector<int>::iterator it = 
         set_difference(setObs.begin(), setObs.end(), 
                 intersect.begin(), intersect.end(), 
                 difference.begin());
@@ -74,7 +74,7 @@ void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
 int main(int argc, const char *argv[])
 {
     ifstream fin("PvP.txt");
-    protoss_X = get_X_values<Protoss_Buildings>(fin);
+    protoss_X = get_X_values(fin);
 
     plSymbol X("X", plIntegerType(0, protoss_X.size()));
     std::vector<plSymbol> observed;
