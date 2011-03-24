@@ -11,6 +11,8 @@ tests: test_x_values.cpp test_functional_dirac.cpp test_lambda.cpp test_getOpeni
 		-L$(PROBT_LIB) -lpl -o test_functional_dirac
 	g++ -arch i386 -I$(PROBT_INCLUDE) test_lambda.cpp \
 		-L$(PROBT_LIB) -lpl -o test_lambda
+	g++ -arch i386 -I$(PROBT_INCLUDE) test_learning.cpp \
+		-L$(PROBT_LIB) -lpl -o test_learning
 	g++ -ggdb test_getOpeningVal.cpp -o test_getOpeningVal
 	g++ -ggdb test_getBuildings.cpp -o test_getBuildings
 
@@ -34,6 +36,11 @@ test_functional_dirac: tests
 test_lambda: tests
 	DYLD_LIBRARY_PATH=$(PROBT_LIB):DYLD_LIBRARY_PATH ./test_lambda
 
+test_learning: tests
+	DYLD_LIBRARY_PATH=$(PROBT_LIB):DYLD_LIBRARY_PATH ./test_learning
+	sed -i '' 's#set data style lines#set style data lines#' *.gnuplot
+	gnuplot *.gnuplot
+
 test_getOpeningVal: tests
 	./test_getOpeningVal < testP.txt
 
@@ -47,6 +54,7 @@ runtests: test_x_values test_functional_dirac test_lambda test_getOpeningVal tes
 clean:
 	rm -rf ./-* ./:* ./[* prefix option illegal mktemp: c++-header *~ \
 		*.dSYM \
+		*.gnuplot* \
 		test_x_values test_getOpeningVal test_getBuildings \
 		test_functional_dirac test_lambda\
 		protoss_possible_tech_trees.txt \

@@ -9,7 +9,7 @@
 #include "replays.h"
 using namespace std;
 
-#define DEBUG_OUTPUT 1
+#define DEBUG_OUTPUT 0
 
 /// TODO: use an iterator in values[] so that we directly
 /// put a std::set instead of std::vector for vector_X
@@ -373,13 +373,16 @@ int main(int argc, const char *argv[])
             evidence[Opening] = j;
             plDistribution PP_Time;
             Cnd_P_Time_knowing_X_Op.instantiate(PP_Time, evidence);
-            cout << "======== P(Time | X, Op) ========" << endl;
-            cout << PP_Time.get_left_variables() << endl;
-            cout << PP_Time.get_right_variables() << endl;
+            ///cout << "======== P(Time | X, Op) ========" << endl;
+            ///cout << PP_Time.get_left_variables() << endl;
+            ///cout << PP_Time.get_right_variables() << endl;
             //cout << Cnd_P_Time_knowing_X_Op << endl;
             plDistribution T_P_Time;
             PP_Time.compile(T_P_Time);
-            cout << T_P_Time << endl;
+            ///cout << T_P_Time << endl;
+            std::stringstream tmp;
+            tmp << "X" << i << " Opening" << j << ".gnuplot";
+            T_P_Time.plot(tmp.str().c_str());
         }
     return 0;
 
