@@ -237,7 +237,7 @@ int main(int argc, const char *argv[])
         /// For instance ZvT will get Zerg buildings
         if (argv[1][1] == 'P')
         {
-            ifstream fin("testP.txt");
+            ifstream fin("lPvP");
             vector_X = get_X_values(fin); /// Enemy race
             openings = protoss_openings;
             nbBuildings = NB_PROTOSS_BUILDINGS;
@@ -362,28 +362,26 @@ int main(int argc, const char *argv[])
       PROGRAM QUESTION
      **********************************************************************/
     plVariablesConjunction X_Op = X^Opening;
-    for (unsigned int i = 0; i < vector_X.size(); i++) // X
-        for (unsigned int j = 0; j < openings.size(); j++) // Openings
-        {
-            plCndDistribution Cnd_P_Time_knowing_X_Op;
-            jd.ask(Cnd_P_Time_knowing_X_Op, Time, X_Op);
-            //cout << jd.ask(Time, X_Op) << endl;
-            plValues evidence(X_Op);
-            evidence[X] = i;
-            evidence[Opening] = j;
-            plDistribution PP_Time;
-            Cnd_P_Time_knowing_X_Op.instantiate(PP_Time, evidence);
-            ///cout << "======== P(Time | X, Op) ========" << endl;
-            ///cout << PP_Time.get_left_variables() << endl;
-            ///cout << PP_Time.get_right_variables() << endl;
-            //cout << Cnd_P_Time_knowing_X_Op << endl;
-            plDistribution T_P_Time;
-            PP_Time.compile(T_P_Time);
-            ///cout << T_P_Time << endl;
-            std::stringstream tmp;
-            tmp << "X" << i << " Opening" << j << ".gnuplot";
-            T_P_Time.plot(tmp.str().c_str());
-        }
+    for (unsigned int j = 0; j < openings.size(); j++) // Openings
+    {
+        plCndDistribution Cnd_P_Time_X_knowing_Op;
+        jd.ask(Cnd_P_Time_X_knowing_Op, Time^X, Opening);
+        //cout << jd.ask(Time, X_Op) << endl;
+        plValues evidence(Opening);
+        evidence[Opening] = j;
+        plDistribution PP_Time_X;
+        Cnd_P_Time_X_knowing_Op.instantiate(PP_Time_X, evidence);
+        ///cout << "======== P(Time | X, Op) ========" << endl;
+        ///cout << PP_Time.get_left_variables() << endl;
+        ///cout << PP_Time.get_right_variables() << endl;
+        //cout << Cnd_P_Time_knowing_X_Op << endl;
+        plDistribution T_P_Time_X;
+        PP_Time_X.compile(T_P_Time_X);
+        ///cout << T_P_Time << endl;
+        std::stringstream tmp;
+        tmp << "Opening" << j << ".gnuplot";
+        T_P_Time_X.plot(tmp.str().c_str());
+    }
     return 0;
 
     plCndDistribution Cnd_P_Opening_knowing_rest;
