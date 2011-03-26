@@ -7,7 +7,10 @@
 #include "enums_name_tables.h"
 #include "x_values.h"
 #include "replays.h"
+
 using namespace std;
+
+typedef void iovoid;
 
 #define DEBUG_OUTPUT 0
 
@@ -20,7 +23,7 @@ std::vector<std::set<int> > vector_X;
 /**
  * Prints the command line format/usage of the program
  */
-void usage()
+iovoid usage()
 {
     cout << "usage: ./model learn_from test_from" << endl;
     cout << "with names such as 'xRvS': " << endl;
@@ -165,7 +168,15 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
             timeLearner.add_point(one_value_per_X[it->first]);
         }
     }
-}
+    /*
+    for (unsigned int i = 0; i < 60; i++)
+    {
+        plValues rightValues(X^Opening); 
+        rightValues[Opening] = "FastExpand";
+        rightValues[X] = i;
+        cout << "Learnt parameters, mu: " << static_cast<plBellShape>(timeLearner.get_learnt_object_for_value(rightValues)->get_distribution()).mean() << ", stddev: " << static_cast<plBellShape>(timeLearner.get_learnt_object_for_value(rightValues)->get_distribution()).standard_deviation() << endl;
+    }*/
+    }
 
 int main(int argc, const char *argv[])
 {
@@ -362,25 +373,25 @@ int main(int argc, const char *argv[])
       PROGRAM QUESTION
      **********************************************************************/
     plVariablesConjunction X_Op = X^Opening;
+    plCndDistribution Cnd_P_Time_X_knowing_Op;
+    jd.ask(Cnd_P_Time_X_knowing_Op, Time^X, Opening);
     for (unsigned int j = 0; j < openings.size(); j++) // Openings
     {
-        plCndDistribution Cnd_P_Time_X_knowing_Op;
-        jd.ask(Cnd_P_Time_X_knowing_Op, Time^X, Opening);
         //cout << jd.ask(Time, X_Op) << endl;
         plValues evidence(Opening);
         evidence[Opening] = j;
         plDistribution PP_Time_X;
         Cnd_P_Time_X_knowing_Op.instantiate(PP_Time_X, evidence);
-        ///cout << "======== P(Time | X, Op) ========" << endl;
-        ///cout << PP_Time.get_left_variables() << endl;
-        ///cout << PP_Time.get_right_variables() << endl;
-        //cout << Cnd_P_Time_knowing_X_Op << endl;
+        cout << "======== P(Time, X | Op) ========" << endl;
+        cout << PP_Time_X.get_left_variables() << endl;
+        cout << PP_Time_X.get_right_variables() << endl;
+        cout << Cnd_P_Time_X_knowing_Op << endl;
         plDistribution T_P_Time_X;
         PP_Time_X.compile(T_P_Time_X);
-        ///cout << T_P_Time << endl;
-        std::stringstream tmp;
-        tmp << "Opening" << j << ".gnuplot";
-        T_P_Time_X.plot(tmp.str().c_str());
+        cout << T_P_Time_X << endl;
+   ///     std::stringstream tmp;
+   ///     tmp << "Opening" << openings[j] << ".gnuplot";
+   ///     T_P_Time_X.plot(tmp.str().c_str());
     }
     return 0;
 
