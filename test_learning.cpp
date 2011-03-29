@@ -155,5 +155,19 @@ int main(int argc, const char *argv[])
     Cnd_P_Time_knowing_X_Op.instantiate(evidence2).compile(P_Time_X);
     P_Time_X.plot("test_Time_X.gnuplot");
 
+    for (unsigned int i = 0; i < 3; i++)
+    {
+        plValues rightValues(X^Opening); 
+        rightValues[Opening] = "Op0";
+        rightValues[X] = i;
+        cout << "Learnt parameters, mu: " 
+             << static_cast<plBellShape>(timeLearner.get_learnt_object_for_value(
+                         rightValues)->get_distribution()).mean() 
+             << ", stddev: " 
+             << static_cast<plBellShape>(timeLearner.get_learnt_object_for_value(
+                         rightValues)->get_distribution()).standard_deviation() 
+             << endl;
+    }
+
     return 0;
 }

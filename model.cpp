@@ -12,7 +12,7 @@ using namespace std;
 
 typedef void iovoid;
 
-#define DEBUG_OUTPUT 0
+#define DEBUG_OUTPUT 2
 
 /// TODO: use an iterator in values[] so that we directly
 /// put a std::set instead of std::vector for vector_X
@@ -89,6 +89,19 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
     plValues vals(timeLearner.get_variables());
     map<int, int> count_X_examples;
     map<int, plValues> one_value_per_X;
+    
+    ////////////
+    map<pair<int, string>, int> count_X_Op_examples;
+    map<string, set<int> > all_X_per_Opening;
+    all_X_per_Opening.insert(make_pair<string, set<int> >("FastLegs", set<int>()));
+    all_X_per_Opening.insert(make_pair<string, set<int> >("FastDT", set<int>()));
+    all_X_per_Opening.insert(make_pair<string, set<int> >("FastObs", set<int>()));
+    all_X_per_Opening.insert(make_pair<string, set<int> >("ReaverDrop", set<int>()));
+    all_X_per_Opening.insert(make_pair<string, set<int> >("Carrier", set<int>()));
+    all_X_per_Opening.insert(make_pair<string, set<int> >("FastExpand", set<int>()));
+    all_X_per_Opening.insert(make_pair<string, set<int> >("Unknown", set<int>()));
+    ////////////
+
     while (getline(inputstream, input))
     {
         if (input.empty())
@@ -100,6 +113,7 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
             getBuildings(input, tmpBuildings);
             tmpBuildings.erase(0); // key == 0 i.e. buildings not constructed
             std::set<int> tmpSet;
+            tmpSet.insert(0);
             for (map<int, Building>::const_iterator it 
                     = tmpBuildings.begin(); 
                     it != tmpBuildings.end(); ++it)
@@ -110,9 +124,21 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
                 std::cout << "Opening: " << tmpOpening << std::endl;
 #endif
                 int tmp_ind = get_X_indice(tmpSet, vector_X);
+
+                /////////
+                cout << "****** TMP_IND: " << tmp_ind << endl;
+                cout << "****** SET: ";
+                for (set<int>::const_iterator tmpit = tmpSet.begin();
+                        tmpit != tmpSet.end(); ++tmpit)
+                {
+                    cout << *tmpit << " ";
+                }
+                cout << endl;
+                /////////
+
                 vals[X] = tmp_ind;
 #if DEBUG_OUTPUT > 1
-                std::cout << "X ind: " << get_X_indice(tmpSet, vector_X) 
+                std::cout << "X ind: " << tmp_ind
                     << std::endl;
 #endif
                 vals[Time] = it->first;
@@ -120,7 +146,9 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
                 std::cout << "Time: " << it->first << std::endl;
 #endif
                 if (count_X_examples.count(tmp_ind))
+                {
                     count_X_examples[tmp_ind] = count_X_examples[tmp_ind] + 1;
+                }
                 else
                 {
                     count_X_examples.insert(make_pair<int, int>(
@@ -128,6 +156,23 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
                     one_value_per_X.insert(make_pair<int, plValues>(
                                 tmp_ind, vals));
                 }
+
+                ////////////
+                if (count_X_Op_examples.count(make_pair<int, string>
+                            (tmp_ind, tmpOpening)))
+                {
+                    count_X_Op_examples[make_pair<int, string>(tmp_ind, tmpOpening)]
+                        = count_X_Op_examples[make_pair<int, string>(tmp_ind,
+                                tmpOpening)] + 1;
+                } 
+                else
+                {
+                    count_X_Op_examples.insert(make_pair<pair<int, string>, 
+                            int>(make_pair<int, string>(tmp_ind, tmpOpening), 0));
+                }
+                all_X_per_Opening[tmpOpening].insert(tmp_ind);
+                ////////////
+
                 /// Add data point
                 if (!timeLearner.add_point(vals))
                     cout << "ERROR: point not added" << endl;
@@ -135,6 +180,21 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
             }
         }
     }
+    ////////////
+    for (map<string, set<int> >::const_iterator it = all_X_per_Opening.begin();
+            it != all_X_per_Opening.end(); ++it)
+    {
+        for (int i = 0; i < (int)vector_X.size(); ++i)
+        {
+            if (!(it->second.count(i)))
+            {
+                cout << "X: " << i 
+                    << " not found for Opening: " << it->first << endl;
+            }
+        }
+    }
+    ////////////
+    
     /// Check for possible errors
     for (map<int, int>::const_iterator it = count_X_examples.begin();
             it != count_X_examples.end(); ++it)
@@ -168,15 +228,16 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
             timeLearner.add_point(one_value_per_X[it->first]);
         }
     }
-    /*
-    for (unsigned int i = 0; i < 60; i++)
+    ///*
+    for (unsigned int i = 0; i < vector_X.size(); i++)
     {
         plValues rightValues(X^Opening); 
         rightValues[Opening] = "FastExpand";
         rightValues[X] = i;
+        cout << "Right values: " << rightValues << endl;
         cout << "Learnt parameters, mu: " << static_cast<plBellShape>(timeLearner.get_learnt_object_for_value(rightValues)->get_distribution()).mean() << ", stddev: " << static_cast<plBellShape>(timeLearner.get_learnt_object_for_value(rightValues)->get_distribution()).standard_deviation() << endl;
-    }*/
-    }
+    }/**/
+}
 
 int main(int argc, const char *argv[])
 {
@@ -248,11 +309,28 @@ int main(int argc, const char *argv[])
         /// For instance ZvT will get Zerg buildings
         if (argv[1][1] == 'P')
         {
-            ifstream fin("lPvP");
+            ifstream fin("lPvPPP"); // TODO TO CHANGE for testP.txt
             vector_X = get_X_values(fin); /// Enemy race
             openings = protoss_openings;
             nbBuildings = NB_PROTOSS_BUILDINGS;
             buildings_name = protoss_buildings_name;
+            cout << "X size: " << vector_X.size() << endl;
+
+            ///////////
+            int xno = 0;
+            for (vector<std::set<int> >::const_iterator it = vector_X.begin();
+                    it != vector_X.end(); ++it)
+            {
+                cout << "X" << xno << ": ";
+                for (set<int>::const_iterator it2 = it->begin();
+                        it2 != it->end(); ++it2)
+                {
+                    cout << *it2 << " ";
+                }
+                cout << endl;
+                xno++;
+            }
+            ///////////
         }
         else if (argv[1][1] == 'T')
         {
@@ -382,16 +460,16 @@ int main(int argc, const char *argv[])
         evidence[Opening] = j;
         plDistribution PP_Time_X;
         Cnd_P_Time_X_knowing_Op.instantiate(PP_Time_X, evidence);
-        cout << "======== P(Time, X | Op) ========" << endl;
-        cout << PP_Time_X.get_left_variables() << endl;
-        cout << PP_Time_X.get_right_variables() << endl;
-        cout << Cnd_P_Time_X_knowing_Op << endl;
+        ///cout << "======== P(Time, X | Op) ========" << endl;
+        ///cout << PP_Time_X.get_left_variables() << endl;
+        ///cout << PP_Time_X.get_right_variables() << endl;
+        ///cout << Cnd_P_Time_X_knowing_Op << endl;
         plDistribution T_P_Time_X;
         PP_Time_X.compile(T_P_Time_X);
-        cout << T_P_Time_X << endl;
-   ///     std::stringstream tmp;
-   ///     tmp << "Opening" << openings[j] << ".gnuplot";
-   ///     T_P_Time_X.plot(tmp.str().c_str());
+        /// cout << T_P_Time_X << endl;
+        std::stringstream tmp;
+        tmp << "Opening" << openings[j] << ".gnuplot";
+        T_P_Time_X.plot(tmp.str().c_str());
     }
     return 0;
 
