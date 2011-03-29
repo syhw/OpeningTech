@@ -209,41 +209,10 @@ std::vector<std::set<int> > get_X_values(std::ifstream& fin)
 int get_X_indice(const std::set<int>& X,
         const std::vector<std::set<int> >& all_X)
 {
-    ////////////
-    std::cout << "!!in get!! SET: ";
-    for (std::set<int>::const_iterator tmpit = X.begin();
-            tmpit != X.end(); ++tmpit)
-    {
-        std::cout << *tmpit << " ";
-    }
-    std::cout << std::endl;
-    ////////////
     for (unsigned int i = 0; i < all_X.size(); ++i)
     {
-        ////////////
-        std::cout << "!!in get!! EXAMINING: ";
-        for (std::set<int>::const_iterator tmpit = all_X[i].begin();
-                tmpit != all_X[i].end(); ++tmpit)
-        {
-            std::cout << *tmpit << " ";
-        }
-        std::cout << std::endl;
-        ////////////
-        if (all_X[i].size() != X.size())
-            continue;
-        if (std::equal(all_X[i].begin(), all_X[i].end(), X.begin()))
-        {
-            ////////////
-            std::cout << "!!in get!! FOUND: ";
-            for (std::set<int>::const_iterator tmpit = all_X[i].begin();
-                    tmpit != all_X[i].end(); ++tmpit)
-            {
-                std::cout << *tmpit << " ";
-            }
-            std::cout << std::endl;
-            ////////////
+        if (all_X[i] == X)
             return i;
-        }
     }
     std::cout << "ERROR: X not found in all existing X" << std::endl;
     return -1;

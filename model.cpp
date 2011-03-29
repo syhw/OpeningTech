@@ -90,18 +90,6 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
     map<int, int> count_X_examples;
     map<int, plValues> one_value_per_X;
     
-    ////////////
-    map<pair<int, string>, int> count_X_Op_examples;
-    map<string, set<int> > all_X_per_Opening;
-    all_X_per_Opening.insert(make_pair<string, set<int> >("FastLegs", set<int>()));
-    all_X_per_Opening.insert(make_pair<string, set<int> >("FastDT", set<int>()));
-    all_X_per_Opening.insert(make_pair<string, set<int> >("FastObs", set<int>()));
-    all_X_per_Opening.insert(make_pair<string, set<int> >("ReaverDrop", set<int>()));
-    all_X_per_Opening.insert(make_pair<string, set<int> >("Carrier", set<int>()));
-    all_X_per_Opening.insert(make_pair<string, set<int> >("FastExpand", set<int>()));
-    all_X_per_Opening.insert(make_pair<string, set<int> >("Unknown", set<int>()));
-    ////////////
-
     while (getline(inputstream, input))
     {
         if (input.empty())
@@ -124,18 +112,6 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
                 std::cout << "Opening: " << tmpOpening << std::endl;
 #endif
                 int tmp_ind = get_X_indice(tmpSet, vector_X);
-
-                /////////
-                cout << "****** TMP_IND: " << tmp_ind << endl;
-                cout << "****** SET: ";
-                for (set<int>::const_iterator tmpit = tmpSet.begin();
-                        tmpit != tmpSet.end(); ++tmpit)
-                {
-                    cout << *tmpit << " ";
-                }
-                cout << endl;
-                /////////
-
                 vals[X] = tmp_ind;
 #if DEBUG_OUTPUT > 1
                 std::cout << "X ind: " << tmp_ind
@@ -157,22 +133,6 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
                                 tmp_ind, vals));
                 }
 
-                ////////////
-                if (count_X_Op_examples.count(make_pair<int, string>
-                            (tmp_ind, tmpOpening)))
-                {
-                    count_X_Op_examples[make_pair<int, string>(tmp_ind, tmpOpening)]
-                        = count_X_Op_examples[make_pair<int, string>(tmp_ind,
-                                tmpOpening)] + 1;
-                } 
-                else
-                {
-                    count_X_Op_examples.insert(make_pair<pair<int, string>, 
-                            int>(make_pair<int, string>(tmp_ind, tmpOpening), 0));
-                }
-                all_X_per_Opening[tmpOpening].insert(tmp_ind);
-                ////////////
-
                 /// Add data point
                 if (!timeLearner.add_point(vals))
                     cout << "ERROR: point not added" << endl;
@@ -180,20 +140,6 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
             }
         }
     }
-    ////////////
-    for (map<string, set<int> >::const_iterator it = all_X_per_Opening.begin();
-            it != all_X_per_Opening.end(); ++it)
-    {
-        for (int i = 0; i < (int)vector_X.size(); ++i)
-        {
-            if (!(it->second.count(i)))
-            {
-                cout << "X: " << i 
-                    << " not found for Opening: " << it->first << endl;
-            }
-        }
-    }
-    ////////////
     
     /// Check for possible errors
     for (map<int, int>::const_iterator it = count_X_examples.begin();
@@ -315,22 +261,6 @@ int main(int argc, const char *argv[])
             nbBuildings = NB_PROTOSS_BUILDINGS;
             buildings_name = protoss_buildings_name;
             cout << "X size: " << vector_X.size() << endl;
-
-            ///////////
-            int xno = 0;
-            for (vector<std::set<int> >::const_iterator it = vector_X.begin();
-                    it != vector_X.end(); ++it)
-            {
-                cout << "X" << xno << ": ";
-                for (set<int>::const_iterator it2 = it->begin();
-                        it2 != it->end(); ++it2)
-                {
-                    cout << *it2 << " ";
-                }
-                cout << endl;
-                xno++;
-            }
-            ///////////
         }
         else if (argv[1][1] == 'T')
         {
