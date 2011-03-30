@@ -12,7 +12,8 @@ using namespace std;
 
 typedef void iovoid;
 
-#define DEBUG_OUTPUT 0
+#define DEBUG_OUTPUT 2
+#define PLOT 0
 
 /// TODO: use an iterator in values[] so that we directly
 /// put a std::set instead of std::vector for vector_X
@@ -83,10 +84,12 @@ void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
 template<class T>
 void learn_T_knowing_X_Opening(ifstream& inputstream,
             plCndLearnObject<plLearnBellShape>& timeLearner,
+            plCndLearnObject<plLearnHistogram>& xLearner,
             plSymbol& Opening, plSymbol& X, plSymbol& Time)
 {
     string input;
     plValues vals(timeLearner.get_variables());
+    plValues valsX_Op(xLearner.get_variables());
     map<int, int> count_X_examples;
     map<int, plValues> one_value_per_X;
     map<pair<int, string>, int> count_X_Op_examples;
@@ -112,11 +115,13 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
                     break;
                 tmpSet.insert(it->second.getEnumValue());
                 vals[Opening] = tmpOpening;
+                valsX_Op[Opening] = tmpOpening;
 #if DEBUG_OUTPUT > 1
                 std::cout << "Opening: " << tmpOpening << std::endl;
 #endif
                 int tmp_ind = get_X_indice(tmpSet, vector_X);
                 vals[X] = tmp_ind;
+                valsX_Op[X] = tmp_ind;
 #if DEBUG_OUTPUT > 1
                 std::cout << "X ind: " << tmp_ind
                     << std::endl;
@@ -152,7 +157,9 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
 
                 /// Add data point
                 if (!timeLearner.add_point(vals))
-                    cout << "ERROR: point not added" << endl;
+                    cout << "ERROR: point not added to P(T|X,Op)" << endl;
+                if (!xLearner.add_point(valsX_Op))
+                    cout << "ERROR: point not added to P(X|Op)" << endl;
                 ++nbpts;
                 vals.reset();
             }
@@ -341,7 +348,8 @@ int main(int argc, const char *argv[])
     std::vector<plProbValue> tableX;
     for (unsigned int i = 0; i < vector_X.size(); i++)
         tableX.push_back(1.0); // TOLEARN
-    plProbTable P_X(X, tableX, false);
+    //plProbTable P_X(X, tableX, false);
+    plCndLearnObject<plLearnHistogram> xLearner(X, Opening);
 
     // Specification of P(O_1..NB_<RACE>_BUILDINGS)
     plComputableObjectList listObs;
@@ -377,12 +385,15 @@ int main(int argc, const char *argv[])
     ifstream inputstream(argv[1]);
     if (argv[1][1] == 'P')
         learn_T_knowing_X_Opening<Protoss_Buildings>(inputstream, timeLearner,
+                xLearner,
                 Opening, X, Time);
     else if (argv[1][1] == 'T')
         learn_T_knowing_X_Opening<Terran_Buildings>(inputstream, timeLearner,
+                xLearner,
                 Opening, X, Time);
     else if (argv[1][1] == 'Z')
         learn_T_knowing_X_Opening<Zerg_Buildings>(inputstream, timeLearner,
+                xLearner,
                 Opening, X, Time);
     //////////
     cout << "Number of possible pairs (X, Opening): "
@@ -397,7 +408,8 @@ int main(int argc, const char *argv[])
      **********************************************************************/
     plVariablesConjunction knownConj = ObsConj^lambda^Time;
     plJointDistribution jd(X^Opening^knownConj,
-            P_X*P_Opening*listObs*P_lambda
+            //P_X*P_Opening*listObs*P_lambda
+            xLearner.get_computable_object()*P_Opening*listObs*P_lambda
             *timeLearner.get_computable_object()); // <=> P_Time);
     jd.draw_graph("jd.fig");
 #if DEBUG_OUTPUT > 0
@@ -407,39 +419,39 @@ int main(int argc, const char *argv[])
     /**********************************************************************
       PROGRAM QUESTION
      **********************************************************************/
-    ///***** 
+#if PLOT > 0
     plVariablesConjunction X_Op = X^Opening;
     plCndDistribution Cnd_P_Time_X_knowing_Op;
     jd.ask(Cnd_P_Time_X_knowing_Op, Time^X, Opening);
 
+#if PLOT > 1
     plCndDistribution Cnd_P_Time_knowing_X_Op;
     jd.ask(Cnd_P_Time_knowing_X_Op, Time, X_Op);
-    for (unsigned int j = 0; j < openings.size(); j++) // Openings
+#endif
+    for (unsigned int i = 0; i < openings.size(); i++) // Openings
     {
-        //cout << jd.ask(Time, X_Op) << endl;
         plValues evidence(Opening);
-        evidence[Opening] = j;
+        evidence[Opening] = i;
         plDistribution PP_Time_X;
         Cnd_P_Time_X_knowing_Op.instantiate(PP_Time_X, evidence);
-        ///cout << "======== P(Time, X | Op) ========" << endl;
-        ///cout << PP_Time_X.get_left_variables() << endl;
-        ///cout << PP_Time_X.get_right_variables() << endl;
-        ///cout << Cnd_P_Time_X_knowing_Op << endl;
         plDistribution T_P_Time_X;
         PP_Time_X.compile(T_P_Time_X);
-        /// cout << T_P_Time_X << endl;
         std::stringstream tmp;
-        tmp << "Opening" << openings[j] << ".gnuplot";
+        tmp << "Opening" << openings[i] << ".gnuplot";
         T_P_Time_X.plot(tmp.str().c_str());
 
-        evidence[X] = 10;
-        Cnd_P_Time_knowing_X_Op.instantiate(PP_Time_X, evidence);
-        PP_Time_X.compile(T_P_Time_X);
-        tmp << "Opening" << openings[j] << "X10" << ".gnuplot";
-        T_P_Time_X.plot(tmp.str().c_str());
+#if PLOT > 1
+        for (unsigned int j = 0; j < vector_X.size(); ++j)
+        {
+            Cnd_P_Time_knowing_X_Op.instantiate(PP_Time_X, evidence);
+            PP_Time_X.compile(T_P_Time_X);
+            tmp << "Opening" << openings[i] << "X" << j << ".gnuplot";
+            T_P_Time_X.plot(tmp.str().c_str());
+        }
+#endif
     }
     return 0;
-    /**/
+#endif
 
     plCndDistribution Cnd_P_Opening_knowing_rest;
     jd.ask(Cnd_P_Opening_knowing_rest, Opening, knownConj);

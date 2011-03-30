@@ -5,8 +5,8 @@
 #include <algorithm>
 #include "enums_name_tables.h"
 
-//#define LEARN_TIME_LIMIT 1080 // 18 minutes
-#define LEARN_TIME_LIMIT 500
+#define LEARN_TIME_LIMIT 1080 // 18 minutes
+//#define LEARN_TIME_LIMIT 500
 
 //#define GENERATE_X_VALUES
 #ifdef GENERATE_X_VALUES
