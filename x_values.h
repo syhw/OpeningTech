@@ -5,9 +5,11 @@
 #include <algorithm>
 #include "enums_name_tables.h"
 
+//#define LEARN_TIME_LIMIT 1080 // 18 minutes
+#define LEARN_TIME_LIMIT 500
+
 //#define GENERATE_X_VALUES
 #ifdef GENERATE_X_VALUES
-
 
 #include <iostream>
 
@@ -192,6 +194,8 @@ std::vector<std::set<int> > get_X_values(std::ifstream& fin)
                 = buildings.begin();
                 it != buildings.end(); ++it)
         {
+            if (it->first > LEARN_TIME_LIMIT)
+                break;
             tmpSet.insert(it->second.getEnumValue());
             ret_set.insert(tmpSet);
         }

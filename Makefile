@@ -41,6 +41,9 @@ test_learning: tests
 	sed -i '' 's#set data style lines#set style data lines#' *.gnuplot
 	gnuplot *.gnuplot
 
+gnuplot_format: 
+	sed -i '' 's#set data style lines#set style data lines#' *.gnuplot
+
 test_getOpeningVal: tests
 	./test_getOpeningVal < testP.txt
 
