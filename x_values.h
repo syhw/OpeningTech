@@ -4,11 +4,11 @@
 #include <vector>
 #include <algorithm>
 #include "enums_name_tables.h"
+#include "parameters.h"
 
-#define LEARN_TIME_LIMIT 1080 // 18 minutes
-//#define LEARN_TIME_LIMIT 500
+/// Copyright Gabriel Synnaeve 2011
+/// This code is under 3-clauses (new) BSD License
 
-//#define GENERATE_X_VALUES
 #ifdef GENERATE_X_VALUES
 
 #include <iostream>
@@ -221,6 +221,5 @@ int get_X_indice(const std::set<int>& X,
     std::cout << "ERROR: X not found in all existing X" << std::endl;
     return -1;
 }
-
 
 #endif

@@ -4,6 +4,9 @@
 #include <string>
 #include <iostream>
 
+/// Copyright Gabriel Synnaeve 2011
+/// This code is under 3-clauses (new) BSD License
+
 #define TERRAN_X_UNITS \
     X(Terran_Marine, (const char*) "Terran_Marine") \
     X(Terran_Ghost,  (const char*) "Terran_Ghost") \

@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include "x_values.h"
 
+/// Copyright Gabriel Synnaeve 2011
+/// This code is under 3-clauses (new) BSD License
+
 std::string pruneOpeningVal(std::string& input)
 {
     // get

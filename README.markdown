@@ -10,6 +10,7 @@ One replay/game per line, lines such as
 It does:  
 
 1. learn the possible tech trees (X) from replays (or you can generate them)
-2. learn the distribution of P(Time | X, Opening)
+2. learn the distributions of P(Time | X, Opening) and P(X | Opening)
 3. infer P(Opening | Observations, Time)
 
+See *model.pdf*.

@@ -7,16 +7,17 @@
 #include "enums_name_tables.h"
 #include "x_values.h"
 #include "replays.h"
+#include "parameters.h"
+
+/// Copyright Gabriel Synnaeve 2011
+/// This code is under 3-clauses (new) BSD License
 
 using namespace std;
 
 typedef void iovoid;
 
-#define DEBUG_OUTPUT 2
-#define PLOT 0
-
-/// TODO: use an iterator in values[] so that we directly
-/// put a std::set instead of std::vector for vector_X
+/// POSSIBLE: use an iterator in values[] so that we directly
+/// POSSIBLE: put a std::set instead of std::vector for vector_X
 /// TODO: replace set by unordered_set (TR1 or boost) in a lot of places
 
 std::vector<std::set<int> > vector_X;
@@ -40,6 +41,7 @@ iovoid usage()
  * (observed plSymbol(s) in plValues X_Obs_conj)
  * {X ^ observed} covers all observed if X is possible
  * so X is impossible if {observed \ {X ^ observed}} != {}
+ * => X is compatible with observations if it covers them fully
  */
 void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
 {
@@ -79,21 +81,28 @@ void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
 }
 
 /**
- * Does all the learning in a timeLearner given the data in the inputstream
+ * Does all the learning for its two plCndLearnObject parameters
+ * from the replays specified in inputstream
+ * Relies heavily on:
+ *  - pruneOpeningVal(string&): removes and returns the Opening
+ *  - getBuildings(string, mmap<int, Building>, int): fill the mmap with  
+ *    time at which each building has been built.
  */
 template<class T>
-void learn_T_knowing_X_Opening(ifstream& inputstream,
+void learn_T_and_X(ifstream& inputstream,
             plCndLearnObject<plLearnBellShape>& timeLearner,
             plCndLearnObject<plLearnHistogram>& xLearner,
             plSymbol& Opening, plSymbol& X, plSymbol& Time)
 {
     string input;
-    plValues vals(timeLearner.get_variables());
-    plValues valsX_Op(xLearner.get_variables());
+    plValues vals_timeLearner(timeLearner.get_variables());
+    plValues vals_xLearner(xLearner.get_variables());
+#ifdef ERROR_CHECKS
     map<int, int> count_X_examples;
     map<int, plValues> one_value_per_X;
     map<pair<int, string>, int> count_X_Op_examples;
-    int nbpts = 0;
+    int nbpts = 0; // count the number of added points (time, building)
+#endif
     
     while (getline(inputstream, input))
     {
@@ -103,7 +112,7 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
         if (tmpOpening != "")
         {
             multimap<int, Building> tmpBuildings;
-            getBuildings(input, tmpBuildings);
+            getBuildings(input, tmpBuildings, LEARN_TIME_LIMIT);
             tmpBuildings.erase(0); // key == 0 i.e. buildings not constructed
             std::set<int> tmpSet;
             tmpSet.insert(0);
@@ -114,22 +123,23 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
                 if (it->first > LEARN_TIME_LIMIT)
                     break;
                 tmpSet.insert(it->second.getEnumValue());
-                vals[Opening] = tmpOpening;
-                valsX_Op[Opening] = tmpOpening;
+                vals_timeLearner[Opening] = tmpOpening;
+                vals_xLearner[Opening] = tmpOpening;
 #if DEBUG_OUTPUT > 1
                 std::cout << "Opening: " << tmpOpening << std::endl;
 #endif
                 int tmp_ind = get_X_indice(tmpSet, vector_X);
-                vals[X] = tmp_ind;
-                valsX_Op[X] = tmp_ind;
+                vals_timeLearner[X] = tmp_ind;
+                vals_xLearner[X] = tmp_ind;
 #if DEBUG_OUTPUT > 1
                 std::cout << "X ind: " << tmp_ind
                     << std::endl;
 #endif
-                vals[Time] = it->first;
+                vals_timeLearner[Time] = it->first;
 #if DEBUG_OUTPUT > 1
                 std::cout << "Time: " << it->first << std::endl;
 #endif
+#ifdef ERROR_CHECKS
                 if (count_X_examples.count(tmp_ind))
                 {
                     count_X_examples[tmp_ind] = count_X_examples[tmp_ind] + 1;
@@ -139,7 +149,7 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
                     count_X_examples.insert(make_pair<int, int>(
                                 tmp_ind, 1));
                     one_value_per_X.insert(make_pair<int, plValues>(
-                                tmp_ind, vals));
+                                tmp_ind, vals_timeLearner));
                 }
 
                 pair<int, string> tmpPair = make_pair<int, string>(tmp_ind, 
@@ -154,18 +164,23 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
                     count_X_Op_examples.insert(make_pair<pair<int, string>, 
                             int>(tmpPair, 1));
                 }
+#endif
 
                 /// Add data point
-                if (!timeLearner.add_point(vals))
+                if (!timeLearner.add_point(vals_timeLearner))
                     cout << "ERROR: point not added to P(T|X,Op)" << endl;
-                if (!xLearner.add_point(valsX_Op))
+                if (!xLearner.add_point(vals_xLearner))
                     cout << "ERROR: point not added to P(X|Op)" << endl;
+                vals_timeLearner.reset();
+                vals_xLearner.reset();
+#ifdef ERROR_CHECKS
                 ++nbpts;
-                vals.reset();
+#endif
             }
         }
     }
     
+#ifdef ERROR_CHECKS
     /// Check for possible errors
     for (map<int, int>::const_iterator it = count_X_examples.begin();
             it != count_X_examples.end(); ++it)
@@ -193,17 +208,20 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
                 cout << tmpBuilding << ", ";
             }
             cout << endl;
-            // put another (slightly different) value
+            /////////////////////////////////////////////////
+            // put another (slightly different) value TODO CHANGE
             one_value_per_X[it->first][Time] = 
                 one_value_per_X[it->first][Time] + 2; /// totally arbitrary 2
             timeLearner.add_point(one_value_per_X[it->first]);
+            /////////////////////////////////////////////////
         }
     }
-    //////////
-    cout << "Number of points (total): " << nbpts << endl;
-    cout << "Number of different pairs (X, Opening): " 
+#endif
+#if DEBUG_OUTPUT > 2
+    cout << "*** Number of points (total), I counted: " << nbpts << endl;
+    cout << "*** Number of different pairs (X, Opening): " 
         << count_X_Op_examples.size() << endl;
-    //////////
+#endif
     /*
     for (unsigned int i = 0; i < vector_X.size(); i++)
     {
@@ -211,7 +229,13 @@ void learn_T_knowing_X_Opening(ifstream& inputstream,
         rightValues[Opening] = "FastExpand";
         rightValues[X] = i;
         cout << "Right values: " << rightValues << endl;
-        cout << "Learnt parameters, mu: " << static_cast<plBellShape>(timeLearner.get_learnt_object_for_value(rightValues)->get_distribution()).mean() << ", stddev: " << static_cast<plBellShape>(timeLearner.get_learnt_object_for_value(rightValues)->get_distribution()).standard_deviation() << endl;
+        cout << "Learnt parameters, mu: " 
+        << static_cast<plBellShape>(timeLearner.get_learnt_object_for_value(
+        rightValues)->get_distribution()).mean() 
+        << ", stddev: " 
+        << static_cast<plBellShape>(timeLearner.get_learnt_object_for_value(
+        rightValues)->get_distribution()).standard_deviation() 
+        << endl;
     }/**/
 }
 
@@ -348,7 +372,6 @@ int main(int argc, const char *argv[])
     std::vector<plProbValue> tableX;
     for (unsigned int i = 0; i < vector_X.size(); i++)
         tableX.push_back(1.0); // TOLEARN
-    //plProbTable P_X(X, tableX, false);
     plCndLearnObject<plLearnHistogram> xLearner(X, Opening);
 
     // Specification of P(O_1..NB_<RACE>_BUILDINGS)
@@ -384,22 +407,17 @@ int main(int argc, const char *argv[])
     cout << ">>>> Learning from: " << argv[1] << endl;
     ifstream inputstream(argv[1]);
     if (argv[1][1] == 'P')
-        learn_T_knowing_X_Opening<Protoss_Buildings>(inputstream, timeLearner,
-                xLearner,
+        learn_T_and_X<Protoss_Buildings>(inputstream, timeLearner, xLearner,
                 Opening, X, Time);
     else if (argv[1][1] == 'T')
-        learn_T_knowing_X_Opening<Terran_Buildings>(inputstream, timeLearner,
-                xLearner,
+        learn_T_and_X<Terran_Buildings>(inputstream, timeLearner, xLearner,
                 Opening, X, Time);
     else if (argv[1][1] == 'Z')
-        learn_T_knowing_X_Opening<Zerg_Buildings>(inputstream, timeLearner,
-                xLearner,
+        learn_T_and_X<Zerg_Buildings>(inputstream, timeLearner, xLearner,
                 Opening, X, Time);
-    //////////
-    cout << "Number of possible pairs (X, Opening): "
-        << vector_X.size()*openings.size();
-    //////////
 #if DEBUG_OUTPUT > 2
+    cout << "*** Number of possible pairs (X, Opening): "
+        << vector_X.size()*openings.size();
     cout << timeLearner.get_computable_object() << endl;
 #endif
 
@@ -423,10 +441,16 @@ int main(int argc, const char *argv[])
     plVariablesConjunction X_Op = X^Opening;
     plCndDistribution Cnd_P_Time_X_knowing_Op;
     jd.ask(Cnd_P_Time_X_knowing_Op, Time^X, Opening);
+#if DEBUG_OUTPUT > 2
+    cout << Cnd_P_Time_X_knowing_Op << endl;
+#endif
 
 #if PLOT > 1
     plCndDistribution Cnd_P_Time_knowing_X_Op;
     jd.ask(Cnd_P_Time_knowing_X_Op, Time, X_Op);
+#if DEBUG_OUTPUT > 2
+    cout << Cnd_P_Time_knowing_X_Op << endl;
+#endif
 #endif
     for (unsigned int i = 0; i < openings.size(); i++) // Openings
     {
@@ -443,10 +467,18 @@ int main(int argc, const char *argv[])
 #if PLOT > 1
         for (unsigned int j = 0; j < vector_X.size(); ++j)
         {
-            Cnd_P_Time_knowing_X_Op.instantiate(PP_Time_X, evidence);
-            PP_Time_X.compile(T_P_Time_X);
-            tmp << "Opening" << openings[i] << "X" << j << ".gnuplot";
-            T_P_Time_X.plot(tmp.str().c_str());
+            plValues evidence2(Opening^X);
+            evidence2[Opening] = i;
+            evidence2[X] = j; 
+            // next line generates plWarning whel == 0
+            if (timeLearner.get_learnt_object_for_value(evidence2) != 0)
+            {
+                Cnd_P_Time_knowing_X_Op.instantiate(PP_Time_X, evidence2);
+                PP_Time_X.compile(T_P_Time_X);
+                std::stringstream tmp2;
+                tmp2 << "Opening" << openings[i] << "X" << j << ".gnuplot";
+                T_P_Time_X.plot(tmp2.str().c_str());
+            }
         }
 #endif
     }
@@ -456,7 +488,7 @@ int main(int argc, const char *argv[])
     plCndDistribution Cnd_P_Opening_knowing_rest;
     jd.ask(Cnd_P_Opening_knowing_rest, Opening, knownConj);
 #if DEBUG_OUTPUT > 0
-    cout << jd.ask(Opening, knownConj) << endl;
+    cout << Cnd_P_Opening_knowing_rest << endl;
 #endif
 
     if (argc < 2)
