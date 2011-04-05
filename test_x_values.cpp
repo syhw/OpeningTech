@@ -36,11 +36,11 @@ void print_set(const std::set<int>& s)
 
 int main(int argc, char* argv[])
 {
-    std::ifstream fin1("testT.txt"); /// all protoss matches
+    std::ifstream fin1("lTall.txt"); /// all protoss matches
     std::vector<std::set<int> > terran = get_X_values(fin1);
-    std::ifstream fin2("testP.txt"); /// all protoss matches
+    std::ifstream fin2("lPall.txt"); /// all protoss matches
     std::vector<std::set<int> > protoss = get_X_values(fin2);
-    std::ifstream fin3("testZ.txt"); /// all protoss matches
+    std::ifstream fin3("lZall.txt"); /// all protoss matches
     std::vector<std::set<int> > zerg = get_X_values(fin3);
 #ifdef FILE_OUTPUT
 std::ofstream terran_fout("terran_possible_tech_trees.txt");

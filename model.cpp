@@ -23,6 +23,28 @@ typedef void iovoid;
 std::vector<std::set<int> > vector_X;
 
 /**
+ * Returns plValues corresponding to the max of a map<plValues, plProbValues>
+ */
+plValues max(const map<plValues, plProbValue>& m)
+{
+    if (m.empty())
+    {
+        cout << "ERROR: given an empty map<plValues, plProValues> to max()" 
+            << endl;
+        return plValues();
+    }
+    plProbValue max = -1.0;
+    plValues maxV;
+    for (map<plValues, plProbValue>::const_iterator it = m.begin();
+            it != m.end(); ++it)
+    {
+        if (it->second > max)
+            maxV = it->first;
+    }
+    return maxV;
+}
+
+/**
  * Prints the command line format/usage of the program
  */
 iovoid usage()
@@ -302,14 +324,26 @@ int main(int argc, const char *argv[])
     int nbBuildings;
     const char** buildings_name;
 
-    if (argv[1] != NULL && argv[1][2] == 'v')
+    if (argv[1] != NULL &&
+            (argv[1][1] == 'P' || argv[1][1] == 'T' || argv[1][1] == 'Z'))
     {
         string argv1 = string(argv[1]);
         /// match up: Enemy vs Us
         /// For instance ZvT will get Zerg buildings
+        stringstream extract_X_from;
+        if (argv[1][3] == 'P' || argv[1][3] == 'T' || argv[1][3] == 'Z')
+        {
+            cout << "We are " << argv[1][3] 
+                << " against " << argv[1][1] << endl;
+            extract_X_from << argv[1][1] << "v" << argv[1][3] << ".txt";
+        }
+        else
+        {
+            extract_X_from << "l" << argv[1][1] << "all.txt";
+        }
         if (argv[1][1] == 'P')
         {
-            ifstream fin("PvP.txt"); // PvP.txt / testP.txt
+            ifstream fin(extract_X_from.str().c_str()); // could be argv[1]
             vector_X = get_X_values(fin); /// Enemy race
             openings = protoss_openings;
             nbBuildings = NB_PROTOSS_BUILDINGS;
@@ -318,7 +352,7 @@ int main(int argc, const char *argv[])
         }
         else if (argv[1][1] == 'T')
         {
-            ifstream fin("testT.txt");
+            ifstream fin(extract_X_from.str().c_str()); // could be argv[1]
             vector_X = get_X_values(fin); /// Enemy race
             openings = terran_openings;
             nbBuildings = NB_TERRAN_BUILDINGS;
@@ -326,7 +360,7 @@ int main(int argc, const char *argv[])
         }
         else if (argv[1][1] == 'Z')
         {
-            ifstream fin("testZ.txt");
+            ifstream fin(extract_X_from.str().c_str()); // could be argv[1]
             vector_X = get_X_values(fin); /// Enemy race
             openings = zerg_openings;
             nbBuildings = NB_ZERG_BUILDINGS;
@@ -365,19 +399,16 @@ int main(int argc, const char *argv[])
     // Specification of P(Opening)
     std::vector<plProbValue> tableOpening;
     for (unsigned int i = 0; i < openings.size(); i++) 
-        tableOpening.push_back(1.0); // TOLEARN
+        tableOpening.push_back(1.0);
     plProbTable P_Opening(Opening, tableOpening, false);
 
-    // Specification of P(X) (possible tech trees)
-    std::vector<plProbValue> tableX;
-    for (unsigned int i = 0; i < vector_X.size(); i++)
-        tableX.push_back(1.0); // TOLEARN
+    // Specification of P(X | Opening) (possible tech trees)
     plCndLearnObject<plLearnHistogram> xLearner(X, Opening);
 
     // Specification of P(O_1..NB_<RACE>_BUILDINGS)
     plComputableObjectList listObs;
     std::vector<plProbTable> P_Observed;
-    plProbValue tmp_table[] = {0.5, 0.5}; // TOLEARN (per observation)
+    plProbValue tmp_table[] = {0.5, 0.5};
     for (unsigned int i = 0; i < nbBuildings; i++)
     {
         P_Observed.push_back(plProbTable(observed[i], tmp_table, true));
@@ -470,7 +501,7 @@ int main(int argc, const char *argv[])
             plValues evidence2(Opening^X);
             evidence2[Opening] = i;
             evidence2[X] = j; 
-            // next line generates plWarning whel == 0
+            // next line generates plWarning when == 0
             if (timeLearner.get_learnt_object_for_value(evidence2) != 0)
             {
                 Cnd_P_Time_knowing_X_Op.instantiate(PP_Time_X, evidence2);
@@ -498,6 +529,19 @@ int main(int argc, const char *argv[])
     cout << endl;
     cout << ">>>> Testing from: " << argv[2] << endl;
     unsigned int noreplay = 0;
+    //////////////
+    unsigned int positive_classif_finale = 0;
+    unsigned int cpositive_classif_finale = 0;
+    map<plValues, plProbValue> cumulative_prob;
+    for (vector<string>::const_iterator it = openings.begin();
+            it != openings.end(); ++it)
+    {
+        plValues tmp(Opening);
+        tmp[Opening] = *it;
+        cumulative_prob.insert(make_pair<plValues, plProbValue>(tmp, 0.0));
+    }
+    //////////////
+
     while (getline(inputfile_test, input))
     {
         plValues evidence(knownConj);
@@ -505,52 +549,92 @@ int main(int argc, const char *argv[])
         if (input.empty())
             break;
         string tmpOpening = pruneOpeningVal(input);
-        if (tmpOpening != "")
-        {
-            multimap<int, Building> tmpBuildings;
-            getBuildings(input, tmpBuildings);
-            tmpBuildings.erase(0); // key == 0 i.e. buildings not constructed
-#if DEBUG_OUTPUT == 1
-            cout << "************** Replay number: "
-                << noreplay << " **************" << endl;
-            ++noreplay;
-#endif
-            evidence[observed[0]] = 1; // the first Nexus/CC/Hatch exists
-            // we assume we didn't see any buildings
-            for (unsigned int i = 1; i < nbBuildings; ++i)
-                evidence[observed[i]] = 0;
-            
-            // we assume we see the buildings as soon as they get constructed
-            for (map<int, Building>::const_iterator it 
-                    = tmpBuildings.begin(); 
-                    it != tmpBuildings.end(); ++it)
-            {
-                evidence[observed[it->second.getEnumValue()]] = 1;
-                evidence[Time] = it->first;
-                
-#if DEBUG_OUTPUT > 1
-                cout << "====== evidence ======" << endl;
-                cout << evidence << endl;
-#endif
-
-                plDistribution PP_Opening;
-                Cnd_P_Opening_knowing_rest.instantiate(PP_Opening, evidence);
-#if DEBUG_OUTPUT > 1
-                cout << "====== P(Opening | rest).instantiate ======" << endl;
-                cout << Cnd_P_Opening_knowing_rest << endl;
-                cout << PP_Opening.get_left_variables() << endl;
-                cout << PP_Opening.get_right_variables() << endl;
-#endif
-                plDistribution T_P_Opening;
-                PP_Opening.compile(T_P_Opening);
+        if (tmpOpening == "")
+            continue;
+        multimap<int, Building> tmpBuildings;
+        getBuildings(input, tmpBuildings);
+        tmpBuildings.erase(0); // key == 0 i.e. buildings not constructed
+        if (tmpBuildings.empty())
+            continue;
 #if DEBUG_OUTPUT >= 1
-                cout << "====== P(Opening | evidence) ======" << endl;
-                cout << T_P_Opening << endl;
+        cout << "******** end replay number: " 
+            << noreplay << " ********" << endl;
+        ++noreplay;
+        cout << endl << endl << endl;
+        cout << "******** Real Opening: " << tmpOpening 
+            << " replay number: " << noreplay
+            << " ********" << endl;
 #endif
-            }
-        }
-    }
+        evidence[observed[0]] = 1; // the first Nexus/CC/Hatch exists
+        // we assume we didn't see any buildings
+        for (unsigned int i = 1; i < nbBuildings; ++i)
+            evidence[observed[i]] = 0;
 
+        plDistribution T_P_Opening;
+        // we assume we see the buildings as soon as they get constructed
+        for (map<int, Building>::const_iterator it 
+                = tmpBuildings.begin(); 
+                it != tmpBuildings.end(); ++it)
+        {
+            evidence[observed[it->second.getEnumValue()]] = 1;
+            evidence[Time] = it->first;
+
+#if DEBUG_OUTPUT > 1
+            cout << "====== evidence ======" << endl;
+            cout << evidence << endl;
+#endif
+
+            plDistribution PP_Opening;
+            Cnd_P_Opening_knowing_rest.instantiate(PP_Opening, evidence);
+#if DEBUG_OUTPUT > 1
+            cout << "====== P(Opening | rest).instantiate ======" << endl;
+            cout << Cnd_P_Opening_knowing_rest << endl;
+            cout << PP_Opening.get_left_variables() << endl;
+            cout << PP_Opening.get_right_variables() << endl;
+#endif
+            PP_Opening.compile(T_P_Opening);
+#if DEBUG_OUTPUT >= 1
+            cout << "====== P(Opening | evidence) ======" << endl;
+            cout << T_P_Opening << endl;
+#endif
+            //////////////
+            if (T_P_Opening.is_null())
+                continue;
+            vector<pair<plValues, plProbValue> > outvals;
+            T_P_Opening.sorted_tabulate(outvals);
+            for (vector<pair<plValues, plProbValue> >::const_iterator 
+                    jt = outvals.begin(); jt != outvals.end(); ++jt)
+            {
+                cumulative_prob[jt->first] += jt->second;
+            }
+            //////////////
+        }
+        //////////////
+        for (map<plValues, plProbValue>::const_iterator 
+                jt = cumulative_prob.begin(); jt != cumulative_prob.end(); ++jt)
+        {
+            cout << "|||| ";
+            jt->first.Output(cout);
+            cout << " => sum on probs: " << jt->second << endl;
+        }
+        plValues toTest(Opening);
+        toTest[Opening] = tmpOpening;
+        if (T_P_Opening.is_null())
+            continue;
+        if (toTest[Opening] == T_P_Opening.best()[Opening])
+            ++positive_classif_finale;
+        if (toTest[Opening] == max(cumulative_prob)[Opening])
+            ++cpositive_classif_finale;
+        //////////////
+    }
+    //////////////
+    cout << ">>> Positive classif: " << positive_classif_finale
+        << " on " << noreplay << " replays, ratio: "
+        << static_cast<double>(positive_classif_finale)/noreplay << endl;
+    cout << ">>> Cumulative positive classif: " << cpositive_classif_finale
+        << " on " << noreplay << " replays, ratio: "
+        << static_cast<double>(cpositive_classif_finale)/noreplay << endl;
+    //////////////
 
     /*plSerializer my_serializer();
     my_serializer.add_object("P_CB", P_CB);

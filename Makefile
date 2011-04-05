@@ -1,3 +1,4 @@
+#!/bin/bash
 
 PROBT_INCLUDE=/Users/gabrielsynnaeve/these/code/probt/include
 PROBT_LIB=/Users/gabrielsynnaeve/these/code/probt/lib
@@ -43,12 +44,22 @@ test_learning: tests
 
 gnuplot_format: 
 	sed -i '' 's#set data style lines#set style data lines#' *.gnuplot
+	sed -i '' 's#X#TechTree#' *.gnuplot
+	sed -i '' 's#plTabulatedDistribution#P#' *.gnuplot
+	for file in `ls *.gnuplot`; do echo 'set terminal aqua font "sans,12"' | cat - $$file > /tmp/out && mv /tmp/out $$file ; done
+
+gnuplot_heatmap: gnuplot_format
+	sed -i '' 's#set style data lines#set pm3d map#' *.gnuplot
+
+gnuplot_bw_log_heatmap: gnuplot_heatmap
+	for file in `ls *.gnuplot`; do echo 'set palette gray negative' | cat - $$file > /tmp/out && mv /tmp/out $$file ; done
+	for file in `ls *.gnuplot`; do echo 'set logscale zcb' | cat - $$file > /tmp/out && mv /tmp/out $$file ; done
 
 test_getOpeningVal: tests
-	./test_getOpeningVal < testP.txt
+	./test_getOpeningVal < lPall.txt
 
 test_getBuildings: tests
-	./test_getBuildings < testP.txt | less
+	./test_getBuildings < lPall.txt | less
 
 runtests: test_x_values test_functional_dirac test_lambda test_getOpeningVal test_getBuildings
 

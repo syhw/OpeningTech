@@ -9,8 +9,8 @@ python transmute.py scmPvT_Protoss_Mid.arff PvT.txt
 python transmute.py scmPvZ_Protoss_Mid.arff PvZ.txt
 python transmute.py scmTvT_Terran_Mid.arff TvT.txt
 python transmute.py scmTvZ_Zerg_Mid.arff ZvT.txt
-cat PvP.txt PvT.txt PvZ.txt > testP.txt
-cat TvP.txt TvT.txt TvZ.txt > testT.txt
-cat ZvP.txt ZvT.txt ZvZ.txt > testZ.txt
-cat testP.txt testT.txt testZ.txt > fulltest.txt
+cat PvP.txt PvT.txt PvZ.txt > lPall.txt
+cat TvP.txt TvT.txt TvZ.txt > lTall.txt
+cat ZvP.txt ZvT.txt ZvZ.txt > lZall.txt
+cat lPall.txt lTall.txt lZall.txt > full.txt
 
