@@ -22,6 +22,7 @@ typedef void iovoid;
 
 std::vector<std::set<int> > vector_X;
 
+#ifdef BENCH
 /**
  * Returns plValues corresponding to the max of a map<plValues, plProbValues>
  */
@@ -43,6 +44,7 @@ plValues max(const map<plValues, plProbValue>& m)
     }
     return maxV;
 }
+#endif
 
 /**
  * Prints the command line format/usage of the program
@@ -529,7 +531,7 @@ int main(int argc, const char *argv[])
     cout << endl;
     cout << ">>>> Testing from: " << argv[2] << endl;
     unsigned int noreplay = 0;
-    //////////////
+#ifdef BENCH
     unsigned int positive_classif_finale = 0;
     unsigned int cpositive_classif_finale = 0;
     map<plValues, plProbValue> cumulative_prob;
@@ -540,7 +542,7 @@ int main(int argc, const char *argv[])
         tmp[Opening] = *it;
         cumulative_prob.insert(make_pair<plValues, plProbValue>(tmp, 0.0));
     }
-    //////////////
+#endif
 
     while (getline(inputfile_test, input))
     {
@@ -594,10 +596,11 @@ int main(int argc, const char *argv[])
 #endif
             PP_Opening.compile(T_P_Opening);
 #if DEBUG_OUTPUT >= 1
-            cout << "====== P(Opening | evidence) ======" << endl;
+            cout << "====== P(Opening | evidence), building: "
+                << it->second << " ======" << endl;
             cout << T_P_Opening << endl;
 #endif
-            //////////////
+#ifdef BENCH
             if (T_P_Opening.is_null())
                 continue;
             vector<pair<plValues, plProbValue> > outvals;
@@ -607,9 +610,9 @@ int main(int argc, const char *argv[])
             {
                 cumulative_prob[jt->first] += jt->second;
             }
-            //////////////
+#endif
         }
-        //////////////
+#ifdef BENCH
         for (map<plValues, plProbValue>::const_iterator 
                 jt = cumulative_prob.begin(); jt != cumulative_prob.end(); ++jt)
         {
@@ -625,16 +628,16 @@ int main(int argc, const char *argv[])
             ++positive_classif_finale;
         if (toTest[Opening] == max(cumulative_prob)[Opening])
             ++cpositive_classif_finale;
-        //////////////
+#endif
     }
-    //////////////
+#ifdef BENCH
     cout << ">>> Positive classif: " << positive_classif_finale
         << " on " << noreplay << " replays, ratio: "
         << static_cast<double>(positive_classif_finale)/noreplay << endl;
     cout << ">>> Cumulative positive classif: " << cpositive_classif_finale
         << " on " << noreplay << " replays, ratio: "
         << static_cast<double>(cpositive_classif_finale)/noreplay << endl;
-    //////////////
+#endif
 
     /*plSerializer my_serializer();
     my_serializer.add_object("P_CB", P_CB);
@@ -645,7 +648,5 @@ int main(int argc, const char *argv[])
     cout << "Press any key to terminate..." << endl;
     getchar();
 #endif
-    /* */
-
     return 0;
 }
