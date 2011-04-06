@@ -406,6 +406,11 @@ int main(int argc, const char *argv[])
 
     // Specification of P(X | Opening) (possible tech trees)
     plCndLearnObject<plLearnHistogram> xLearner(X, Opening);
+    std::vector<plProbValue> tableX;
+    for (unsigned int i = 0; i < vector_X.size(); i++) 
+        tableX.push_back(1.0);
+    plProbTable P_X(X, tableX, false);
+    
 
     // Specification of P(O_1..NB_<RACE>_BUILDINGS)
     plComputableObjectList listObs;
@@ -459,8 +464,11 @@ int main(int argc, const char *argv[])
      **********************************************************************/
     plVariablesConjunction knownConj = ObsConj^lambda^Time;
     plJointDistribution jd(X^Opening^knownConj,
-            //P_X*P_Opening*listObs*P_lambda
+#ifdef X_KNOWING_OPENING
             xLearner.get_computable_object()*P_Opening*listObs*P_lambda
+#else
+            P_X*P_Opening*listObs*P_lambda
+#endif
             *timeLearner.get_computable_object()); // <=> P_Time);
     jd.draw_graph("jd.fig");
 #if DEBUG_OUTPUT > 0

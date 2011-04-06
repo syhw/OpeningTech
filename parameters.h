@@ -1,6 +1,8 @@
 #ifndef PARAMETERS_HEADER
 #define PARAMETERS_HEADER
 
+#define X_KNOWING_OPENING
+
 //#define LEARN_TIME_LIMIT 1080 // 18 minutes, TODO change
 #define LEARN_TIME_LIMIT 500
 //#define GENERATE_X_VALUES
