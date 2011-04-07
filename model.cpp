@@ -392,6 +392,9 @@ int main(int argc, const char *argv[])
     for (unsigned int i = 0; i < nbBuildings; i++)
         observed.push_back(plSymbol(buildings_name[i], PL_BINARY_TYPE));
     plSymbol Opening("Opening", plLabelType(openings));
+#ifdef FILTER_ON_LAST_OPENING
+    plSymbol LastOpening("LastOpening", plLabelType(openings));
+#endif
 
     plSymbol Time("Time", plIntegerType(1, LEARN_TIME_LIMIT)); 
 
@@ -402,7 +405,12 @@ int main(int argc, const char *argv[])
     std::vector<plProbValue> tableOpening;
     for (unsigned int i = 0; i < openings.size(); i++) 
         tableOpening.push_back(1.0);
+#ifdef FILTER_ON_LAST_OPENING
+    plProbTable P_LastOpening(LastOpening, tableOpening, false);
+    plFunctionalDirac P_Opening(Opening, LastOpening); // TODO
+#else
     plProbTable P_Opening(Opening, tableOpening, false);
+#endif
 
     // Specification of P(X | Opening) (possible tech trees)
     plCndLearnObject<plLearnHistogram> xLearner(X, Opening);
@@ -429,15 +437,8 @@ int main(int argc, const char *argv[])
         ObsConj ^= (*it);
     plVariablesConjunction X_Obs_conj = X^ObsConj;
     plExternalFunction coherence;
-    if (argv[1][1] == 'P')
-        coherence = plExternalFunction(lambda, X_Obs_conj, 
-                test_X_possible);
-    else if (argv[1][1] == 'T')
-        coherence = plExternalFunction(lambda, X_Obs_conj, 
-                test_X_possible);
-    else if (argv[1][1] == 'Z')
-        coherence = plExternalFunction(lambda, X_Obs_conj, 
-                test_X_possible);
+    coherence = plExternalFunction(lambda, X_Obs_conj, 
+            test_X_possible);
     plFunctionalDirac P_lambda(lambda, X_Obs_conj , coherence);
     
     // Specification of P(T | X, Opening)
@@ -523,7 +524,7 @@ int main(int argc, const char *argv[])
         }
 #endif
     }
-    return 0;
+    //return 0;
 #endif
 
     plCndDistribution Cnd_P_Opening_knowing_rest;
