@@ -30,7 +30,7 @@ plValues max(const map<plValues, plProbValue>& m)
 {
     if (m.empty())
     {
-        cout << "ERROR: given an empty map<plValues, plProValues> to max()" 
+        cerr << "ERROR: given an empty map<plValues, plProValues> to max()" 
             << endl;
         return plValues();
     }
@@ -192,9 +192,9 @@ void learn_T_and_X(ifstream& inputstream,
 
                 /// Add data point
                 if (!timeLearner.add_point(vals_timeLearner))
-                    cout << "ERROR: point not added to P(T|X,Op)" << endl;
+                    cerr << "ERROR: point not added to P(T|X,Op)" << endl;
                 if (!xLearner.add_point(vals_xLearner))
-                    cout << "ERROR: point not added to P(X|Op)" << endl;
+                    cerr << "ERROR: point not added to P(X|Op)" << endl;
                 vals_timeLearner.reset();
                 vals_xLearner.reset();
 #ifdef ERROR_CHECKS
@@ -370,14 +370,14 @@ int main(int argc, const char *argv[])
         }
         else
         {
-            cout << "ERROR in the first argument" << endl;
+            cerr << "ERROR in the first argument" << endl;
             usage();
             return 1;
         }
     }
     else
     {
-        cout << "ERROR in the first argument" << endl;
+        cerr << "ERROR in the first argument" << endl;
         usage();
         return 1;
     }
