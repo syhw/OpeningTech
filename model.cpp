@@ -60,6 +60,14 @@ iovoid usage()
 }
 
 /** 
+ * Tests if the given LastOpening value is the 
+ */
+void test_same_opening(plValues& op, const plValues& last_op)
+{
+    op[0] = last_op[0];
+}
+
+/** 
  * Tests if the given X value (X plSymbol in plValues X_Obs_conj)
  * is compatible with what obervations have been seen
  * (observed plSymbol(s) in plValues X_Obs_conj)
@@ -174,6 +182,9 @@ void learn_T_and_X(ifstream& inputstream,
                                 tmp_ind, 1));
                     one_value_per_X.insert(make_pair<int, plValues>(
                                 tmp_ind, vals_timeLearner));
+                    /// TODO <1> init with bell shape this point as mean
+                    ///timeLearner = plLearnBellShape(vals_timeLearner,
+                    ///        it->first, 3.0, PL_ONE);
                 }
 
                 pair<int, string> tmpPair = make_pair<int, string>(tmp_ind, 
@@ -233,10 +244,13 @@ void learn_T_and_X(ifstream& inputstream,
             }
             cout << endl;
             /////////////////////////////////////////////////
-            // put another (slightly different) value TODO CHANGE
+            // put another (slightly different) value: change, c.f. TODO <1>
             one_value_per_X[it->first][Time] = 
-                one_value_per_X[it->first][Time] + 2; /// totally arbitrary 2
-            timeLearner.add_point(one_value_per_X[it->first]);
+                one_value_per_X[it->first][Time] + 10; /// totally arbitrary 10
+            timeLearner.add_point(one_value_per_X[it->first], 0.5);
+            one_value_per_X[it->first][Time] = 
+                one_value_per_X[it->first][Time] - 20; /// totally arbitrary -20
+            timeLearner.add_point(one_value_per_X[it->first], 0.5);
             /////////////////////////////////////////////////
         }
     }
@@ -392,7 +406,7 @@ int main(int argc, const char *argv[])
     for (unsigned int i = 0; i < nbBuildings; i++)
         observed.push_back(plSymbol(buildings_name[i], PL_BINARY_TYPE));
     plSymbol Opening("Opening", plLabelType(openings));
-#ifdef FILTER_ON_LAST_OPENING
+#ifdef DIRAC_ON_LAST_OPENING
     plSymbol LastOpening("LastOpening", plLabelType(openings));
 #endif
 
@@ -405,9 +419,13 @@ int main(int argc, const char *argv[])
     std::vector<plProbValue> tableOpening;
     for (unsigned int i = 0; i < openings.size(); i++) 
         tableOpening.push_back(1.0);
-#ifdef FILTER_ON_LAST_OPENING
-    plProbTable P_LastOpening(LastOpening, tableOpening, false);
-    plFunctionalDirac P_Opening(Opening, LastOpening); // TODO
+#ifdef DIRAC_ON_LAST_OPENING
+    plMutableDistribution P_LastOpening(
+            static_cast<plDistribution>(
+                plProbTable(LastOpening, tableOpening, false)));
+    plExternalFunction same_opening = plExternalFunction(Opening, LastOpening,
+            test_same_opening);
+    plFunctionalDirac P_Opening(Opening, LastOpening, same_opening);
 #else
     plProbTable P_Opening(Opening, tableOpening, false);
 #endif
@@ -436,10 +454,9 @@ int main(int argc, const char *argv[])
             it != observed.end(); ++it)
         ObsConj ^= (*it);
     plVariablesConjunction X_Obs_conj = X^ObsConj;
-    plExternalFunction coherence;
-    coherence = plExternalFunction(lambda, X_Obs_conj, 
+    plExternalFunction coherence = plExternalFunction(lambda, X_Obs_conj, 
             test_X_possible);
-    plFunctionalDirac P_lambda(lambda, X_Obs_conj , coherence);
+    plFunctionalDirac P_lambda(lambda, X_Obs_conj ,coherence);
     
     // Specification of P(T | X, Opening)
     plCndLearnObject<plLearnBellShape> timeLearner(Time, X^Opening);
@@ -464,7 +481,11 @@ int main(int argc, const char *argv[])
       DECOMPOSITION
      **********************************************************************/
     plVariablesConjunction knownConj = ObsConj^lambda^Time;
+#ifdef DIRAC_ON_LAST_OPENING
+    plJointDistribution jd(X^Opening^LastOpening^knownConj, P_LastOpening*
+#else
     plJointDistribution jd(X^Opening^knownConj,
+#endif
 #ifdef X_KNOWING_OPENING
             xLearner.get_computable_object()*P_Opening*listObs*P_lambda
 #else
@@ -620,6 +641,15 @@ int main(int argc, const char *argv[])
                 cumulative_prob[jt->first] += jt->second;
             }
 #endif
+#ifdef DIRAC_ON_LAST_OPENING
+            plComputableObject test = jd.ask(Opening, knownConj).instantiate(evidence).compile().rename(LastOpening);
+            plDistribution test2 = static_cast<plDistribution>(test);
+            cout << test << endl;
+            cout << test2 << endl;
+            P_LastOpening.mutate(static_cast<plDistribution>(
+                        jd.ask(Opening, knownConj).instantiate(evidence)
+                        .compile().rename(LastOpening))); 
+#endif
         }
 #ifdef BENCH
         for (map<plValues, plProbValue>::const_iterator 
@@ -637,6 +667,11 @@ int main(int argc, const char *argv[])
             ++positive_classif_finale;
         if (toTest[Opening] == max(cumulative_prob)[Opening])
             ++cpositive_classif_finale;
+#endif
+#ifdef DIRAC_ON_LAST_OPENING
+        P_LastOpening.mutate(
+            static_cast<plDistribution>(
+                plProbTable(LastOpening, tableOpening, false)));
 #endif
     }
 #ifdef BENCH

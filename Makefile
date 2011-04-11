@@ -19,6 +19,7 @@ tests: test_x_values.cpp test_functional_dirac.cpp test_lambda.cpp test_getOpeni
 
 all: tests model
 	make run
+	[ -x /usr/bin/say ] && say "Battlecruiser operational!"
 
 run:
 	DYLD_LIBRARY_PATH=$(PROBT_LIB):DYLD_LIBRARY_PATH ./model lPvP.txt tPvP.txt
