@@ -5,10 +5,16 @@
 #define DIRAC_ON_LAST_OPENING
 
 //#define LEARN_TIME_LIMIT 1080 // 18 minutes, TODO change
-#define LEARN_TIME_LIMIT 500
+#define LEARN_TIME_LIMIT 600
 //#define GENERATE_X_VALUES
 #define DEBUG_OUTPUT 1
-#define PLOT 0
+/**
+ * PLOT = 0 => no plotting
+ * PLOT = 1 => plot P(Opening) over buildings seen for each replay
+ * PLOT = 2 => adds plot P(Time,X|Opening)
+ * PLOT = 3 => adds plot P(Time|X,Opening)
+ */
+#define PLOT 1
 
 #if DEBUG_OUTPUT > 0
 #define ERROR_CHECKS

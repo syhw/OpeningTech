@@ -46,6 +46,49 @@ plValues max(const map<plValues, plProbValue>& m)
 }
 #endif
 
+#if PLOT > 0
+void gnuplot_vector_probas(const vector<vector<plProbValue> >& tab, 
+        vector<string>& openings, const string& filename)
+{
+    ofstream file;
+    // gnuplot file
+    file.open(filename.c_str(), ios::out);
+    file << "set xlabel \"BuildingNumber\"" << endl;
+    file << "set ylabel \"P(Opening)\"" << endl;
+    file << "set title \"" << filename << "\"" << endl;
+    file << "set style data linespoints" << endl;
+    string cpfn = filename;
+    cpfn.append(".data");
+    file << "plot ";
+        file << "\"" << cpfn << "\" using 1:" << 2 << " title " 
+            << "\"" << openings[0];
+    for (unsigned int i = 1; i < openings.size(); ++i)
+    {
+        file << "\", \"" << cpfn << "\" using 1:" << i+2 << " title " 
+            << "\"" << openings[i];
+    }
+    file << endl;
+    file << "pause -1 \"hit a button to continue\"" << endl;
+    file.close();
+
+    // data file
+    file.open(cpfn.c_str(), ios::out);
+    unsigned int i = 0;
+    for (vector<vector<plProbValue> >::const_iterator it = tab.begin();
+            it != tab.end(); ++it)
+    {
+        file << i++ << " ";
+        for (vector<plProbValue>::const_iterator jt = it->begin();
+                jt != it->end(); ++jt)
+        {
+            file << *jt << " ";
+        }
+        file << endl;
+    }
+    file.close();
+}
+#endif
+
 /**
  * Prints the command line format/usage of the program
  */
@@ -60,7 +103,7 @@ iovoid usage()
 }
 
 /** 
- * Tests if the given LastOpening value is the 
+ * Opening = LastOpening value
  */
 void test_same_opening(plValues& op, const plValues& last_op)
 {
@@ -421,8 +464,7 @@ int main(int argc, const char *argv[])
         tableOpening.push_back(1.0);
 #ifdef DIRAC_ON_LAST_OPENING
     plMutableDistribution P_LastOpening(
-            static_cast<plDistribution>(
-                plProbTable(LastOpening, tableOpening, false)));
+            plProbTable(LastOpening, tableOpening, false));
     plExternalFunction same_opening = plExternalFunction(Opening, LastOpening,
             test_same_opening);
     plFunctionalDirac P_Opening(Opening, LastOpening, same_opening);
@@ -500,7 +542,7 @@ int main(int argc, const char *argv[])
     /**********************************************************************
       PROGRAM QUESTION
      **********************************************************************/
-#if PLOT > 0
+#if PLOT > 1
     plVariablesConjunction X_Op = X^Opening;
     plCndDistribution Cnd_P_Time_X_knowing_Op;
     jd.ask(Cnd_P_Time_X_knowing_Op, Time^X, Opening);
@@ -508,7 +550,7 @@ int main(int argc, const char *argv[])
     cout << Cnd_P_Time_X_knowing_Op << endl;
 #endif
 
-#if PLOT > 1
+#if PLOT > 2
     plCndDistribution Cnd_P_Time_knowing_X_Op;
     jd.ask(Cnd_P_Time_knowing_X_Op, Time, X_Op);
 #if DEBUG_OUTPUT > 2
@@ -527,7 +569,7 @@ int main(int argc, const char *argv[])
         tmp << "Opening" << openings[i] << ".gnuplot";
         T_P_Time_X.plot(tmp.str().c_str());
 
-#if PLOT > 1
+#if PLOT > 2
         for (unsigned int j = 0; j < vector_X.size(); ++j)
         {
             plValues evidence2(Opening^X);
@@ -584,11 +626,21 @@ int main(int argc, const char *argv[])
         if (tmpOpening == "")
             continue;
         multimap<int, Building> tmpBuildings;
-        getBuildings(input, tmpBuildings);
+        getBuildings(input, tmpBuildings, LEARN_TIME_LIMIT - 50);
         tmpBuildings.erase(0); // key == 0 i.e. buildings not constructed
         if (tmpBuildings.empty())
             continue;
 #if DEBUG_OUTPUT >= 1
+#if PLOT > 0
+        vector<vector<plProbValue> > T_P_Opening_v;
+        vector<plProbValue> tmpProbV;
+#ifdef DIRAC_ON_LAST_OPENING
+        P_LastOpening.tabulate(tmpProbV);
+#else 
+        P_Opening.tabulate(tmpProbV);
+#endif
+        T_P_Opening_v.push_back(tmpProbV);
+#endif
         cout << "******** end replay number: " 
             << noreplay << " ********" << endl;
         ++noreplay;
@@ -635,6 +687,12 @@ int main(int argc, const char *argv[])
                 continue;
             vector<pair<plValues, plProbValue> > outvals;
             T_P_Opening.sorted_tabulate(outvals);
+#if PLOT > 0
+            vector<plValues> dummy;
+            tmpProbV.clear();
+            T_P_Opening.tabulate(dummy, tmpProbV);
+            T_P_Opening_v.push_back(tmpProbV);
+#endif
             for (vector<pair<plValues, plProbValue> >::const_iterator 
                     jt = outvals.begin(); jt != outvals.end(); ++jt)
             {
@@ -643,8 +701,7 @@ int main(int argc, const char *argv[])
 #endif
 #ifdef DIRAC_ON_LAST_OPENING
             P_LastOpening.mutate(static_cast<plDistribution>(
-                        jd.ask(Opening, knownConj).instantiate(evidence)
-                        .compile().rename(LastOpening))); 
+                        PP_Opening.compile().rename(LastOpening)));
 #endif
         }
 #ifdef BENCH
@@ -663,10 +720,15 @@ int main(int argc, const char *argv[])
             ++positive_classif_finale;
         if (toTest[Opening] == max(cumulative_prob)[Opening])
             ++cpositive_classif_finale;
+        std::stringstream tmpfn;
+#if PLOT > 0
+        tmpfn << "OpeningsRep" << noreplay << ".gnuplot";
+        gnuplot_vector_probas(T_P_Opening_v, openings, tmpfn.str());
+        T_P_Opening_v.clear();
+#endif
 #endif
 #ifdef DIRAC_ON_LAST_OPENING
-        P_LastOpening.mutate(
-            static_cast<plDistribution>(
+        P_LastOpening.mutate(static_cast<plDistribution>(
                 plProbTable(LastOpening, tableOpening, false)));
 #endif
     }
