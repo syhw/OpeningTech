@@ -642,10 +642,6 @@ int main(int argc, const char *argv[])
             }
 #endif
 #ifdef DIRAC_ON_LAST_OPENING
-            plComputableObject test = jd.ask(Opening, knownConj).instantiate(evidence).compile().rename(LastOpening);
-            plDistribution test2 = static_cast<plDistribution>(test);
-            cout << test << endl;
-            cout << test2 << endl;
             P_LastOpening.mutate(static_cast<plDistribution>(
                         jd.ask(Opening, knownConj).instantiate(evidence)
                         .compile().rename(LastOpening))); 

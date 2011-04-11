@@ -70,8 +70,9 @@ clean:
 	rm -rf ./-* ./:* ./[* prefix option illegal mktemp: c++-header *~ \
 		*.dSYM \
 		*.gnuplot* \
+		*.fig \
 		test_x_values test_getOpeningVal test_getBuildings \
-		test_functional_dirac test_lambda\
+		test_functional_dirac test_lambda test_learning\
 		protoss_possible_tech_trees.txt \
 		terran_possible_tech_trees.txt \
 		zerg_possible_tech_trees.txt \
