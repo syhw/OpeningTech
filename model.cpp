@@ -722,7 +722,11 @@ int main(int argc, const char *argv[])
             ++cpositive_classif_finale;
         std::stringstream tmpfn;
 #if PLOT > 0
+#ifdef DIRAC_ON_LAST_OPENING
         tmpfn << "OpeningsRep" << noreplay << ".gnuplot";
+#else
+        tmpfn << "SFOpeningsRep" << noreplay << ".gnuplot";
+#endif
         gnuplot_vector_probas(T_P_Opening_v, openings, tmpfn.str());
         T_P_Opening_v.clear();
 #endif
