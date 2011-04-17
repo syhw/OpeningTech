@@ -8,6 +8,10 @@
 #include "x_values.h"
 #include "replays.h"
 #include "parameters.h"
+#include <boost/random/linear_congruential.hpp>
+#include <boost/random/uniform_real.hpp>
+#include <boost/random/uniform_int.hpp>
+#include <boost/random/variate_generator.hpp>
 
 /// Copyright Gabriel Synnaeve 2011
 /// This code is under 3-clauses (new) BSD License

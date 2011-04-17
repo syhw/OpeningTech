@@ -11,7 +11,7 @@ try:
 except:
     print "You need numpy"
 
-def k_means(t, nbclusters=2, nbiter=100, medoids=True,\
+def k_means(t, nbclusters=2, nbiter=1, medoids=False,\
         distance=lambda x,y: np.linalg.norm(x-y)):
     """ 
     Each row of t is an observation, each column is a feature 
@@ -47,30 +47,26 @@ def k_means(t, nbclusters=2, nbiter=100, medoids=True,\
                 for c in range(nbclusters)] # should not be init, TODO
         new_sum = sum([distance(centroids[c], old_centroids[c])\
                 for c in range(nbclusters)])
-        old_sum = 100000000000 # TODO clean
+        old_sum = 100000000000.0 # TODO clean
         # iterate until convergence
         while new_sum < old_sum :
             old_centroids = copy.deepcopy(centroids)
+            print old_sum, new_sum
             old_sum = new_sum
             for c in range(nbclusters):
                 clusters[c] = []
+            print "lili"
             # distance to all centroids/medoids for all observations
             for c in range(nbclusters):
                 for o in range(nbobs):
                     tmpdist[o][c] = distance(centroids[c], t[o,:])
+            print "coucou"
             # Step 2: assign each object to the closest centroid
             for o in range(nbobs):
                 clusters[tmpdist[o,:].argmin()].append(o)
             # Step 3: recalculate the positions of the nbclusters centroids
             for c in range(nbclusters):
                 if medoids:
-                    mean = np.array([0 for i in range(nbfeatures)], np.int32)
-                    for o in clusters[c]:
-                        mean += t[o,:]
-                        ##for f in range(nbfeatures):
-                        ##    mean[f] += t[k,f]
-                    centroids[c] = map(lambda x: x/len(clusters[c]), mean)
-                else:
                     tmpmin = 100000000000 # TODO clean #
                     argmin = 0                         #
                     for o in clusters[c]:              #
@@ -78,6 +74,14 @@ def k_means(t, nbclusters=2, nbiter=100, medoids=True,\
                             tmpmin = tmpdist[o,c]      #
                             argmin = o                 #
                     centroids[c] = t[argmin,:]
+                else:
+                    mean = np.array([0 for i in range(nbfeatures)], np.int32)
+                    for o in clusters[c]:
+                        mean += t[o,:]
+                    mean = map(lambda x: x/len(clusters[c]), mean)
+                    centroids[c] = np.array(mean, np.int32)
+            new_sum = sum([distance(centroids[c], old_centroids[c])\
+                    for c in range(nbclusters)])
         quality = sum([sum([tmpdist[o][c] for o in clusters[c]])\
                 /(len(clusters[c])+1) for c in range(nbclusters)])
         if not quality in result or quality > result['quality']:
@@ -110,6 +114,9 @@ def parse(arff):
             data = True
     return (template, t)
 
+def filter_out_undef(tab):
+    return np.array([j for j in tab if j > -1], np.int32)
+
 if __name__ == "__main__":
     (template, datalist) = parse(open(sys.argv[1]))
     # ndarray([#lines, #columns], type) and here #columns without label/string
@@ -118,5 +125,15 @@ if __name__ == "__main__":
     for i in range(len(datalist)):
         for j in range(len(datalist[0]) - 1):
             data[i][j] = datalist[i][j]
-    print k_means(data)
+    for i in range(len(template)):
+        if "DarkTemplar" in template[i]:
+            print i,
+            print template[i]
+            print k_means(filter_out_undef(data.take([i],1)))
+        if "FirstExpansion" in template[i]:
+            print i,
+            print template[i]
+            print k_means(filter_out_undef(data.take([i],1)))
+    #print data[:,30]
+    #print k_means(data)
 
