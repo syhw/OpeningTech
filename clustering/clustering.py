@@ -115,13 +115,13 @@ def parse(arff):
     return (template, t)
 
 def filter_out_undef(tab):
-    return np.array([j for j in tab if j > -1], np.int32)
-
-def distance(x, y):
-    d = 0
-    for i in range(min(len(x), len(y))):
-        d += (float(x[i]) - float(y[i]))(float(x[i]) - float(y[i]))
-    return math.sqrt(d)
+    def not_undef(t):
+        for e in t:
+            if e < 0:
+                return False
+        return True
+    return np.array([tab[j] for j in range(len(tab))\
+            if not_undef(tab[j])], np.int32)
 
 if __name__ == "__main__":
     (template, datalist) = parse(open(sys.argv[1]))
@@ -131,15 +131,15 @@ if __name__ == "__main__":
     for i in range(len(datalist)):
         for j in range(len(datalist[0]) - 1):
             data[i][j] = datalist[i][j]
-    for i in range(len(template)):
-        if "DarkTemplar" in template[i]:
-            print i,
-            print template[i]
-            print k_means(filter_out_undef(data.take([i],1)),\
-                    distance = lambda x,y: abs(x-y))
-        if "FirstExpansion" in template[i]:
-            print i,
-            print template[i]
-            print k_means(filter_out_undef(data.take([i],1)),\
-                    distance = lambda x,y: abs(x-y))
+    print k_means(filter_out_undef(data.take(\
+            [template.index("ProtossDarkTemplar")], 1)),\
+            distance = lambda x,y: abs(x-y))
+    print k_means(filter_out_undef(data.take(\
+            [template.index("ProtossFirstExpansion")], 1)),\
+            distance = lambda x,y: abs(x-y))
+    print k_means(filter_out_undef(data.take([\
+            template.index("ProtossShuttle"), template.index("ProtossReavor")\
+            ], 1)))
+
+
 
