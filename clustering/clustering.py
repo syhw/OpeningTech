@@ -5,14 +5,15 @@
 # Python License 2.0.1 http://www.python.org/download/releases/2.0.1/license/
 # Copyright 2011 Gabriel Synnaeve
 
-import sys, random, copy
+import sys, random, copy, math
 try:
     import numpy as np
 except:
     print "You need numpy"
 
-def k_means(t, nbclusters=2, nbiter=1, medoids=False,\
-        distance=lambda x,y: np.linalg.norm(x-y)):
+def k_means(t, nbclusters=2, nbiter=2, medoids=False,\
+        distance=lambda x,y: np.linalg.norm(x-y)): # BUG with sqrt and 0.0
+        #distance=lambda x,y: math.sqrt(np.dot(x-y,(x-y).conj()))): # BUG too
     """ 
     Each row of t is an observation, each column is a feature 
     'nbclusters' is the number of seeds and so of clusters/centroids 
@@ -43,11 +44,12 @@ def k_means(t, nbclusters=2, nbiter=1, medoids=False,\
         centroids = [np.array([random.uniform(min_max[f][0], min_max[f][1])\
                 for f in range(nbfeatures)], np.int32)\
                 for c in range(nbclusters)]
-        old_centroids = [np.array([0 for f in range(nbfeatures)], np.int32)\
+        old_centroids = [np.array([-1 for f in range(nbfeatures)], np.int32)\
                 for c in range(nbclusters)] # should not be init, TODO
         new_sum = sum([distance(centroids[c], old_centroids[c])\
                 for c in range(nbclusters)])
         old_sum = 100000000000.0 # TODO clean
+        np.seterr(invalid='raise')
         # iterate until convergence
         while new_sum < old_sum :
             old_centroids = copy.deepcopy(centroids)
@@ -55,12 +57,10 @@ def k_means(t, nbclusters=2, nbiter=1, medoids=False,\
             old_sum = new_sum
             for c in range(nbclusters):
                 clusters[c] = []
-            print "lili"
             # distance to all centroids/medoids for all observations
             for c in range(nbclusters):
                 for o in range(nbobs):
-                    tmpdist[o][c] = distance(centroids[c], t[o,:])
-            print "coucou"
+                    tmpdist[o,c] = distance(centroids[c], t[o,:])
             # Step 2: assign each object to the closest centroid
             for o in range(nbobs):
                 clusters[tmpdist[o,:].argmin()].append(o)
@@ -117,6 +117,12 @@ def parse(arff):
 def filter_out_undef(tab):
     return np.array([j for j in tab if j > -1], np.int32)
 
+def distance(x, y):
+    d = 0
+    for i in range(min(len(x), len(y))):
+        d += (float(x[i]) - float(y[i]))(float(x[i]) - float(y[i]))
+    return math.sqrt(d)
+
 if __name__ == "__main__":
     (template, datalist) = parse(open(sys.argv[1]))
     # ndarray([#lines, #columns], type) and here #columns without label/string
@@ -129,11 +135,11 @@ if __name__ == "__main__":
         if "DarkTemplar" in template[i]:
             print i,
             print template[i]
-            print k_means(filter_out_undef(data.take([i],1)))
+            print k_means(filter_out_undef(data.take([i],1)),\
+                    distance = lambda x,y: abs(x-y))
         if "FirstExpansion" in template[i]:
             print i,
             print template[i]
-            print k_means(filter_out_undef(data.take([i],1)))
-    #print data[:,30]
-    #print k_means(data)
+            print k_means(filter_out_undef(data.take([i],1)),\
+                    distance = lambda x,y: abs(x-y))
 
