@@ -1,6 +1,5 @@
 #!/opt/local/bin/python
 # Playschool kode disclaimer! Completely untested!
-# t[first_line:last_line:increment,first_column:last_column:increment]
 
 # Python License 2.0.1 http://www.python.org/download/releases/2.0.1/license/
 # Copyright 2011 Gabriel Synnaeve
@@ -10,8 +9,9 @@ try:
     import numpy as np
 except:
     print "You need numpy"
+import pylab as pl
 
-def k_means(t, nbclusters=2, nbiter=10, medoids=False, soft=True, beta=0.01,\
+def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=0.01,\
         #distance=lambda x,y: np.linalg.norm(x-y)):
         distance=lambda x,y: math.sqrt(np.dot(x-y,(x-y).conj()))):
     """ 
@@ -111,7 +111,7 @@ def k_means(t, nbclusters=2, nbiter=10, medoids=False, soft=True, beta=0.01,\
             result['clusters'] = clusters
     return result
 
-def expectation_maximization(t, nbclusters=2, nbiter=100,\
+def expectation_maximization(t, nbclusters=2, nbiter=10,\
         distance=lambda x,y: np.linalg.norm(x-y), epsilon=1):
     ### TODO
     return True
@@ -125,7 +125,9 @@ def parse(arff):
             tmp = []
             for elem in line.split(','):
                 if elem[0] in "0123456789":
-                    tmp.append(int(elem)/24)
+                    # Convert to int, and 24 frames per second:
+                    # we don't need such a high resolution
+                    tmp.append(int(elem)/24) 
                 else:
                     tmp.append(elem.rstrip('\n'))
             t.append(tmp)
@@ -149,7 +151,19 @@ def filter_out_undef(tab):
             tmp.append(tab[i])
     return (indices, np.array(tmp, np.int64))
 
+def plot(clusters, data):
+    ax = pl.subplot(111)
+    xy = [[data[i,0] for i in clusters[0]] for j in range(len(data[0]))]
+    ax.scatter(xy[0], xy[len(data[0])-1],\
+            s=40, c='b', marker='s', edgecolors='none')
+    xy = [[data[i,0] for i in clusters[1]] for j in range(len(data[0]))]
+    ax.scatter(xy[0], xy[len(data[0])-1],\
+            s=40, c='r', marker='s', edgecolors='none')
+    pl.grid(True)
+    pl.show()
+
 if __name__ == "__main__":
+    nbiterations = 2 # TODO 100 when clustering for real
     (template, datalist) = parse(open(sys.argv[1]))
     # ndarray([#lines, #columns], type) and here #columns without label/string
     data = np.ndarray([len(datalist), len(datalist[0]) - 1], np.int64)
@@ -157,24 +171,94 @@ if __name__ == "__main__":
     for i in range(len(datalist)):
         for j in range(len(datalist[0]) - 1):
             data[i][j] = datalist[i][j]
+    ### Fast DT
     fast_dt_data = filter_out_undef(data.take(\
             [template.index("ProtossDarkTemplar")], 1))
-    fast_dt = k_means(fast_dt_data[1], distance = lambda x,y: abs(x-y))
+    fast_dt = k_means(fast_dt_data[1], nbiter=nbiterations,\
+            distance = lambda x,y: abs(x-y))
+    ### Fast Expand
     fast_exp_data = filter_out_undef(data.take(\
             [template.index("ProtossFirstExpansion")], 1))
-    fast_exp = k_means(fast_exp_data[1], distance = lambda x,y: abs(x-y))
+    fast_exp = k_means(fast_exp_data[1], nbiter=nbiterations,\
+            distance = lambda x,y: abs(x-y))
+    ### Reaver Drop
     reaver_drop_data = filter_out_undef(data.take([\
             template.index("ProtossShuttle"), template.index("ProtossReavor")\
             ], 1))
-    reaver_drop = k_means(reaver_drop_data[1])
+    reaver_drop = k_means(reaver_drop_data[1], nbiter=nbiterations)
+
+    ### Cannon Rush
+    cannon_rush_data = filter_out_undef(data.take([\
+            template.index("ProtossForge"), template.index("ProtossCannon")\
+            ], 1))
+    cannon_rush = k_means(cannon_rush_data[1], nbiter=nbiterations)
+
+    ### +1 SpeedZeal
+    speedzeal_data = filter_out_undef(data.take([\
+            template.index("ProtossGroundWeapons1"), template.index("ProtossLegs")\
+            ], 1))
+    speedzeal = k_means(speedzeal_data[1], nbiter=nbiterations)
+
+    ### Standard
+    standard_data = filter_out_undef(data.take([\
+            template.index("ProtossRange"), template.index("ProtossObs")\
+            ], 1))
+    standard = k_means(standard_data[1], nbiter=nbiterations)
+
+    print fast_dt
+    plot(fast_dt["clusters"], fast_dt_data[1])
+
+    print fast_exp
+    ax = pl.subplot(111)
+    xs = [fast_exp_data[1][i,0] for i in fast_exp["clusters"][0]]
+    ys = [fast_exp_data[1][i,0] for i in fast_exp["clusters"][0]]
+    ax.scatter(xs, ys, s=40, c='b', marker='s', edgecolors='none')
+    xs = [fast_exp_data[1][i,0] for i in fast_exp["clusters"][1]]
+    ys = [fast_exp_data[1][i,0] for i in fast_exp["clusters"][1]]
+    ax.scatter(xs, ys, s=40, c='r', marker='s', edgecolors='none')
+    pl.grid(True)
+    pl.show()
+
     print reaver_drop
-    import pylab as pl
     ax = pl.subplot(111)
     xs = [reaver_drop_data[1][i,0] for i in reaver_drop["clusters"][0]]
     ys = [reaver_drop_data[1][i,1] for i in reaver_drop["clusters"][0]]
     ax.scatter(xs, ys, s=40, c='b', marker='s', edgecolors='none')
     xs = [reaver_drop_data[1][i,0] for i in reaver_drop["clusters"][1]]
     ys = [reaver_drop_data[1][i,1] for i in reaver_drop["clusters"][1]]
+    ax.scatter(xs, ys, s=40, c='r', marker='s', edgecolors='none')
+    pl.grid(True)
+    pl.show()
+
+    print cannon_rush
+    ax = pl.subplot(111)
+    xs = [cannon_rush_data[1][i,0] for i in cannon_rush["clusters"][0]]
+    ys = [cannon_rush_data[1][i,1] for i in cannon_rush["clusters"][0]]
+    ax.scatter(xs, ys, s=40, c='b', marker='s', edgecolors='none')
+    xs = [cannon_rush_data[1][i,0] for i in cannon_rush["clusters"][1]]
+    ys = [cannon_rush_data[1][i,1] for i in cannon_rush["clusters"][1]]
+    ax.scatter(xs, ys, s=40, c='r', marker='s', edgecolors='none')
+    pl.grid(True)
+    pl.show()
+
+    print cannon_rush
+    ax = pl.subplot(111)
+    xs = [cannon_rush_data[1][i,0] for i in cannon_rush["clusters"][0]]
+    ys = [cannon_rush_data[1][i,1] for i in cannon_rush["clusters"][0]]
+    ax.scatter(xs, ys, s=40, c='b', marker='s', edgecolors='none')
+    xs = [cannon_rush_data[1][i,0] for i in cannon_rush["clusters"][1]]
+    ys = [cannon_rush_data[1][i,1] for i in cannon_rush["clusters"][1]]
+    ax.scatter(xs, ys, s=40, c='r', marker='s', edgecolors='none')
+    pl.grid(True)
+    pl.show()
+
+    print standard
+    ax = pl.subplot(111)
+    xs = [standard_data[1][i,0] for i in standard["clusters"][0]]
+    ys = [standard_data[1][i,1] for i in standard["clusters"][0]]
+    ax.scatter(xs, ys, s=40, c='b', marker='s', edgecolors='none')
+    xs = [standard_data[1][i,0] for i in standard["clusters"][1]]
+    ys = [standard_data[1][i,1] for i in standard["clusters"][1]]
     ax.scatter(xs, ys, s=40, c='r', marker='s', edgecolors='none')
     pl.grid(True)
     pl.show()
