@@ -15,7 +15,6 @@ def k_means(t, nbclusters=2, nbiter=10, medoids=False,\
         #distance=lambda x,y: np.linalg.norm(x-y),
         distance=lambda x,y: math.sqrt(np.dot(x-y,(x-y).conj())), 
         responsability=lambda x,c: 1):
-
     """ 
     Each row of t is an observation, each column is a feature 
     'nbclusters' is the number of seeds and so of clusters/centroids 
@@ -48,8 +47,6 @@ def k_means(t, nbclusters=2, nbiter=10, medoids=False,\
                 for c in range(nbclusters)]
         old_centroids = [np.array([-1 for f in range(nbfeatures)], np.int64)\
                 for c in range(nbclusters)] # should not be init, TODO
-        for c in range(nbclusters):
-            print centroids[c], old_centroids[c], centroids[c]-old_centroids[c], np.linalg.norm(centroids[c] - old_centroids[c])
         new_sum = sum([distance(centroids[c], old_centroids[c])\
                 for c in range(nbclusters)])
         old_sum = 1000000000000 # TODO clean
@@ -151,9 +148,6 @@ if __name__ == "__main__":
             ], 1))
     fast_dt = k_means(fast_dt_data[1])
     print fast_dt
-    #print [fast_dt_data[1][i] for i in [fast_dt["clusters"][0]]]
-    #print [fast_dt_data[1][i,0] for i in [fast_dt["clusters"][0]]]
-    #print [fast_dt_data[1][i,1] for i in [fast_dt["clusters"][0]]]
     import pylab as pl
     ax = pl.subplot(111)
     xs = [fast_dt_data[1][i,0] for i in fast_dt["clusters"][0]]
