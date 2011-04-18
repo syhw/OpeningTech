@@ -11,16 +11,9 @@ try:
 except:
     print "You need numpy"
 
-def dist(x, y):
-    s = 0
-    for e in (x-y):
-        s += (e*e)
-    return math.sqrt(s)
-
 def k_means(t, nbclusters=2, nbiter=10, medoids=False,\
         #distance=lambda x,y: np.linalg.norm(x-y),
         distance=lambda x,y: math.sqrt(np.dot(x-y,(x-y).conj())), 
-        #distance=dist,
         responsability=lambda x,c: 1):
 
     """ 
@@ -59,7 +52,7 @@ def k_means(t, nbclusters=2, nbiter=10, medoids=False,\
             print centroids[c], old_centroids[c], centroids[c]-old_centroids[c], np.linalg.norm(centroids[c] - old_centroids[c])
         new_sum = sum([distance(centroids[c], old_centroids[c])\
                 for c in range(nbclusters)])
-        old_sum = 1000000000 # TODO clean
+        old_sum = 1000000000000 # TODO clean
         np.seterr(invalid='raise')
         # iterate until convergence
         while new_sum < old_sum :
@@ -78,7 +71,7 @@ def k_means(t, nbclusters=2, nbiter=10, medoids=False,\
             # Step 3: recalculate the positions of the nbclusters centroids
             for c in range(nbclusters):
                 if medoids:
-                    tmpmin = 1000000000 # TODO clean #
+                    tmpmin = 1000000000000 # TODO clean #
                     argmin = 0                         #
                     for o in clusters[c]:              #
                         if tmpdist[o,c] < tmpmin:      #
