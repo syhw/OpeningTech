@@ -151,14 +151,15 @@ def filter_out_undef(tab):
             tmp.append(tab[i])
     return (indices, np.array(tmp, np.int64))
 
-def plot(clusters, data):
+def plot(clusters, data, title=''):
     ax = pl.subplot(111)
-    xy = [[data[i,0] for i in clusters[0]] for j in range(len(data[0]))]
+    xy = [[data[i,j] for i in clusters[0]] for j in range(len(data[0]))]
     ax.scatter(xy[0], xy[len(data[0])-1],\
             s=40, c='b', marker='s', edgecolors='none')
-    xy = [[data[i,0] for i in clusters[1]] for j in range(len(data[0]))]
+    xy = [[data[i,j] for i in clusters[1]] for j in range(len(data[0]))]
     ax.scatter(xy[0], xy[len(data[0])-1],\
             s=40, c='r', marker='s', edgecolors='none')
+    pl.title(title)
     pl.grid(True)
     pl.show()
 
@@ -199,26 +200,34 @@ if __name__ == "__main__":
             ], 1))
     speedzeal = k_means(speedzeal_data[1], nbiter=nbiterations)
 
-    ### Standard
-    standard_data = filter_out_undef(data.take([\
-            template.index("ProtossRange"), template.index("ProtossObs")\
+    ### Nony opening
+    nony_data = filter_out_undef(data.take([\
+            template.index("ProtossRange"), template.index("ProtossSecondGatway")\
             ], 1))
-    standard = k_means(standard_data[1], nbiter=nbiterations)
+    nony = k_means(nony_data[1], nbiter=nbiterations)
+
+    ### Corsair opening
+    corsair_data = filter_out_undef(data.take([\
+            template.index("ProtossCorsair")], 1))
+    corsair = k_means(corsair_data[1], nbiter=nbiterations)
 
     print fast_dt
-    plot(fast_dt["clusters"], fast_dt_data[1])
+    plot(fast_dt["clusters"], fast_dt_data[1], "fast dark templar")
 
     print fast_exp
-    plot(fast_exp["clusters"], fast_exp_data[1])
+    plot(fast_exp["clusters"], fast_exp_data[1], "fast expand")
 
     print reaver_drop
-    plot(reaver_drop["clusters"], reaver_drop_data[1])
+    plot(reaver_drop["clusters"], reaver_drop_data[1], "reaver drop")
 
     print cannon_rush
-    plot(cannon_rush["clusters"],cannon_rush_data[1])
+    plot(cannon_rush["clusters"],cannon_rush_data[1], "cannon rush")
 
     print speedzeal
-    plot(speedzeal["clusters"],speedzeal_data[1])
+    plot(speedzeal["clusters"],speedzeal_data[1], "speedzeal")
 
-    print standard
-    plot(standard["clusters"],standard_data[1])
+    print nony
+    plot(nony["clusters"],nony_data[1], "nony")
+
+    print corsair
+    plot(corsair["clusters"], corsair_data[1], "corsair")
