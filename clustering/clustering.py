@@ -209,57 +209,16 @@ if __name__ == "__main__":
     plot(fast_dt["clusters"], fast_dt_data[1])
 
     print fast_exp
-    ax = pl.subplot(111)
-    xs = [fast_exp_data[1][i,0] for i in fast_exp["clusters"][0]]
-    ys = [fast_exp_data[1][i,0] for i in fast_exp["clusters"][0]]
-    ax.scatter(xs, ys, s=40, c='b', marker='s', edgecolors='none')
-    xs = [fast_exp_data[1][i,0] for i in fast_exp["clusters"][1]]
-    ys = [fast_exp_data[1][i,0] for i in fast_exp["clusters"][1]]
-    ax.scatter(xs, ys, s=40, c='r', marker='s', edgecolors='none')
-    pl.grid(True)
-    pl.show()
+    plot(fast_exp["clusters"], fast_exp_data[1])
 
     print reaver_drop
-    ax = pl.subplot(111)
-    xs = [reaver_drop_data[1][i,0] for i in reaver_drop["clusters"][0]]
-    ys = [reaver_drop_data[1][i,1] for i in reaver_drop["clusters"][0]]
-    ax.scatter(xs, ys, s=40, c='b', marker='s', edgecolors='none')
-    xs = [reaver_drop_data[1][i,0] for i in reaver_drop["clusters"][1]]
-    ys = [reaver_drop_data[1][i,1] for i in reaver_drop["clusters"][1]]
-    ax.scatter(xs, ys, s=40, c='r', marker='s', edgecolors='none')
-    pl.grid(True)
-    pl.show()
+    plot(reaver_drop["clusters"], reaver_drop_data[1])
 
     print cannon_rush
-    ax = pl.subplot(111)
-    xs = [cannon_rush_data[1][i,0] for i in cannon_rush["clusters"][0]]
-    ys = [cannon_rush_data[1][i,1] for i in cannon_rush["clusters"][0]]
-    ax.scatter(xs, ys, s=40, c='b', marker='s', edgecolors='none')
-    xs = [cannon_rush_data[1][i,0] for i in cannon_rush["clusters"][1]]
-    ys = [cannon_rush_data[1][i,1] for i in cannon_rush["clusters"][1]]
-    ax.scatter(xs, ys, s=40, c='r', marker='s', edgecolors='none')
-    pl.grid(True)
-    pl.show()
+    plot(cannon_rush["clusters"],cannon_rush_data[1])
 
-    print cannon_rush
-    ax = pl.subplot(111)
-    xs = [cannon_rush_data[1][i,0] for i in cannon_rush["clusters"][0]]
-    ys = [cannon_rush_data[1][i,1] for i in cannon_rush["clusters"][0]]
-    ax.scatter(xs, ys, s=40, c='b', marker='s', edgecolors='none')
-    xs = [cannon_rush_data[1][i,0] for i in cannon_rush["clusters"][1]]
-    ys = [cannon_rush_data[1][i,1] for i in cannon_rush["clusters"][1]]
-    ax.scatter(xs, ys, s=40, c='r', marker='s', edgecolors='none')
-    pl.grid(True)
-    pl.show()
+    print speedzeal
+    plot(speedzeal["clusters"],speedzeal_data[1])
 
     print standard
-    ax = pl.subplot(111)
-    xs = [standard_data[1][i,0] for i in standard["clusters"][0]]
-    ys = [standard_data[1][i,1] for i in standard["clusters"][0]]
-    ax.scatter(xs, ys, s=40, c='b', marker='s', edgecolors='none')
-    xs = [standard_data[1][i,0] for i in standard["clusters"][1]]
-    ys = [standard_data[1][i,1] for i in standard["clusters"][1]]
-    ax.scatter(xs, ys, s=40, c='r', marker='s', edgecolors='none')
-    pl.grid(True)
-    pl.show()
-
+    plot(standard["clusters"],standard_data[1])
