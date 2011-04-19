@@ -8,8 +8,11 @@ import sys, random, copy, math
 try:
     import numpy as np
 except:
-    print "You need numpy"
-import pylab as pl
+    print "You need numpy for computations."
+try:
+    import pylab as pl
+except:
+    print "You need pylab/matplotlib for plotting."
 
 def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=0.01,\
         #distance=lambda x,y: np.linalg.norm(x-y)):
@@ -172,6 +175,10 @@ if __name__ == "__main__":
     for i in range(len(datalist)):
         for j in range(len(datalist[0]) - 1):
             data[i][j] = datalist[i][j]
+
+    race = sys.argv[1].split('_')[1][0] # race that performs the openings
+    matchup = sys.argv[5]               # race against which it performs
+
     ### Fast DT
     fast_dt_data = filter_out_undef(data.take(\
             [template.index("ProtossDarkTemplar")], 1))
@@ -196,13 +203,15 @@ if __name__ == "__main__":
 
     ### +1 SpeedZeal
     speedzeal_data = filter_out_undef(data.take([\
-            template.index("ProtossGroundWeapons1"), template.index("ProtossLegs")\
+            template.index("ProtossGroundWeapons1"),\
+            template.index("ProtossLegs")\
             ], 1))
     speedzeal = k_means(speedzeal_data[1], nbiter=nbiterations)
 
     ### Nony opening
     nony_data = filter_out_undef(data.take([\
-            template.index("ProtossRange"), template.index("ProtossSecondGatway")\
+            template.index("ProtossRange"),\
+            template.index("ProtossSecondGatway")\
             ], 1))
     nony = k_means(nony_data[1], nbiter=nbiterations)
 
