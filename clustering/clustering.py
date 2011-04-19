@@ -15,8 +15,9 @@ except:
     print "You need pylab/matplotlib for plotting."
 
 def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=0.01,\
-        #distance=lambda x,y: np.linalg.norm(x-y)):
-        distance=lambda x,y: math.sqrt(np.dot(x-y,(x-y).conj()))):
+        #distance=lambda x,y: np.linalg.norm(x-y),\
+        distance=lambda x,y: math.sqrt(np.dot(x-y,(x-y).conj())),\
+        responsability=lambda beta,d: math.exp(-1 * beta * d)):
     """ 
     Each row of t is an observation, each column is a feature 
     'nbclusters' is the number of seeds and so of clusters/centroids 
@@ -29,6 +30,10 @@ def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=0.01,\
     -> Assign each object to the group that has the closest centroid (distance)
     -> Recalculate the positions of the nbclusters centroids
     -> Repeat Steps 2 and 3 until the centroids no longer move
+
+    We can change the distance function and change the responsability function
+    -> distance will change the shape of the clusters
+    -> responsability will change the breadth of the clusters (& associativity)
     """
     nbobs = t.shape[0]
     nbfeatures = t.shape[1]
@@ -69,7 +74,7 @@ def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=0.01,\
                 # Step 2: compute the degree of assignment for each object
                 for o in range(nbobs):
                     for c in range(nbclusters):
-                        tmpresp[o,c] = math.exp(-1 * beta * tmpdist[o,c])
+                        tmpresp[o,c] = responsability(beta, tmpdist[o,c])
                 for o in range(nbobs):
                     tmpresp[o,:] /= sum(tmpresp[o,:])
             else:
@@ -116,6 +121,18 @@ def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=0.01,\
 
 def expectation_maximization(t, nbclusters=2, nbiter=10,\
         distance=lambda x,y: np.linalg.norm(x-y), epsilon=1):
+    """ 
+    Each row of t is an observation, each column is a feature 
+    'nbclusters' is the number of seeds and so of clusters
+    'nbiter' is the number of iterations
+    'distance' is the function to use for comparing observations
+
+    Overview of the algorithm ("hard k-means"):
+    -> Place nbclusters points into the features space of the objects/t[i:]
+    -> Assign each object to the group that has the closest centroid (distance)
+    -> Recalculate the positions of the nbclusters centroids
+    -> Repeat Steps 2 and 3 until the centroids no longer move
+    """
     ### TODO
     return True
 
@@ -177,7 +194,7 @@ if __name__ == "__main__":
             data[i][j] = datalist[i][j]
 
     race = sys.argv[1].split('_')[1][0] # race that performs the openings
-    matchup = sys.argv[5]               # race against which it performs
+    matchup = sys.argv[1][5]            # race against which it performs
 
     ### Fast DT
     fast_dt_data = filter_out_undef(data.take(\
