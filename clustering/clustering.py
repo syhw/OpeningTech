@@ -64,7 +64,6 @@ def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=1.0,\
         # iterate until convergence
         while new_sum < old_sum :
             old_centroids = copy.deepcopy(centroids)
-            print "k-means iteration, old and new sum: ", old_sum, new_sum
             old_sum = new_sum
             for c in range(nbclusters):
                 clusters[c] = []
@@ -111,6 +110,7 @@ def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=1.0,\
             print centroids
             new_sum = sum([distance(centroids[c], old_centroids[c])\
                     for c in range(nbclusters)])
+            print "(k-means) old and new sum: ", old_sum, new_sum
         if soft:
             for o in range(nbobs):
                 clusters[tmpdist[o,:].argmin()].append(o)
@@ -183,7 +183,6 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
         min_max.append((t[:,f].min(), t[:,f].max()))
     ### /Normalization
 
-    print t
     result = {}
     quality = 0.0 # sum of the means of the distances to centroids
     random.seed()
@@ -199,7 +198,6 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
         log_estimate = epsilon+1.0 # init, not true/real
         # Iterate until convergence (EM is monotone) <=> < epsilon variation
         while (abs(log_estimate - old_log_estimate) > epsilon):
-            print params
             restart = False
             old_log_estimate = log_estimate
             ########################################################
@@ -216,33 +214,28 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
                 tmpSum = 0.0
                 for c in range(nbclusters):
                     tmpSum += params[c]['proba']*Px[o,c]
-                print tmpSum
                 Pclust[o,:] /= tmpSum
-            ############################################################
-            # Step 3: update the parameters (sets of mu, sigma, proba) #
-            ############################################################
+            ###########################################################
+            # Step 3: update the parameters (sets {mu, sigma, proba}) #
+            ###########################################################
             for c in range(nbclusters):
                 tmpSum = sum(Pclust[:,c])
                 params[c]['proba'] = tmpSum/nbobs
-                if params[c]['proba'] <= 1.0/nbobs: # restart if all
-                    restart = True                  # converges to
-                    print "Restarting"              # one cluster
+                if params[c]['proba'] <= 1.0/nbobs:           # restart if all
+                    restart = True                            # converges to
+                    print "Restarting, p:",params[c]['proba'] # one cluster
                     break
                 m = np.zeros(nbfeatures, np.float64)
                 for o in range(nbobs):
                     m += t[o,:]*Pclust[o,c]
-                print tmpSum
                 params[c]['mu'] = m/tmpSum
-                print "%%%%%%%%%%%%%%%%: ", params[c]['mu']
                 s = np.matrix(np.diag(np.zeros(nbfeatures, np.float64)))
                 for o in range(nbobs):
                     diag = Pclust[o,c]*((t[o,:]-params[c]['mu'])*\
                             (t[o,:]-params[c]['mu']).transpose())
                     for i in range(len(s)):
                         s[i,i] += diag[i]
-                print tmpSum
                 params[c]['sigma'] = s/tmpSum
-                print "################: ", params[c]['sigma']
 
             ### Test bound conditions and restart consequently if needed
             if not restart:
@@ -265,7 +258,8 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
             log_estimate = sum([math.log(sum(\
                     [Px[o,c]*params[c]['proba'] for c in range(nbclusters)]))\
                     for o in range(nbobs)])
-            print "(EM) Log est.: ", log_estimate
+            print "(EM) old and new log estimate: ",\
+                    old_log_estimate, log_estimate
 
         # Pick/save the best clustering as the final result
         quality = -log_estimate
@@ -335,6 +329,9 @@ def plot(clusters, data, title='', gaussians=[]):
             x = pl.arange(ranges[0], ranges[1], delta)
             y = pl.arange(ranges[2], ranges[3], delta)
             X,Y = pl.meshgrid(x, y)
+            for i in range(len(g['sigma'])):
+                if not g['sigma'][i,i]:                  # to put uncertainty on
+                    g['sigma'][i,i] += 1.0/data.shape[0] # perfectly aligned data
             if len(g['sigma']) == 1:
                 Z.append(pl.bivariate_normal(X, Y, g['sigma'][0,0],\
                         g['sigma'][0,0], g['mu'][0], g['mu'][0]))
@@ -358,17 +355,16 @@ if __name__ == "__main__":
         #t_data = np.array([[1,1],[11,11]], np.float64)
         #t_data = np.array([[1,1],[0,1],[1,0],[10,10],[11,9],\
         #                [11,12],[9,9],[1,2]], np.float64)
-        t_data = np.array([[1,2],[1,3],[1,4],[2,1],\
-                        [3,1],[4,1]], np.float64)
+        t_data = np.array([[2,4],[1,2],[1,3],[1,4],[2,1],\
+                        [3,1],[4,1],[4,2]], np.float64)
         #t_data = np.array([[1],[3],[1],[2],\
         #                [12],[11],[11],[10]], np.float64)
-        #t1 = k_means(t_data, nbiter=10)
-        #print t1
-        #plot(t1["clusters"],t_data, "test k-means")
+        t1 = k_means(t_data, nbiter=10)
+        print t1
+        plot(t1["clusters"],t_data, "test k-means")
         t2 = expectation_maximization(t_data, nbiter=1, normalize=False)
         print t2
         plot(t2["clusters"],t_data, "test EM", t2['params'])
-
         sys.exit(0)
     nbiterations = 2 # TODO 100 when clustering for real
     (template, datalist) = parse(open(sys.argv[1]))
