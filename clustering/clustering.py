@@ -328,15 +328,19 @@ def plot(clusters, data, title='', gaussians=[]):
     pl.title(title)
 
     ### Plot gaussians
-    if len(gaussians) == 2: # currently only supports 2 / debug / TODO
+    if len(gaussians) == 2: # currently only supports 2 clusters! TODO
         Z = []
         for g in gaussians:
-            delta = 0.1
+            delta = (max(ranges) - min(ranges))/1000
             x = pl.arange(ranges[0], ranges[1], delta)
             y = pl.arange(ranges[2], ranges[3], delta)
             X,Y = pl.meshgrid(x, y)
-            Z.append(pl.bivariate_normal(X, Y, g['sigma'][0,0],\
-                    g['sigma'][1,1], g['mu'][0], g['mu'][1]))
+            if len(g['sigma']) == 1:
+                Z.append(pl.bivariate_normal(X, Y, g['sigma'][0,0],\
+                        g['sigma'][0,0], g['mu'][0], g['mu'][0]))
+            else:
+                Z.append(pl.bivariate_normal(X, Y, g['sigma'][0,0],\
+                        g['sigma'][1,1], g['mu'][0], g['mu'][1]))
         cmap = pl.cm.get_cmap('jet', 10)    # 10 discrete colors
         ay = pl.subplot(221)
         ay.imshow(Z[0], cmap=cmap, interpolation='bilinear', origin='lower',\
@@ -352,12 +356,12 @@ def plot(clusters, data, title='', gaussians=[]):
 if __name__ == "__main__":
     if sys.argv[1] == "test":
         #t_data = np.array([[1,1],[11,11]], np.float64)
-        t_data = np.array([[1,1],[0,1],[1,0],[10,10],[11,9],\
-                        [11,12],[9,9],[1,2]], np.float64)
-        #t_data = np.array([[1,2],[1,3],[1,4],[2,1],\
-        #                [3,1],[4,1]], np.float64)
-        #t_data = np.array([[1],[1],[1],[2],\
-        #                [101],[101],[101],[100]], np.float64)
+        #t_data = np.array([[1,1],[0,1],[1,0],[10,10],[11,9],\
+        #                [11,12],[9,9],[1,2]], np.float64)
+        t_data = np.array([[1,2],[1,3],[1,4],[2,1],\
+                        [3,1],[4,1]], np.float64)
+        #t_data = np.array([[1],[3],[1],[2],\
+        #                [12],[11],[11],[10]], np.float64)
         #t1 = k_means(t_data, nbiter=10)
         #print t1
         #plot(t1["clusters"],t_data, "test k-means")
