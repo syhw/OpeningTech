@@ -313,21 +313,27 @@ def filter_out_undef(tab):
     return (indices, np.array(tmp, np.int64))
 
 def plot(clusters, data, title='', gaussians=[]):
-    ax = pl.subplot(111)
+    ax = pl.subplot(212)
     xy = [[data[i,j] for i in clusters[0]] for j in range(len(data[0]))]
     ax.scatter(xy[0], xy[len(data[0])-1],\
             s=40, c='b', marker='s', edgecolors='none')
     xy = [[data[i,j] for i in clusters[1]] for j in range(len(data[0]))]
     ax.scatter(xy[0], xy[len(data[0])-1],\
             s=40, c='r', marker='s', edgecolors='none')
+    ranges = [min([data[:,i].min() for i in range(data.shape[1])]),\
+            max([data[:,i].max() for i in range(data.shape[1])]),\
+            min([data[i,:].min() for i in range(data.shape[0])]),\
+            max([data[i,:].max() for i in range(data.shape[0])])]
+    ax.axis(ranges)
+    pl.title(title)
 
     ### Plot gaussians
     if len(gaussians) == 2: # currently only supports 2 / debug / TODO
         Z = []
         for g in gaussians:
-            delta = 0.001
-            x = pl.arange(0.0, 1.0, delta)
-            y = pl.arange(0.0, 1.0, delta)
+            delta = 0.1
+            x = pl.arange(ranges[0], ranges[1], delta)
+            y = pl.arange(ranges[2], ranges[3], delta)
             X,Y = pl.meshgrid(x, y)
             Z.append(pl.bivariate_normal(X, Y, float(g['sigma'][0,0]),\
                     float(g['sigma'][1,1]),\
@@ -335,16 +341,14 @@ def plot(clusters, data, title='', gaussians=[]):
         ZZ = Z[0] + Z[1]
         print ZZ
         cmap = pl.cm.get_cmap('jet', 10)    # 10 discrete colors
-        ranges = [min([data[:,i].min() for i in range(data.shape[1])]),\
-                max([data[:,i].max() for i in range(data.shape[1])]),\
-                min([data[i,:].min() for i in range(data.shape[0])]),\
-                max([data[i,:].max() for i in range(data.shape[0])])]
-        ax.axis(ranges)
-        ax.imshow(ZZ, cmap=cmap, interpolation='bilinear', origin='lower',\
+        ay = pl.subplot(221)
+        ay.imshow(Z[0], cmap=cmap, interpolation='bilinear', origin='lower',\
+                extent=ranges)
+        az = pl.subplot(222)
+        az.imshow(Z[1], cmap=cmap, interpolation='bilinear', origin='lower',\
                 extent=ranges)
     ### /Plot gaussians 
 
-    pl.title(title)
     pl.grid(True)
     pl.show()
 
