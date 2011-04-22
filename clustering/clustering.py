@@ -338,8 +338,6 @@ def plot(clusters, data, title='', gaussians=[]):
             Z.append(pl.bivariate_normal(X, Y, float(g['sigma'][0,0]),\
                     float(g['sigma'][1,1]),\
                     float(g['mu'][0]), float(g['mu'][1])))
-        ZZ = Z[0] + Z[1]
-        print ZZ
         cmap = pl.cm.get_cmap('jet', 10)    # 10 discrete colors
         ay = pl.subplot(221)
         ay.imshow(Z[0], cmap=cmap, interpolation='bilinear', origin='lower',\
