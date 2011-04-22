@@ -5,6 +5,7 @@
 # Python License 2.0.1 http://www.python.org/download/releases/2.0.1/license/
 # Copyright 2011 Gabriel Synnaeve
 
+
 import sys, random, copy, math
 try:
     import numpy as np
@@ -153,6 +154,18 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
         return (2.0*math.pi)**(-len(x)/2.0)*math.sqrt(np.linalg.det(s))\
                 *math.exp(-0.5*(xm*sinv*xmt))
 
+    def draw_params():
+            #mu: [random.uniform(min_max[f][0], min_max[f][1])\          #LE
+            #for f in range(nbfeatures)], np.float64),\                  #GA
+            #sigma: [abs(random.gauss(min_max[f][1]/2.0,min_max[f][1]))\ #CY
+            return [{'mu': np.array(\
+                    [t[random.uniform(0,nbobs),:]]),\
+                    'sigma': np.matrix(np.diag(\
+                    [(min_max[f][1]-min_max[f][0])/2.0
+                    for f in range(nbfeatures)])),\
+                    'proba': 1.0/nbclusters}\
+                    for c in range(nbclusters)]
+
     nbobs = t.shape[0]
     nbfeatures = t.shape[1]
     min_max = []
@@ -176,46 +189,44 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
     random.seed()
     Pclust = np.ndarray([nbobs,nbclusters], np.float64) # P(clust|obs)
     Px = np.ndarray([nbobs,nbclusters], np.float64) # P(obs|clust)
-    # iterate for the best quality
+    # iterate nbiter times searching for the best "quality" clustering
     for i in range(nbiter):
-        # Step 1: draw nbclusters sets of parameters
-        params = [{'mu': np.array(\
-                [random.uniform(min_max[f][0], min_max[f][1])\
-                for f in range(nbfeatures)], np.float64),\
-                'sigma': np.matrix(np.diag(\
-                [abs(random.gauss(min_max[f][1]/2.0,min_max[f][1]))\
-                for f in range(nbfeatures)])),\
-                'proba': 1.0/nbclusters}\
-                for c in range(nbclusters)]
+        ##############################################
+        # Step 1: draw nbclusters sets of parameters #
+        ##############################################
+        params = draw_params()
         old_log_estimate = 0.0 # init, not true/real
         log_estimate = epsilon+1.0 # init, not true/real
+        # Iterate until convergence (EM is monotone) <=> < epsilon variation
         while (abs(log_estimate - old_log_estimate) > epsilon):
+            print params
             restart = False
             old_log_estimate = log_estimate
-            # Step 2: compute P(Cluster|obs) for each observations
+            ########################################################
+            # Step 2: compute P(Cluster|obs) for each observations #
+            ########################################################
             for o in range(nbobs):
                 for c in range(nbclusters):
                     # Px[o,c] = P(x|c)
                     Px[o,c] = pnorm(t[o,:],\
                             params[c]['mu'], params[c]['sigma'])
-                    #print ">>>> Px[", o, ", ", c, "]: ", Px[o,c]
-                    #print ">>>> mu: ", params[c]['mu']
-                    #print ">>>> sigma: ", params[c]['sigma']
                     # Pclust[o,c] = P(c|x)
                     Pclust[o,c] = Px[o,c]*params[c]['proba']
             for o in range(nbobs):
                 tmpSum = 0.0
                 for c in range(nbclusters):
                     tmpSum += params[c]['proba']*Px[o,c]
-                #print "Px: ", Px
                 print tmpSum
                 Pclust[o,:] /= tmpSum
-            # Step 3: update the parameters (sets of mu, sigma, proba)
+            ############################################################
+            # Step 3: update the parameters (sets of mu, sigma, proba) #
+            ############################################################
             for c in range(nbclusters):
                 tmpSum = sum(Pclust[:,c])
                 params[c]['proba'] = tmpSum/nbobs
-                if params[c]['proba'] == 0.0:
-                    restart = True
+                if params[c]['proba'] <= 1.0/nbobs: # restart if all
+                    restart = True                  # converges to
+                    print "Restarting"              # one cluster
                     break
                 m = np.zeros(nbfeatures, np.float64)
                 for o in range(nbobs):
@@ -232,19 +243,31 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
                 print tmpSum
                 params[c]['sigma'] = s/tmpSum
                 print "################: ", params[c]['sigma']
-            if restart:
-                break
-            # Step 4: compute the log estimate
-#            restart = False
-#            for c in range(nbclusters):
-#                if params[c]['proba'] == 0.0:
-#                    restart = True
-#            if restart:
-#                break
+
+            ### Test bound conditions and restart consequently if needed
+            if not restart:
+                restart = True
+                for c in range(1,nbclusters):
+                    if not np.allclose(params[c]['mu'], params[c-1]['mu'])\
+                    or not np.allclose(params[c]['sigma'], params[c-1]['sigma']):
+                        restart = False
+                        break
+            if restart:                # restart if all converges to only
+                old_log_estimate = 0.0 # one cluster
+                log_estimate = epsilon+1.0
+                params = draw_params()
+                continue
+            ### /Test bound conditions and restart
+
+            ####################################
+            # Step 4: compute the log estimate #
+            ####################################
             log_estimate = sum([math.log(sum(\
                     [Px[o,c]*params[c]['proba'] for c in range(nbclusters)]))\
                     for o in range(nbobs)])
-            print "log est: ", log_estimate
+            print "(EM) Log est.: ", log_estimate
+
+        # Pick/save the best clustering as the final result
         quality = -log_estimate
         if not quality in result or quality > result['quality']:
             result['quality'] = quality
@@ -297,41 +320,47 @@ def plot(clusters, data, title='', gaussians=[]):
     xy = [[data[i,j] for i in clusters[1]] for j in range(len(data[0]))]
     ax.scatter(xy[0], xy[len(data[0])-1],\
             s=40, c='r', marker='s', edgecolors='none')
-    Z = []
-    for g in gaussians:
-        delta = 0.001
-        x = pl.arange(0.0, 1.0, delta)
-        y = pl.arange(0.0, 1.0, delta)
-        X,Y = pl.meshgrid(x, y)
-        Z.append(pl.bivariate_normal(X, Y, float(g['sigma'][0,0]),\
-                float(g['sigma'][1,1]),\
-                float(g['mu'][0]), float(g['mu'][1])))
-    ZZ = Z[0] + Z[1]
-    cmap = pl.cm.get_cmap('jet', 10)    # 10 discrete colors
-    ranges = [min([data[:,i].min() for i in range(data.shape[1])]),\
-            max([data[:,i].max() for i in range(data.shape[1])]),\
-            min([data[i,:].min() for i in range(data.shape[0])]),\
-            max([data[i,:].max() for i in range(data.shape[0])])]
-    ax.axis(ranges)
-    ax.imshow(Z[0], cmap=cmap, interpolation='bilinear', origin='lower',\
-            extent=ranges)
-    ax.imshow(Z[1], cmap=cmap, interpolation='bilinear', origin='lower',\
-            extent=ranges)
+
+    ### Plot gaussians
+    if len(gaussians) == 2: # currently only supports 2 / debug / TODO
+        Z = []
+        for g in gaussians:
+            delta = 0.001
+            x = pl.arange(0.0, 1.0, delta)
+            y = pl.arange(0.0, 1.0, delta)
+            X,Y = pl.meshgrid(x, y)
+            Z.append(pl.bivariate_normal(X, Y, float(g['sigma'][0,0]),\
+                    float(g['sigma'][1,1]),\
+                    float(g['mu'][0]), float(g['mu'][1])))
+        ZZ = Z[0] + Z[1]
+        print ZZ
+        cmap = pl.cm.get_cmap('jet', 10)    # 10 discrete colors
+        ranges = [min([data[:,i].min() for i in range(data.shape[1])]),\
+                max([data[:,i].max() for i in range(data.shape[1])]),\
+                min([data[i,:].min() for i in range(data.shape[0])]),\
+                max([data[i,:].max() for i in range(data.shape[0])])]
+        ax.axis(ranges)
+        ax.imshow(ZZ, cmap=cmap, interpolation='bilinear', origin='lower',\
+                extent=ranges)
+    ### /Plot gaussians 
+
     pl.title(title)
     pl.grid(True)
     pl.show()
 
 if __name__ == "__main__":
     if sys.argv[1] == "test":
-        #t_data = np.array([[1,1],[0,1],[1,0],[10,10],[11,9],\
-        #                [11,12],[9,9],[1,1]], np.float64)
         #t_data = np.array([[1,1],[11,11]], np.float64)
-        t_data = np.array([[1,2],[1,3],[1,4],[2,1],\
-                        [3,1],[4,1]], np.float64)
+        t_data = np.array([[1,1],[0,1],[1,0],[10,10],[11,9],\
+                        [11,12],[9,9],[1,2]], np.float64)
+        #t_data = np.array([[1,2],[1,3],[1,4],[2,1],\
+        #                [3,1],[4,1]], np.float64)
+        #t_data = np.array([[1],[1],[1],[2],\
+        #                [101],[101],[101],[100]], np.float64)
         #t1 = k_means(t_data, nbiter=10)
         #print t1
         #plot(t1["clusters"],t_data, "test k-means")
-        t2 = expectation_maximization(t_data, nbiter=100, normalize=False)
+        t2 = expectation_maximization(t_data, nbiter=1, normalize=False)
         print t2
         plot(t2["clusters"],t_data, "test EM", t2['params'])
 
