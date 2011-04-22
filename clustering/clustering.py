@@ -335,9 +335,8 @@ def plot(clusters, data, title='', gaussians=[]):
             x = pl.arange(ranges[0], ranges[1], delta)
             y = pl.arange(ranges[2], ranges[3], delta)
             X,Y = pl.meshgrid(x, y)
-            Z.append(pl.bivariate_normal(X, Y, float(g['sigma'][0,0]),\
-                    float(g['sigma'][1,1]),\
-                    float(g['mu'][0]), float(g['mu'][1])))
+            Z.append(pl.bivariate_normal(X, Y, g['sigma'][0,0],\
+                    g['sigma'][1,1], g['mu'][0], g['mu'][1]))
         cmap = pl.cm.get_cmap('jet', 10)    # 10 discrete colors
         ay = pl.subplot(221)
         ay.imshow(Z[0], cmap=cmap, interpolation='bilinear', origin='lower',\
