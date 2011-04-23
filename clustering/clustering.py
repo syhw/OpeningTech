@@ -123,8 +123,12 @@ def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=0.5,\
     return result
 
 def r_em(t, nbclusters=2):
-    from rpy2.robjects import r
-    import rpy2.robjects.numpy2ri
+    try:
+        from rpy2.robjects import r
+        import rpy2.robjects.numpy2ri
+    except:
+        print "You can't use 'r_em()' without rpy2 and the R library mclust"
+        sys.exit(-1)
     r.quartz("plot")
     r.library("mclust")
     model = r.Mclust(t, G=2)
