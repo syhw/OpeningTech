@@ -16,7 +16,7 @@ try:
 except:
     print "You need pylab/matplotlib for plotting."
 
-def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=1.0,\
+def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=0.5,\
         #distance=lambda x,y: np.linalg.norm(x-y),\
         distance=lambda x,y: math.sqrt(np.dot(x-y,(x-y).conj())),\
         responsability=lambda beta,d: math.exp(-1 * beta * d)):
@@ -122,8 +122,17 @@ def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=1.0,\
             result['clusters'] = clusters
     return result
 
+def r_em(t, nbclusters=2):
+    from rpy2.robjects import r
+    import rpy2.robjects.numpy2ri
+    r.quartz("plot")
+    r.library("mclust")
+    model = r.Mclust(t, G=2)
+    r.plot(model, t)
+    return model
+
 def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
-        distance=lambda x,y: np.linalg.norm(x-y), epsilon=0.01):
+        epsilon=0.001, monotony=False):
     """ 
     Each row of t is an observation, each column is a feature 
     'nbclusters' is the number of seeds and so of clusters
@@ -159,7 +168,7 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
             #for f in range(nbfeatures)], np.float64),\                  #GA
             #sigma: [abs(random.gauss(min_max[f][1]/2.0,min_max[f][1]))\ #CY
             return [{'mu': np.array(\
-                    [t[random.uniform(0,nbobs),:]]),\
+                    [1.0*t[random.uniform(0,nbobs),:]]),\
                     'sigma': np.matrix(np.diag(\
                     [(min_max[f][1]-min_max[f][0])/2.0
                     for f in range(nbfeatures)])),\
@@ -194,10 +203,11 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
         # Step 1: draw nbclusters sets of parameters #
         ##############################################
         params = draw_params()
-        old_log_estimate = 0.0 # init, not true/real
-        log_estimate = epsilon+1.0 # init, not true/real
+        old_log_estimate = sys.maxint         # init, not true/real
+        log_estimate = sys.maxint/2 + epsilon # init, not true/real
         # Iterate until convergence (EM is monotone) <=> < epsilon variation
-        while (abs(log_estimate - old_log_estimate) > epsilon):
+        while (abs(log_estimate - old_log_estimate) > epsilon\
+                and (not monotony or log_estimate < old_log_estimate)):
             restart = False
             old_log_estimate = log_estimate
             ########################################################
@@ -218,6 +228,7 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
             ###########################################################
             # Step 3: update the parameters (sets {mu, sigma, proba}) #
             ###########################################################
+            print params
             for c in range(nbclusters):
                 tmpSum = sum(Pclust[:,c])
                 params[c]['proba'] = tmpSum/nbobs
@@ -231,8 +242,10 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
                 params[c]['mu'] = m/tmpSum
                 s = np.matrix(np.diag(np.zeros(nbfeatures, np.float64)))
                 for o in range(nbobs):
+                    #print ">>>> ", t[o,:]-params[c]['mu']
                     diag = Pclust[o,c]*((t[o,:]-params[c]['mu'])*\
                             (t[o,:]-params[c]['mu']).transpose())
+                    #print ">>> ", diag
                     for i in range(len(s)):
                         s[i,i] += diag[i]
                 params[c]['sigma'] = s/tmpSum
@@ -292,7 +305,7 @@ def parse(arff):
             data = True
     return (template, t)
 
-def filter_out_undef(tab):
+def filter_out_undef(tab, typ=np.float64):
     def not_undef(t):
         for e in t:
             if e < 0:
@@ -304,16 +317,23 @@ def filter_out_undef(tab):
         if not_undef(tab[i]):
             indices.append(i)
             tmp.append(tab[i])
-    return (indices, np.array(tmp, np.int64))
+    return (indices, np.array(tmp, typ))
 
-def plot(clusters, data, title='', gaussians=[]):
-    ax = pl.subplot(212)
-    xy = [[data[i,j] for i in clusters[0]] for j in range(len(data[0]))]
-    ax.scatter(xy[0], xy[len(data[0])-1],\
-            s=40, c='b', marker='s', edgecolors='none')
-    xy = [[data[i,j] for i in clusters[1]] for j in range(len(data[0]))]
-    ax.scatter(xy[0], xy[len(data[0])-1],\
-            s=40, c='r', marker='s', edgecolors='none')
+def plot(clusters, data, title='', gaussians=[], separate_plots=False):
+    if separate_plots:
+        ax = pl.subplot(212)
+    else:
+        ax = pl.subplot(111)
+    colors = ['brgcymk']
+    for k in range(len(clusters)):
+        print ">>>> drawing ", k
+        xy = [[data[i,j] for i in clusters[k]] for j in range(len(data[0]))]
+        ax.scatter(xy[0], xy[len(data[0])-1],s=40,\
+                c=colors[k], marker='x', edgecolors='none')
+    #if len(clusters[1]):
+    #    xy = [[data[i,j] for i in clusters[1]] for j in range(len(data[0]))]
+    #    ax.scatter(xy[0], xy[len(data[0])-1],\
+    #            s=40, c='r', marker='s', edgecolors='none')
     ranges = [min([data[:,i].min() for i in range(data.shape[1])]),\
             max([data[:,i].max() for i in range(data.shape[1])]),\
             min([data[i,:].min() for i in range(data.shape[0])]),\
@@ -322,7 +342,7 @@ def plot(clusters, data, title='', gaussians=[]):
     pl.title(title)
 
     ### Plot gaussians
-    if len(gaussians) == 2: # currently only supports 2 clusters! TODO
+    if len(gaussians):
         Z = []
         for g in gaussians:
             delta = (max(ranges) - min(ranges))/1000
@@ -338,13 +358,17 @@ def plot(clusters, data, title='', gaussians=[]):
             else:
                 Z.append(pl.bivariate_normal(X, Y, g['sigma'][0,0],\
                         g['sigma'][1,1], g['mu'][0], g['mu'][1]))
-        cmap = pl.cm.get_cmap('jet', 10)    # 10 discrete colors
-        ay = pl.subplot(221)
-        ay.imshow(Z[0], cmap=cmap, interpolation='bilinear', origin='lower',\
-                extent=ranges)
-        az = pl.subplot(222)
-        az.imshow(Z[1], cmap=cmap, interpolation='bilinear', origin='lower',\
-                extent=ranges)
+        if separate_plots: # only supports 2 clusters currently, TODO
+            cmap = pl.cm.get_cmap('jet', 10)    # 10 discrete colors
+            ay = pl.subplot(221)
+            ay.imshow(Z[0], cmap=cmap, interpolation='bilinear',\
+                    origin='lower', extent=ranges)
+            az = pl.subplot(222)
+            az.imshow(Z[1], cmap=cmap, interpolation='bilinear',\
+                    origin='lower', extent=ranges)
+        else:
+            ZZ = sum(Z)
+            ax.contour(X,Y,ZZ,1,colors='k')
     ### /Plot gaussians 
 
     pl.grid(True)
@@ -362,14 +386,14 @@ if __name__ == "__main__":
         t1 = k_means(t_data, nbiter=10)
         print t1
         plot(t1["clusters"],t_data, "test k-means")
-        t2 = expectation_maximization(t_data, nbiter=1, normalize=False)
+        t2 = expectation_maximization(t_data, nbiter=10, normalize=False)
         print t2
         plot(t2["clusters"],t_data, "test EM", t2['params'])
         sys.exit(0)
-    nbiterations = 2 # TODO 100 when clustering for real
+    nbiterations = 10 # TODO 100 when clustering for real
     (template, datalist) = parse(open(sys.argv[1]))
     # ndarray([#lines, #columns], type) and here #columns without label/string
-    data = np.ndarray([len(datalist), len(datalist[0]) - 1], np.int64)
+    data = np.ndarray([len(datalist), len(datalist[0]) - 1], np.float64)
     # transform the kind & dynamic python list into a static numpy.ndarray
     for i in range(len(datalist)):
         for j in range(len(datalist[0]) - 1):
@@ -381,25 +405,35 @@ if __name__ == "__main__":
     ### Fast DT
     fast_dt_data = filter_out_undef(data.take(\
             [template.index("ProtossDarkTemplar")], 1))
-    fast_dt = k_means(fast_dt_data[1], nbiter=nbiterations,\
-            distance = lambda x,y: abs(x-y))
+    #fast_dt = k_means(fast_dt_data[1], nbiter=nbiterations,\
+    #        distance = lambda x,y: abs(x-y))
+    #fast_dt = expectation_maximization(fast_dt_data[1], nbiter=nbiterations,\
+    #        monotony=True, normalize=True)
+    #print fast_dt
+    #plot(fast_dt["clusters"],fast_dt_data, "Fast DT", fast_dt['params'])
     ### Fast Expand
     fast_exp_data = filter_out_undef(data.take(\
-            [template.index("ProtossFirstExpansion")], 1))
-    fast_exp = k_means(fast_exp_data[1], nbiter=nbiterations,\
-            distance = lambda x,y: abs(x-y))
+            [template.index("ProtossFirstExpansion")], 1), typ=np.int64)
+    #fast_exp = k_means(fast_exp_data[1], nbiter=nbiterations,\
+    #        distance = lambda x,y: abs(x-y))
     ### Reaver Drop
     reaver_drop_data = filter_out_undef(data.take([\
             template.index("ProtossShuttle"), template.index("ProtossReavor")\
             ], 1))
-    reaver_drop = k_means(reaver_drop_data[1], nbiter=nbiterations)
-    #reaver_drop = expectation_maximization(reaver_drop_data[1], nbiter=nbiterations)
+    #reaver_drop = k_means(reaver_drop_data[1], nbiter=nbiterations)
+    #reaver_drop = expectation_maximization(reaver_drop_data[1],\
+    #        nbiter=nbiterations, normalize=True, monotony=True, nbclusters=6)
+    reaver_drop = r_em(reaver_drop_data[1], nbclusters=2)
 
     ### Cannon Rush
     cannon_rush_data = filter_out_undef(data.take([\
             template.index("ProtossForge"), template.index("ProtossCannon")\
-            ], 1))
+            ], 1), typ=np.int64)
 #    cannon_rush = k_means(cannon_rush_data[1], nbiter=nbiterations)
+    #cannon_rush = expectation_maximization(cannon_rush_data[1],\
+    #        nbiter=nbiterations, normalize=True, monotony=True)
+    #cannon_rush = k_means(cannon_rush_data[1],\
+    #        nbiter=nbiterations)
 
     ### +1 SpeedZeal
     speedzeal_data = filter_out_undef(data.take([\
@@ -407,6 +441,8 @@ if __name__ == "__main__":
             template.index("ProtossLegs")\
             ], 1))
 #    speedzeal = k_means(speedzeal_data[1], nbiter=nbiterations)
+    #speedzeal = expectation_maximization(speedzeal_data[1],\
+    #        nbiter=nbiterations, normalize=True, monotony=True)
 
     ### Nony opening
     nony_data = filter_out_undef(data.take([\
@@ -420,20 +456,24 @@ if __name__ == "__main__":
             template.index("ProtossCorsair")], 1))
 #    corsair = k_means(corsair_data[1], nbiter=nbiterations)
 
-    print fast_dt
-    plot(fast_dt["clusters"], fast_dt_data[1], "fast dark templar")
+    #print fast_dt
+    #plot(fast_dt["clusters"], fast_dt_data[1], "fast dark templar")
 
-    print fast_exp
-    plot(fast_exp["clusters"], fast_exp_data[1], "fast expand")
+    #print fast_exp
+    #plot(fast_exp["clusters"], fast_exp_data[1], "fast expand")
 
     print reaver_drop
-    plot(reaver_drop["clusters"], reaver_drop_data[1], "reaver drop")
+    #plot(reaver_drop["clusters"], reaver_drop_data[1], "reaver drop")
+    plot(reaver_drop["clusters"], reaver_drop_data[1], "reaver drop",\
+            reaver_drop["params"])
 
-    print cannon_rush
-    plot(cannon_rush["clusters"],cannon_rush_data[1], "cannon rush")
+    #print cannon_rush
+    #plot(cannon_rush["clusters"],cannon_rush_data[1], "cannon rush")#,\
+            #cannon_rush["params"])
 
     print speedzeal
-    plot(speedzeal["clusters"],speedzeal_data[1], "speedzeal")
+    plot(speedzeal["clusters"],speedzeal_data[1], "speedzeal",\
+            speedzeal["params"])
 
     print nony
     plot(nony["clusters"],nony_data[1], "nony")
