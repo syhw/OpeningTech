@@ -158,13 +158,13 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
     def pnorm(x, m, s):
         #return (1/(math.sqrt(2*math.pi*s**2)))\
         #        * math.exp((x-m)**2/(2*s**2))
-        xmt = np.matrix((x-m)).transpose()
+        xmt = np.matrix(x-m).transpose()
         for i in range(len(s)):
             if s[i,i] <= sys.float_info[3]: # min float
                 s[i,i] = sys.float_info[3]
         sinv = np.linalg.inv(s)
         xm = np.matrix(x-m)
-        return (2.0*math.pi)**(-len(x)/2.0)*math.sqrt(np.linalg.det(s))\
+        return (2.0*math.pi)**(-len(x)/2.0)*(1.0/math.sqrt(np.linalg.det(s)))\
                 *math.exp(-0.5*(xm*sinv*xmt))
 
     def draw_params():
@@ -222,17 +222,21 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
                     # Px[o,c] = P(x|c)
                     Px[o,c] = pnorm(t[o,:],\
                             params[c]['mu'], params[c]['sigma'])
+            for o in range(nbobs):
+                Px[o,:] /= math.fsum(Px[o,:])
+            for o in range(nbobs):
+                for c in range(nbclusters):
                     # Pclust[o,c] = P(c|x)
                     Pclust[o,c] = Px[o,c]*params[c]['proba']
                 assert math.fsum(Px[o,:]) >= 0.99 and\
                         math.fsum(Px[o,:]) <= 1.01
-                assert math.fsum(Pclust[:,c]) >= 0.99 and\
-                        math.fsum(Pclust[:,c]) <= 1.01
             for o in range(nbobs):
                 tmpSum = 0.0
                 for c in range(nbclusters):
                     tmpSum += params[c]['proba']*Px[o,c]
                 Pclust[o,:] /= tmpSum
+                #assert math.fsum(Pclust[:,c]) >= 0.99 and\
+                #        math.fsum(Pclust[:,c]) <= 1.01
             ###########################################################
             # Step 3: update the parameters (sets {mu, sigma, proba}) #
             ###########################################################
@@ -254,7 +258,7 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
                     diag = Pclust[o,c]*((t[o,:]-params[c]['mu'])*\
                             (t[o,:]-params[c]['mu']).transpose())
                     #print ">>> ", diag
-                    for i in range(len(s)):
+                    for i in range(len(s)) :
                         s[i,i] += diag[i]
                 params[c]['sigma'] = s/tmpSum
 
@@ -333,15 +337,19 @@ def plot(clusters, data, title='', gaussians=[], separate_plots=False):
     else:
         ax = pl.subplot(111)
     colors = ['brgcymk']
-    for k in range(len(clusters)):
-        print ">>>> drawing ", k
-        xy = [[data[i,j] for i in clusters[k]] for j in range(len(data[0]))]
-        ax.scatter(xy[0], xy[len(data[0])-1],s=40,\
-                c=colors[k], marker='x', edgecolors='none')
-    #if len(clusters[1]):
-    #    xy = [[data[i,j] for i in clusters[1]] for j in range(len(data[0]))]
-    #    ax.scatter(xy[0], xy[len(data[0])-1],\
-    #            s=40, c='r', marker='s', edgecolors='none')
+    #for k in range(len(clusters)):
+    #    print ">>>> drawing ", k
+    #    xy = [[data[i,j] for i in clusters[k]] for j in range(len(data[0]))]
+    #    ax.scatter(xy[0], xy[len(data[0])-1],s=40,\
+    #            c=colors[k], marker='x', edgecolors='none')
+    if len(clusters[1]):
+        xy = [[data[i,j] for i in clusters[1]] for j in range(len(data[0]))]
+        ax.scatter(xy[0], xy[len(data[0])-1],\
+                s=40, c='r', marker='s', edgecolors='none')
+    if len(clusters[1]):
+        xy = [[data[i,j] for i in clusters[0]] for j in range(len(data[0]))]
+        ax.scatter(xy[0], xy[len(data[0])-1],\
+                s=40, c='b', marker='s', edgecolors='none')
     ranges = [min([data[:,i].min() for i in range(data.shape[1])]),\
             max([data[:,i].max() for i in range(data.shape[1])]),\
             min([data[i,:].min() for i in range(data.shape[0])]),\
@@ -375,8 +383,8 @@ def plot(clusters, data, title='', gaussians=[], separate_plots=False):
             az.imshow(Z[1], cmap=cmap, interpolation='bilinear',\
                     origin='lower', extent=ranges)
         else:
-            ZZ = math.fsum(Z)
-            ax.contour(X,Y,ZZ,1,colors='k')
+            ZZ = sum(Z)
+            ax.contour(X, Y, ZZ, 1, colors='k')
     ### /Plot gaussians 
 
     pl.grid(True)
@@ -428,10 +436,10 @@ if __name__ == "__main__":
     reaver_drop_data = filter_out_undef(data.take([\
             template.index("ProtossShuttle"), template.index("ProtossReavor")\
             ], 1))
-    #reaver_drop = k_means(reaver_drop_data[1], nbiter=nbiterations)
-    reaver_drop = expectation_maximization(reaver_drop_data[1],\
+    reaver_drop = k_means(reaver_drop_data[1], nbiter=nbiterations)
+    reaver_drop2 = expectation_maximization(reaver_drop_data[1],\
             nbiter=nbiterations, normalize=True, monotony=True)
-    #reaver_drop = expectation_maximization(reaver_drop_data[1],\
+    #reaver_drop3 = expectation_maximization(reaver_drop_data[1],\
     #        nbiter=nbiterations, normalize=True, monotony=True, nbclusters=6)
     #reaver_drop = r_em(reaver_drop_data[1], nbclusters=2)
 
@@ -440,7 +448,7 @@ if __name__ == "__main__":
             template.index("ProtossForge"), template.index("ProtossCannon")\
             ], 1), typ=np.int64)
 #    cannon_rush = k_means(cannon_rush_data[1], nbiter=nbiterations)
-    #cannon_rush = expectation_maximization(cannon_rush_data[1],\
+    #cannon_rush = expec#tation_maximization(cannon_rush_data[1],\
     #        nbiter=nbiterations, normalize=True, monotony=True)
     #cannon_rush = k_means(cannon_rush_data[1],\
     #        nbiter=nbiterations)
@@ -473,9 +481,11 @@ if __name__ == "__main__":
     #plot(fast_exp["clusters"], fast_exp_data[1], "fast expand")
 
     print reaver_drop
-    #plot(reaver_drop["clusters"], reaver_drop_data[1], "reaver drop")
-    plot(reaver_drop["clusters"], reaver_drop_data[1], "reaver drop",\
-            reaver_drop["params"])
+    plot(reaver_drop["clusters"], reaver_drop_data[1], "reaver drop")
+    plot(reaver_drop2["clusters"], reaver_drop_data[1], "reaver drop2",\
+            reaver_drop2["params"])
+    #plot(reaver_drop3["clusters"], reaver_drop_data[1], "reaver drop3",\
+    #        reaver_drop3["params"])
 
     #print cannon_rush
     #plot(cannon_rush["clusters"],cannon_rush_data[1], "cannon rush")#,\
