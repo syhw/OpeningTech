@@ -339,20 +339,13 @@ def plot(clusters, data, title='', gaussians=[], separate_plots=False):
         ax = pl.subplot(212)
     else:
         ax = pl.subplot(111)
-    colors = ['brgcymk']
-    #for k in range(len(clusters)):
-    #    print ">>>> drawing ", k
-    #    xy = [[data[i,j] for i in clusters[k]] for j in range(len(data[0]))]
-    #    ax.scatter(xy[0], xy[len(data[0])-1],s=40,\
-    #            c=colors[k], marker='x', edgecolors='none')
-    if len(clusters[1]):
-        xy = [[data[i,j] for i in clusters[1]] for j in range(len(data[0]))]
-        ax.scatter(xy[0], xy[len(data[0])-1],\
-                s=40, c='r', marker='s', edgecolors='none')
-    if len(clusters[1]):
-        xy = [[data[i,j] for i in clusters[0]] for j in range(len(data[0]))]
-        ax.scatter(xy[0], xy[len(data[0])-1],\
-                s=40, c='b', marker='s', edgecolors='none')
+    colors = 'brgcymk'
+    for k in range(len(clusters)):
+        print ">>>> drawing ", k
+        if len(clusters[k]):
+            xy = [[data[i,j] for i in clusters[k]] for j in range(len(data[0]))]
+            ax.scatter(xy[0], xy[len(data[0])-1],s=20,\
+                    c=colors[k % len(colors)], marker='s', edgecolors='none')
     ranges = [min([data[:,i].min() for i in range(data.shape[1])]),\
             max([data[:,i].max() for i in range(data.shape[1])]),\
             min([data[i,:].min() for i in range(data.shape[0])]),\
@@ -386,8 +379,9 @@ def plot(clusters, data, title='', gaussians=[], separate_plots=False):
             az.imshow(Z[1], cmap=cmap, interpolation='bilinear',\
                     origin='lower', extent=ranges)
         else:
-            ZZ = sum(Z)
-            ax.contour(X, Y, ZZ, 1, colors='k')
+            #ZZ = sum(Z)
+            for i in range(len(Z)):
+                ax.contour(X, Y, Z[i], 1, colors='k')# colors=colors[i%len(colors)])
     ### /Plot gaussians 
 
     pl.grid(True)
