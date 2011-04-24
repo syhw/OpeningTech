@@ -57,7 +57,7 @@ def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=0.5,\
                 for c in range(nbclusters)]
         old_centroids = [np.array([-1 for f in range(nbfeatures)], np.float64)\
                 for c in range(nbclusters)] # should not be init, TODO
-        new_sum = sum([distance(centroids[c], old_centroids[c])\
+        new_sum = math.fsum([distance(centroids[c], old_centroids[c])\
                 for c in range(nbclusters)])
         old_sum = sys.maxint
         np.seterr(invalid='raise')
@@ -77,7 +77,7 @@ def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=0.5,\
                     for c in range(nbclusters):
                         tmpresp[o,c] = responsability(beta, tmpdist[o,c])
                 for o in range(nbobs):
-                    tmpresp[o,:] /= sum(tmpresp[o,:])
+                    tmpresp[o,:] /= math.fsum(tmpresp[o,:])
             else:
                 # Step 2: assign each object to the closest centroid
                 for o in range(nbobs):
@@ -101,20 +101,20 @@ def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=0.5,\
                     if soft:
                         for o in range(nbobs):
                             mean += tmpresp[o,c] * t[o,:]
-                        mean /= sum(tmpresp[:,c])
+                        mean /= math.fsum(tmpresp[:,c])
                     else:
                         for o in clusters[c]:
                             mean += t[o,:]
                         mean = map(lambda x: x/len(clusters[c]), mean)
                     centroids[c] = np.array(mean, np.float64)
             print centroids
-            new_sum = sum([distance(centroids[c], old_centroids[c])\
+            new_sum = math.fsum([distance(centroids[c], old_centroids[c])\
                     for c in range(nbclusters)])
             print "(k-means) old and new sum: ", old_sum, new_sum
         if soft:
             for o in range(nbobs):
                 clusters[tmpdist[o,:].argmin()].append(o)
-        quality = sum([sum([tmpdist[o][c] for o in clusters[c]])\
+        quality = math.fsum([math.fsum([tmpdist[o][c] for o in clusters[c]])\
                 /(len(clusters[c])+1) for c in range(nbclusters)])
         if not quality in result or quality > result['quality']:
             result['quality'] = quality
@@ -125,7 +125,7 @@ def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=0.5,\
 def r_em(t, nbclusters=2):
     try:
         from rpy2.robjects import r
-        import rpy2.robjects.numpy2ri
+        import rpy2.robjects.numpy2ri # auto-translates numpy array to R ones
     except:
         print "You can't use 'r_em()' without rpy2 and the R library mclust"
         sys.exit(-1)
@@ -224,6 +224,10 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
                             params[c]['mu'], params[c]['sigma'])
                     # Pclust[o,c] = P(c|x)
                     Pclust[o,c] = Px[o,c]*params[c]['proba']
+                assert math.fsum(Px[o,:]) >= 0.99 and\
+                        math.fsum(Px[o,:]) <= 1.01
+                assert math.fsum(Pclust[:,c]) >= 0.99 and\
+                        math.fsum(Pclust[:,c]) <= 1.01
             for o in range(nbobs):
                 tmpSum = 0.0
                 for c in range(nbclusters):
@@ -234,7 +238,7 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
             ###########################################################
             print params
             for c in range(nbclusters):
-                tmpSum = sum(Pclust[:,c])
+                tmpSum = math.fsum(Pclust[:,c])
                 params[c]['proba'] = tmpSum/nbobs
                 if params[c]['proba'] <= 1.0/nbobs:           # restart if all
                     restart = True                            # converges to
@@ -272,7 +276,7 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
             ####################################
             # Step 4: compute the log estimate #
             ####################################
-            log_estimate = sum([math.log(sum(\
+            log_estimate = math.fsum([math.log(math.fsum(\
                     [Px[o,c]*params[c]['proba'] for c in range(nbclusters)]))\
                     for o in range(nbobs)])
             print "(EM) old and new log estimate: ",\
@@ -371,7 +375,7 @@ def plot(clusters, data, title='', gaussians=[], separate_plots=False):
             az.imshow(Z[1], cmap=cmap, interpolation='bilinear',\
                     origin='lower', extent=ranges)
         else:
-            ZZ = sum(Z)
+            ZZ = math.fsum(Z)
             ax.contour(X,Y,ZZ,1,colors='k')
     ### /Plot gaussians 
 
@@ -425,9 +429,11 @@ if __name__ == "__main__":
             template.index("ProtossShuttle"), template.index("ProtossReavor")\
             ], 1))
     #reaver_drop = k_means(reaver_drop_data[1], nbiter=nbiterations)
+    reaver_drop = expectation_maximization(reaver_drop_data[1],\
+            nbiter=nbiterations, normalize=True, monotony=True)
     #reaver_drop = expectation_maximization(reaver_drop_data[1],\
     #        nbiter=nbiterations, normalize=True, monotony=True, nbclusters=6)
-    reaver_drop = r_em(reaver_drop_data[1], nbclusters=2)
+    #reaver_drop = r_em(reaver_drop_data[1], nbclusters=2)
 
     ### Cannon Rush
     cannon_rush_data = filter_out_undef(data.take([\
