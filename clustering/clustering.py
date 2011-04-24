@@ -16,6 +16,10 @@ try:
 except:
     print "You need pylab/matplotlib for plotting."
 
+def interact():
+    import code
+    code.InteractiveConsole(locals=globals()).interact()
+
 def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=0.5,\
         #distance=lambda x,y: np.linalg.norm(x-y),\
         distance=lambda x,y: math.sqrt(np.dot(x-y,(x-y).conj())),\
@@ -129,11 +133,38 @@ def r_em(t, nbclusters=2):
     except:
         print "You can't use 'r_em()' without rpy2 and the R library mclust"
         sys.exit(-1)
+    nbobs = t.shape[0]
+    nbfeatures = t.shape[1]
+    result = {}
     r.quartz("plot")
     r.library("mclust")
-    model = r.Mclust(t, G=2)
+    model = r.Mclust(t, G=nbclusters)
+    params = []
+    for i in range(nbclusters):
+        params.append({'mu': np.array([model[7][2][i*nbfeatures+j]\
+                             for j in range(nbfeatures)], np.float64),\
+                'sigma': np.matrix(np.array([np.array([model[7][3][3]\
+                [i*(nbfeatures**2)+jj*nbfeatures+j] for j in range(nbfeatures)],\
+                np.float64) for jj in range(nbfeatures)], np.float64)),\
+                'proba': model[7][1][i]})
+    result['quality'] = 42.0
+    result['params'] = copy.deepcopy(params)
+    result['clusters'] = [[o for o in range(nbobs)\
+            if model[9][o] == c+1.0]\
+            for c in range(nbclusters)]
+    print result
+
+    #for e in model:
+    #    print e
+    #print model[7][1] # probabilities/proportions for each cluster
+    #print model[7][2] # means
+    #print model[7][3][3] # variances (sigma) 
+    #print model[8] # probabilities(obs | cluster)
+    #print model[9] # clusters
     r.plot(model, t)
-    return model
+    #interact()
+    #sys.exit(0)
+    return result
 
 def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
         epsilon=0.001, monotony=False, datasetinit=True):
@@ -256,13 +287,17 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
                 params[c]['mu'] = m/tmpSum
                 s = np.matrix(np.diag(np.zeros(nbfeatures, np.float64)))
                 for o in range(nbobs):
+                    s += Pclust[o,c]*(np.matrix(t[o,:]-params[c]['mu']).transpose()*\
+                            np.matrix(t[o,:]-params[c]['mu']))
                     #print ">>>> ", t[o,:]-params[c]['mu']
-                    diag = Pclust[o,c]*((t[o,:]-params[c]['mu'])*\
-                            (t[o,:]-params[c]['mu']).transpose())
+                    #diag = Pclust[o,c]*((t[o,:]-params[c]['mu'])*\
+                    #        (t[o,:]-params[c]['mu']).transpose())
                     #print ">>> ", diag
-                    for i in range(len(s)) :
-                        s[i,i] += diag[i]
+                    #for i in range(len(s)) :
+                    #    s[i,i] += diag[i]
                 params[c]['sigma'] = s/tmpSum
+                print "------------------"
+                print params[c]['sigma']
 
             ### Test bound conditions and restart consequently if needed
             if not restart:
@@ -420,8 +455,8 @@ if __name__ == "__main__":
             [template.index("ProtossDarkTemplar")], 1))
     #fast_dt = k_means(fast_dt_data[1], nbiter=nbiterations,\
     #        distance = lambda x,y: abs(x-y))
-    fast_dt = expectation_maximization(fast_dt_data[1], nbiter=nbiterations,\
-            monotony=True, normalize=True)
+    #fast_dt = expectation_maximization(fast_dt_data[1], nbiter=nbiterations,\
+    #        monotony=True, normalize=True)
     #print fast_dt
     #plot(fast_dt["clusters"],fast_dt_data, "Fast DT", fast_dt['params'])
     ### Fast Expand
@@ -436,9 +471,9 @@ if __name__ == "__main__":
     reaver_drop = k_means(reaver_drop_data[1], nbiter=nbiterations)
     reaver_drop2 = expectation_maximization(reaver_drop_data[1],\
             nbiter=nbiterations, normalize=True, monotony=True)
-    reaver_drop3 = expectation_maximization(reaver_drop_data[1],\
-            nbiter=nbiterations, normalize=True, monotony=True, nbclusters=6)
-    #reaver_drop4 = r_em(reaver_drop_data[1], nbclusters=2)
+#    reaver_drop3 = expectation_maximization(reaver_drop_data[1],\
+#            nbiter=nbiterations, normalize=True, monotony=True, nbclusters=6)
+    reaver_drop4 = r_em(reaver_drop_data[1], nbclusters=2)
 
     ### Cannon Rush
     cannon_rush_data = filter_out_undef(data.take([\
@@ -482,9 +517,12 @@ if __name__ == "__main__":
     print reaver_drop2
     plot(reaver_drop2["clusters"], reaver_drop_data[1], "reaver drop2",\
             reaver_drop2["params"])
-    print reaver_drop3
-    plot(reaver_drop3["clusters"], reaver_drop_data[1], "reaver drop3",\
-            reaver_drop3["params"])
+    #print reaver_drop3
+    #plot(reaver_drop3["clusters"], reaver_drop_data[1], "reaver drop3",\
+    #        reaver_drop3["params"])
+    print reaver_drop4
+    plot(reaver_drop4["clusters"], reaver_drop_data[1], "reaver drop4",\
+            reaver_drop4["params"])
 
     #print cannon_rush
     #plot(cannon_rush["clusters"],cannon_rush_data[1], "cannon rush")#,\
