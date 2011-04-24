@@ -49,7 +49,7 @@ def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=0.5,\
     tmpdist = np.ndarray([nbobs,nbclusters], np.float64) # distance obs<->clust
     tmpresp = np.ndarray([nbobs,nbclusters], np.float64) # responsability o<->c
     # iterate for the best quality
-    for i in range(nbiter):
+    for iteration in range(nbiter):
         clusters = [[] for c in range(nbclusters)]
         # Step 1: place nbclusters seeds for each features
         centroids = [np.array([random.uniform(min_max[f][0], min_max[f][1])\
@@ -136,7 +136,7 @@ def r_em(t, nbclusters=2):
     return model
 
 def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
-        epsilon=0.001, monotony=False):
+        epsilon=0.001, monotony=False, datasetinit=True):
     """ 
     Each row of t is an observation, each column is a feature 
     'nbclusters' is the number of seeds and so of clusters
@@ -168,16 +168,16 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
                 *math.exp(-0.5*(xm*sinv*xmt))
 
     def draw_params():
-            #mu: [random.uniform(min_max[f][0], min_max[f][1])\          #LE
-            #for f in range(nbfeatures)], np.float64),\                  #GA
-            #sigma: [abs(random.gauss(min_max[f][1]/2.0,min_max[f][1]))\ #CY
-            return [{'mu': np.array(\
-                    [1.0*t[random.uniform(0,nbobs),:]]),\
+            if datasetinit:
+                tmpmu = np.array([1.0*t[random.uniform(0,nbobs),:]],np.float64)
+            else:
+                tmpmu = np.array([random.uniform(min_max[f][0], min_max[f][1])\
+                        for f in range(nbfeatures)], np.float64)
+            return {'mu': tmpmu,\
                     'sigma': np.matrix(np.diag(\
-                    [(min_max[f][1]-min_max[f][0])/2.0
+                    [(min_max[f][1]-min_max[f][0])/2.0\
                     for f in range(nbfeatures)])),\
-                    'proba': 1.0/nbclusters}\
-                    for c in range(nbclusters)]
+                    'proba': 1.0/nbclusters}
 
     nbobs = t.shape[0]
     nbfeatures = t.shape[1]
@@ -202,13 +202,14 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
     Pclust = np.ndarray([nbobs,nbclusters], np.float64) # P(clust|obs)
     Px = np.ndarray([nbobs,nbclusters], np.float64) # P(obs|clust)
     # iterate nbiter times searching for the best "quality" clustering
-    for i in range(nbiter):
+    for iteration in range(nbiter):
         ##############################################
         # Step 1: draw nbclusters sets of parameters #
         ##############################################
-        params = draw_params()
+        params = [draw_params() for c in range(nbclusters)]
         old_log_estimate = sys.maxint         # init, not true/real
         log_estimate = sys.maxint/2 + epsilon # init, not true/real
+        estimation_round = 0
         # Iterate until convergence (EM is monotone) <=> < epsilon variation
         while (abs(log_estimate - old_log_estimate) > epsilon\
                 and (not monotony or log_estimate < old_log_estimate)):
@@ -222,14 +223,14 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
                     # Px[o,c] = P(x|c)
                     Px[o,c] = pnorm(t[o,:],\
                             params[c]['mu'], params[c]['sigma'])
-            for o in range(nbobs):
-                Px[o,:] /= math.fsum(Px[o,:])
+            #for o in range(nbobs):
+            #    Px[o,:] /= math.fsum(Px[o,:])
             for o in range(nbobs):
                 for c in range(nbclusters):
                     # Pclust[o,c] = P(c|x)
                     Pclust[o,c] = Px[o,c]*params[c]['proba']
-                assert math.fsum(Px[o,:]) >= 0.99 and\
-                        math.fsum(Px[o,:]) <= 1.01
+            #    assert math.fsum(Px[o,:]) >= 0.99 and\
+            #            math.fsum(Px[o,:]) <= 1.01
             for o in range(nbobs):
                 tmpSum = 0.0
                 for c in range(nbclusters):
@@ -240,7 +241,8 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
             ###########################################################
             # Step 3: update the parameters (sets {mu, sigma, proba}) #
             ###########################################################
-            print params
+            print "iter:", iteration, " estimation#:", estimation_round,\
+                    " params:", params
             for c in range(nbclusters):
                 tmpSum = math.fsum(Pclust[:,c])
                 params[c]['proba'] = tmpSum/nbobs
@@ -271,9 +273,9 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
                         restart = False
                         break
             if restart:                # restart if all converges to only
-                old_log_estimate = 0.0 # one cluster
-                log_estimate = epsilon+1.0
-                params = draw_params()
+                old_log_estimate = sys.maxint         # init, not true/real
+                log_estimate = sys.maxint/2 + epsilon # init, not true/real
+                params = [draw_params() for c in range(nbclusters)]
                 continue
             ### /Test bound conditions and restart
 
@@ -285,6 +287,7 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
                     for o in range(nbobs)])
             print "(EM) old and new log estimate: ",\
                     old_log_estimate, log_estimate
+            estimation_round += 1
 
         # Pick/save the best clustering as the final result
         quality = -log_estimate
@@ -423,8 +426,8 @@ if __name__ == "__main__":
             [template.index("ProtossDarkTemplar")], 1))
     #fast_dt = k_means(fast_dt_data[1], nbiter=nbiterations,\
     #        distance = lambda x,y: abs(x-y))
-    #fast_dt = expectation_maximization(fast_dt_data[1], nbiter=nbiterations,\
-    #        monotony=True, normalize=True)
+    fast_dt = expectation_maximization(fast_dt_data[1], nbiter=nbiterations,\
+            monotony=True, normalize=True)
     #print fast_dt
     #plot(fast_dt["clusters"],fast_dt_data, "Fast DT", fast_dt['params'])
     ### Fast Expand
@@ -439,9 +442,9 @@ if __name__ == "__main__":
     reaver_drop = k_means(reaver_drop_data[1], nbiter=nbiterations)
     reaver_drop2 = expectation_maximization(reaver_drop_data[1],\
             nbiter=nbiterations, normalize=True, monotony=True)
-    #reaver_drop3 = expectation_maximization(reaver_drop_data[1],\
-    #        nbiter=nbiterations, normalize=True, monotony=True, nbclusters=6)
-    #reaver_drop = r_em(reaver_drop_data[1], nbclusters=2)
+    reaver_drop3 = expectation_maximization(reaver_drop_data[1],\
+            nbiter=nbiterations, normalize=True, monotony=True, nbclusters=6)
+    #reaver_drop4 = r_em(reaver_drop_data[1], nbclusters=2)
 
     ### Cannon Rush
     cannon_rush_data = filter_out_undef(data.take([\
@@ -482,10 +485,12 @@ if __name__ == "__main__":
 
     print reaver_drop
     plot(reaver_drop["clusters"], reaver_drop_data[1], "reaver drop")
+    print reaver_drop2
     plot(reaver_drop2["clusters"], reaver_drop_data[1], "reaver drop2",\
             reaver_drop2["params"])
-    #plot(reaver_drop3["clusters"], reaver_drop_data[1], "reaver drop3",\
-    #        reaver_drop3["params"])
+    print reaver_drop3
+    plot(reaver_drop3["clusters"], reaver_drop_data[1], "reaver drop3",\
+            reaver_drop3["params"])
 
     #print cannon_rush
     #plot(cannon_rush["clusters"],cannon_rush_data[1], "cannon rush")#,\
