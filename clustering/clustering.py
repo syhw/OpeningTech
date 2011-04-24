@@ -20,7 +20,7 @@ def interact():
     import code
     code.InteractiveConsole(locals=globals()).interact()
 
-def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=0.5,\
+def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=False, beta=200.0,\
         #distance=lambda x,y: np.linalg.norm(x-y),\
         distance=lambda x,y: math.sqrt(np.dot(x-y,(x-y).conj())),\
         responsability=lambda beta,d: math.exp(-1 * beta * d)):
@@ -47,6 +47,17 @@ def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=0.5,\
     min_max = []
     for f in range(nbfeatures):
         min_max.append((t[:,f].min(), t[:,f].max()))
+
+    ### Soft => Normalization, otherwise "beta" has no meaning!
+    if soft:
+        for f in range(nbfeatures):
+            t[:,f] -= min_max[f][0]
+            t[:,f] /= (min_max[f][1]-min_max[f][0])
+    min_max = []
+    for f in range(nbfeatures):
+        min_max.append((t[:,f].min(), t[:,f].max()))
+    ### /Normalization # ugly
+
     result = {}
     quality = 0.0 # sum of the means of the distances to centroids
     random.seed()
@@ -218,7 +229,7 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
     min_max = []
     for f in range(nbfeatures):
         min_max.append((t[:,f].min(), t[:,f].max()))
-    ### /Normalization
+    ### /Normalization # ugly
 
     result = {}
     quality = 0.0 # sum of the means of the distances to centroids
@@ -431,7 +442,7 @@ if __name__ == "__main__":
         print t2
         plot(t2["clusters"],t_data, "test EM", t2['params'])
         sys.exit(0)
-    nbiterations = 10 # TODO 100 when clustering for real
+    nbiterations = 30 # TODO 100 when clustering for real
     (template, datalist) = parse(open(sys.argv[1]))
     # ndarray([#lines, #columns], type) and here #columns without label/string
     data = np.ndarray([len(datalist), len(datalist[0]) - 1], np.float64)
@@ -444,21 +455,23 @@ if __name__ == "__main__":
     matchup = sys.argv[1][5]            # race against which it performs
 
     ### FULL
-    full_data = filter_out_undef(data.take(\
-            [template.index("ProtossPylon"), template.index("ProtossGateway"),\
-            template.index("ProtossCore"), template.index("ProtossSecondPylon")]\
-            , 1))
-    full = r_em(full_data[1], plot=True)
+    #full_data = filter_out_undef(data.take(\
+    #        [template.index("ProtossPylon"), template.index("ProtossGateway"),\
+    #        template.index("ProtossCore"), template.index("ProtossSecondPylon")]\
+    #        , 1))
+    #full = r_em(full_data[1], plot=True)
 
     ### Fast DT
+    fast_dt_data_int = filter_out_undef(data.take(\
+            [template.index("ProtossDarkTemplar")], 1), typ=np.int64)
+    fast_dt = k_means(fast_dt_data_int[1], nbiter=nbiterations,\
+            distance = lambda x,y: abs(x-y))
     fast_dt_data = filter_out_undef(data.take(\
             [template.index("ProtossDarkTemplar")], 1))
-    #fast_dt = k_means(fast_dt_data[1], nbiter=nbiterations,\
-    #        distance = lambda x,y: abs(x-y))
-    #fast_dt = expectation_maximization(fast_dt_data[1], nbiter=nbiterations,\
-    #        monotony=True, normalize=True)
-    #print fast_dt
-    #plot(fast_dt["clusters"],fast_dt_data, "Fast DT", fast_dt['params'])
+    fast_dt2 = expectation_maximization(fast_dt_data[1], nbiter=nbiterations,\
+            monotony=True, normalize=True)
+    fast_dt3 = r_em(fast_dt_data[1], nbclusters=2)
+
     ### Fast Expand
     fast_exp_data = filter_out_undef(data.take(\
             [template.index("ProtossFirstExpansion")], 1), typ=np.int64)
@@ -506,8 +519,12 @@ if __name__ == "__main__":
             template.index("ProtossCorsair")], 1))
 #    corsair = k_means(corsair_data[1], nbiter=nbiterations)
 
-    #print fast_dt
-    #plot(fast_dt["clusters"], fast_dt_data[1], "fast dark templar")
+    print fast_dt
+    plot(fast_dt["clusters"], fast_dt_data[1], "fast dark templar")
+    print fast_dt2
+    plot(fast_dt2["clusters"], fast_dt_data[1], "fast dark templar")
+    print fast_dt3
+    plot(fast_dt3["clusters"], fast_dt_data[1], "fast dark templar")
 
     #print fast_exp
     #plot(fast_exp["clusters"], fast_exp_data[1], "fast expand")
