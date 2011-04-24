@@ -126,7 +126,7 @@ def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=True, beta=0.5,\
             result['clusters'] = clusters
     return result
 
-def r_em(t, nbclusters=2):
+def r_em(t, nbclusters=0, plot=False):
     try:
         from rpy2.robjects import r
         import rpy2.robjects.numpy2ri # auto-translates numpy array to R ones
@@ -136,9 +136,11 @@ def r_em(t, nbclusters=2):
     nbobs = t.shape[0]
     nbfeatures = t.shape[1]
     result = {}
-    r.quartz("plot")
     r.library("mclust")
-    model = r.Mclust(t, G=nbclusters)
+    if nbclusters:
+        model = r.Mclust(t, G=nbclusters)
+    else:
+        model = r.Mclust(t)
     params = []
     for i in range(nbclusters):
         params.append({'mu': np.array([model[7][2][i*nbfeatures+j]\
@@ -152,18 +154,9 @@ def r_em(t, nbclusters=2):
     result['clusters'] = [[o for o in range(nbobs)\
             if model[9][o] == c+1.0]\
             for c in range(nbclusters)]
-    print result
-
-    #for e in model:
-    #    print e
-    #print model[7][1] # probabilities/proportions for each cluster
-    #print model[7][2] # means
-    #print model[7][3][3] # variances (sigma) 
-    #print model[8] # probabilities(obs | cluster)
-    #print model[9] # clusters
-    r.plot(model, t)
-    #interact()
-    #sys.exit(0)
+    if plot:
+        r.quartz("plot")
+        r.plot(model, t)
     return result
 
 def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
@@ -449,6 +442,13 @@ if __name__ == "__main__":
 
     race = sys.argv[1].split('_')[1][0] # race that performs the openings
     matchup = sys.argv[1][5]            # race against which it performs
+
+    ### FULL
+    full_data = filter_out_undef(data.take(\
+            [template.index("ProtossPylon"), template.index("ProtossGateway"),\
+            template.index("ProtossCore"), template.index("ProtossSecondPylon")]\
+            , 1))
+    full = r_em(full_data[1], plot=True)
 
     ### Fast DT
     fast_dt_data = filter_out_undef(data.take(\
