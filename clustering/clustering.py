@@ -474,7 +474,7 @@ def annotate(data, *args):
 
         ### /!\ shitty heuristic to determine which cluster is the one labeled
         # the labeling cluster should be the one with globally smaller means
-        cind1 = -1
+        cind = -1
         minnorm = 100000000000000000000000000000000000000000000.0
         if clusters.has_key('params'):
             params = clusters['params']
@@ -487,25 +487,12 @@ def annotate(data, *args):
                 tmpnorm = np.linalg.norm(params[i])
             if tmpnorm < minnorm:
                 minnorm = tmpnorm
-                cind1 = i
-
-        # it should also be the smallest cluster find it with sizes:
-        cind2 = -1
-        m = len(clusters['clusters'][0])
-        for i in range(1, len(clusters['clusters'])):
-            if len(clusters['clusters'][i]) < m:
-                m = len(clusters['clusters'][i])
-                cind2 = i
-
-        if cind1 != cind2:
-            print "smallest cluster != min 'mu' norm"
-            print clusters
-            sys.exit(-1)
-        # clusters['clusters'][cind1] is the list of the games labeled
+                cind = i
+        # clusters['clusters'][cind] is the list of the games labeled
         # clusters['name'] in data[1], their indices in data is in data[0]
         ### /!\ /shitty heuristic
         
-        for g in clusters['clusters'][cind1]:
+        for g in clusters['clusters'][cind]:
             annotations['games'][data[0][g]][labelind] += clusters['name']
     return annotations
 
@@ -522,7 +509,8 @@ def write_arff(template, annotations,fn):
                     ','.join(annotations['openings'])+'}\n')
     f.write('\n@data\n')
     for game in annotations['games']:
-        f.write(','.join(game)+'\n')
+        print game
+        #f.write(','.join(str(game))+'\n')
     return 
 
 if __name__ == "__main__":
@@ -544,7 +532,8 @@ if __name__ == "__main__":
     nbiterations = 5 # TODO 100 when clustering for real
     kmeans = False
     EM = False
-    plotR = True
+    plotR = False
+    plotM = False
 
     (template, datalist) = parse(open(sys.argv[1]))
     # build data without the "label"/opening/strategy column
@@ -704,32 +693,40 @@ if __name__ == "__main__":
 #        cannon_rush = r_em(cannon_rush_data[1], nbclusters=2, plot=plotR)
 
         two_gates['name'] = "two_gates"
-        print two_gates
-        plot(two_gates, two_gates_data[1])
         fast_dt['name'] = "fast_dt"
-        print fast_dt
-        plot(fast_dt, fast_dt_data[1])
         fast_exp['name'] = "fast_exp" # TODO (not satisfied)
-        print fast_exp
-        plot(fast_exp, fast_exp_data[1])
         speedzeal['name'] = "speedzeal"
-        print speedzeal
-        plot(speedzeal, speedzeal_data[1])
         bisu['name'] = "bisu"
-        print bisu
-        plot(bisu, bisu_data[1])
         corsair['name'] = "corsair"
-        print corsair
-        plot(corsair, corsair_data[1])
         nony['name'] = "nony"
-        print nony
-        plot(nony,nony_data[1])
         reaver_drop['name'] = "reaver_drop"
-        print reaver_drop
-        plot(reaver_drop, reaver_drop_data[1])
-        #print cannon_rush
-        #plot(cannon_rush["clusters"],cannon_rush_data[1], "cannon rush",\
-        #        cannon_rush["params"])
+        if plotM:
+            print two_gates
+            plot(two_gates, two_gates_data[1])
+            print fast_dt
+            plot(fast_dt, fast_dt_data[1])
+            print fast_exp
+            plot(fast_exp, fast_exp_data[1])
+            print speedzeal
+            plot(speedzeal, speedzeal_data[1])
+            print bisu
+            plot(bisu, bisu_data[1])
+            print corsair
+            plot(corsair, corsair_data[1])
+            print nony
+            plot(nony,nony_data[1])
+            print reaver_drop
+            plot(reaver_drop, reaver_drop_data[1])
+            #print cannon_rush
+            #plot(cannon_rush["clusters"],cannon_rush_data[1], "cannon rush",\
+            #        cannon_rush["params"])
+
+        write_arff(template, annotate(datalist,\
+                (two_gates_data, two_gates), (fast_dt_data, fast_dt),\
+                (fast_exp_data, fast_exp), (speedzeal_data, speedzeal),\
+                (bisu_data, bisu), (corsair_data, corsair),\
+                (nony_data, nony), (reaver_drop_data, reaver_drop)),\
+                "my"+sys.argv[1])
 
     if race == "T":
         # Main openings:
@@ -807,27 +804,34 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         wraith = r_em(wraith_data[1], nbclusters=2, plot=plotR)
 
-        #bbs['name'] = "bbs"
-        #print bbs
-        #plot(bbs, bbs_data[1])
         bio['name'] = "bio"
-        print bio
-        plot(bio, bio_data[1])
         rax_fe['name'] = "rax_fe"
-        print rax_fe
-        plot(rax_fe, rax_fe_data[1])
         siege_exp['name'] = "siege_exp"
-        print siege_exp
-        plot(siege_exp, siege_exp_data[1])
         two_facto['name'] = "two_facto"
-        print two_facto
-        plot(two_facto, two_facto_data[1])
         vultures['name'] = "vultures"
-        print vultures
-        plot(vultures, vultures_data[1])
         wraith['name'] = "wraith"
-        print wraith
-        plot(wraith, wraith_data[1])
+        if plotM:
+            #bbs['name'] = "bbs"
+            #print bbs
+            #plot(bbs, bbs_data[1])
+            print bio
+            plot(bio, bio_data[1])
+            print rax_fe
+            plot(rax_fe, rax_fe_data[1])
+            print siege_exp
+            plot(siege_exp, siege_exp_data[1])
+            print two_facto
+            plot(two_facto, two_facto_data[1])
+            print vultures
+            plot(vultures, vultures_data[1])
+            print wraith
+            plot(wraith, wraith_data[1])
+
+        write_arff(template, annotate(datalist,\
+                (bio_data, bio), (rax_fe_data, rax_fe),\
+                (siege_exp_data, siege_exp), (two_facto_data, two_facto),\
+                (vultures_data, vultures), (wraith_data, wraith)),\
+                "my"+sys.argv[1])
 
     if race == "Z":
         # Main openings:
@@ -910,29 +914,30 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         hydras = r_em(hydras_data[1], nbclusters=2, plot=plotR)
 
-        #glings_rush['name'] = "glings_rush"
-        #print glings_rush
-        #plot(glings_rush, glings_rush_data[1])
         speedlings['name'] = "speedlings"
-        print speedlings
-        plot(speedlings, speedlings_data[1])
-        #fast_exp['name'] = "fast_exp"
-        #print fast_exp
-        #plot(fast_exp, fast_exp_data[1])
         fast_mutas['name'] = "fast_mutas"
-        print fast_mutas
-        plot(fast_mutas, fast_mutas_data[1])
         mutas['name'] = "mutas"
-        print mutas
-        plot(mutas, mutas_data[1])
         lurkers['name'] = "lurkers"
-        print lurkers
-        plot(lurkers, lurkers_data[1])
         hydras['name'] = "hydras"
-        print hydras
-        plot(hydras, hydras_data[1])
+        if plotM:
+            #glings_rush['name'] = "glings_rush"
+            #print glings_rush
+            #plot(glings_rush, glings_rush_data[1])
+            print speedlings
+            plot(speedlings, speedlings_data[1])
+            #fast_exp['name'] = "fast_exp"
+            #print fast_exp
+            #plot(fast_exp, fast_exp_data[1])
+            print fast_mutas
+            plot(fast_mutas, fast_mutas_data[1])
+            print mutas
+            plot(mutas, mutas_data[1])
+            print lurkers
+            plot(lurkers, lurkers_data[1])
+            print hydras
+            plot(hydras, hydras_data[1])
 
-        write_arff(annotate(datalist,\
+        write_arff(template, annotate(datalist,\
                 (speedlings_data, speedlings), (fast_mutas_data, fast_mutas),\
                 (mutas_data, mutas), (lurkers_data, lurkers),\
                 (hydras_data, hydras)), "my"+sys.argv[1])
