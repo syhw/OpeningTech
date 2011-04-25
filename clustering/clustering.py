@@ -384,7 +384,12 @@ def filter_out_undef(tab, typ=np.float64):
             tmp.append(tab[i])
     return (indices, np.array(tmp, typ))
 
-def plot(clusters, data, title='', gaussians=[], separate_plots=False):
+def plot(clusterst, data, title='', gaussians=[], separate_plots=False):
+    if clusterst.has_key('name'):
+        title = clusterst['name']
+    if clusterst.has_key('params'):
+        gaussians = clusterst['params']
+    clusters = clusterst['clusters']
     if separate_plots:
         ax = pl.subplot(212)
     else:
@@ -456,6 +461,70 @@ def plot(clusters, data, title='', gaussians=[], separate_plots=False):
     pl.grid(True)
     pl.show()
 
+def annotate(data, *args):
+    annotations = {}
+    annotations['openings'] = []
+    annotations['games'] = copy.deepcopy(data)
+    labelind = len(data[0]) - 1
+    #for i range(len(data)):
+    for (data, clusters) in args:
+        # data[0] are the true indices in data of data[1] (filtered data)
+        # clusters['name'] / clusters['clusters'] / clusters['params']
+        annotations['openings'].append(clusters['name'])
+
+        ### /!\ shitty heuristic to determine which cluster is the one labeled
+        # the labeling cluster should be the one with globally smaller means
+        cind1 = -1
+        minnorm = 100000000000000000000000000000000000000000000.0
+        if clusters.has_key('params'):
+            params = clusters['params']
+        elif clusters.has_key('centroids'):
+            params = clusters['centroids']
+        for i in range(len(params)):
+            if clusters.has_key('params'):
+                tmpnorm = np.linalg.norm(params[i]['mu'])
+            elif clusters.has_key('centroids'):
+                tmpnorm = np.linalg.norm(params[i])
+            if tmpnorm < minnorm:
+                minnorm = tmpnorm
+                cind1 = i
+
+        # it should also be the smallest cluster find it with sizes:
+        cind2 = -1
+        m = len(clusters['clusters'][0])
+        for i in range(1, len(clusters['clusters'])):
+            if len(clusters['clusters'][i]) < m:
+                m = len(clusters['clusters'][i])
+                cind2 = i
+
+        if cind1 != cind2:
+            print "smallest cluster != min 'mu' norm"
+            print clusters
+            sys.exit(-1)
+        # clusters['clusters'][cind1] is the list of the games labeled
+        # clusters['name'] in data[1], their indices in data is in data[0]
+        ### /!\ /shitty heuristic
+        
+        for g in clusters['clusters'][cind1]:
+            annotations['games'][data[0][g]][labelind] += clusters['name']
+    return annotations
+
+def write_arff(template, annotations,fn):
+    f = open(fn, 'w')
+    r = fn.split('_')[1] # race that performs the openings
+    f.write('@relation Starcraft_'+sys.argv[1][3:6]+'_'+r+'_openings\n')
+    f.write('\n')
+    for attr in template:
+        if not 'midBuild' in attr:
+            f.write('@attribute '+attr+' numeric\n')
+        else:
+            f.write('@attribute '+attr+' {'+\
+                    ','.join(annotations['openings'])+'}\n')
+    f.write('\n@data\n')
+    for game in annotations['games']:
+        f.write(','.join(game)+'\n')
+    return 
+
 if __name__ == "__main__":
     if sys.argv[1] == "test":
         #t_data = np.array([[1,1],[11,11]], np.float64)
@@ -478,7 +547,7 @@ if __name__ == "__main__":
     plotR = True
 
     (template, datalist) = parse(open(sys.argv[1]))
-    # ndarray([#lines, #columns], type) and here #columns without label/string
+    # build data without the "label"/opening/strategy column
     data = np.ndarray([len(datalist), len(datalist[0]) - 1], np.float64)
     # transform the kind & dynamic python list into a static numpy.ndarray
     for i in range(len(datalist)):
@@ -487,13 +556,6 @@ if __name__ == "__main__":
 
     race = sys.argv[1].split('_')[1][0] # race that performs the openings
     matchup = sys.argv[1][5]            # race against which it performs
-
-    ### FULL
-    #full_data = filter_out_undef(data.take(\
-    #        [template.index("ProtossPylon"), template.index("ProtossGateway"),\
-    #        template.index("ProtossCore"), template.index("ProtossSecondPylon")]\
-    #        , 1))
-    #full = r_em(full_data[1], plot=True)
 
     if race == "P":
         # Main openings:
@@ -505,7 +567,7 @@ if __name__ == "__main__":
         #   * sair/reaver TODO
         # - gate/core/gate goons (nony)
         # - reaver drop 
-        # - cannon rush
+        # - cannon rush [Disabled: can only scout it]
 
         ### 2 gates rush opening
         if kmeans:
@@ -627,61 +689,77 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         reaver_drop = r_em(reaver_drop_data[1], nbclusters=2, plot=plotR)
 
-        ### Cannon Rush
-        if kmeans:
-            cannon_rush_data_int = filter_out_undef(data.take([\
-                    template.index("ProtossForge"), template.index("ProtossCannon")\
-                    ], 1), typ=np.int64)
-            cannon_rush_km = k_means(cannon_rush_data_int[1], nbiter=nbiterations)
-        cannon_rush_data = filter_out_undef(data.take([\
-                template.index("ProtossForge"), template.index("ProtossCannon")\
-                ], 1))
-        if EM:
-            cannon_rush_em = expectation_maximization(cannon_rush_data[1],\
-                    nbiter=nbiterations, normalize=True, monotony=True)
-        cannon_rush = r_em(cannon_rush_data[1], nbclusters=2, plot=plotR)
+        ### [Disabled] Cannon Rush
+#        if kmeans:
+#            cannon_rush_data_int = filter_out_undef(data.take([\
+#                    template.index("ProtossForge"), template.index("ProtossCannon")\
+#                    ], 1), typ=np.int64)
+#            cannon_rush_km = k_means(cannon_rush_data_int[1], nbiter=nbiterations)
+#        cannon_rush_data = filter_out_undef(data.take([\
+#                template.index("ProtossForge"), template.index("ProtossCannon")\
+#                ], 1))
+#        if EM:
+#            cannon_rush_em = expectation_maximization(cannon_rush_data[1],\
+#                    nbiter=nbiterations, normalize=True, monotony=True)
+#        cannon_rush = r_em(cannon_rush_data[1], nbclusters=2, plot=plotR)
 
+        two_gates['name'] = "two_gates"
         print two_gates
-        plot(two_gates["clusters"], two_gates_data[1], "two_gates",\
-                two_gates["params"])
+        plot(two_gates, two_gates_data[1])
+        fast_dt['name'] = "fast_dt"
         print fast_dt
-        plot(fast_dt["clusters"], fast_dt_data[1], "fast dark templar")
+        plot(fast_dt, fast_dt_data[1])
+        fast_exp['name'] = "fast_exp" # TODO (not satisfied)
         print fast_exp
-        plot(fast_exp["clusters"], fast_exp_data[1], "fast expand")
+        plot(fast_exp, fast_exp_data[1])
+        speedzeal['name'] = "speedzeal"
         print speedzeal
-        plot(speedzeal["clusters"],speedzeal_data[1], "speedzeal",\
-                speedzeal["params"])
+        plot(speedzeal, speedzeal_data[1])
+        bisu['name'] = "bisu"
         print bisu
-        plot(bisu["clusters"], bisu_data[1], "bisu", bisu["params"])
+        plot(bisu, bisu_data[1])
+        corsair['name'] = "corsair"
         print corsair
-        plot(corsair["clusters"], corsair_data[1], "corsair", corsair["params"])
+        plot(corsair, corsair_data[1])
+        nony['name'] = "nony"
         print nony
-        plot(nony["clusters"],nony_data[1], "nony", nony["params"])
+        plot(nony,nony_data[1])
+        reaver_drop['name'] = "reaver_drop"
         print reaver_drop
-        plot(reaver_drop["clusters"], reaver_drop_data[1], "reaver drop",\
-                reaver_drop["params"])
-        print cannon_rush
-        plot(cannon_rush["clusters"],cannon_rush_data[1], "cannon rush",\
-                cannon_rush["params"])
+        plot(reaver_drop, reaver_drop_data[1])
+        #print cannon_rush
+        #plot(cannon_rush["clusters"],cannon_rush_data[1], "cannon rush",\
+        #        cannon_rush["params"])
 
     if race == "T":
         # Main openings:
-        # - BBS rush (rax/rax/supply) and other styles of 8 rax
+        # - BBS rush (rax/rax/supply) / 8 rax [Disabled: can only scout it]
+        # - Bio push (3 raxes at least)
         # - 1 Rax FE or 2 Rax FE
         # - Siege Expand (facto into siege + expand)
         # - 2 Factories (aggressive push / nada style)
         # - Vultures harass
-        # - Fast Wraith cloak
+        # - Wraith
 
-        ### BBS rush
-        bbs_data = filter_out_undef(data.take([\
+        ### [Disabled] BBS rush
+#        bbs_data = filter_out_undef(data.take([\
+#                template.index("TerranBarracks"),\
+#                template.index("TerranSecondBarracks"),\
+#                template.index("TerranDepot")], 1))
+#        if EM:
+#            bbs_em = expectation_maximization(bbs_data[1],\
+#                    nbiter=nbiterations, normalize=True, monotony=True)
+#        bbs = r_em(bbs_data[1], nbclusters=2, plot=plotR)
+
+        ### Bio push
+        bio_data = filter_out_undef(data.take([\
                 template.index("TerranBarracks"),\
                 template.index("TerranSecondBarracks"),\
-                template.index("TerranDepot")], 1))
+                template.index("TerranThirdBarracks")], 1))
         if EM:
-            bbs_em = expectation_maximization(bbs_data[1],\
+            bio_em = expectation_maximization(bio_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        bbs = r_em(bbs_data[1], nbclusters=2, plot=plotR)
+        bio = r_em(bio_data[1], nbclusters=2, plot=plotR)
 
         ### 1/2 Rax FE
         rax_fe_data = filter_out_undef(data.take([\
@@ -720,34 +798,40 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         vultures = r_em(vultures_data[1], nbclusters=2, plot=plotR)
 
-        ### Fast Wraith cloak
-        cloak_data = filter_out_undef(data.take([\
-                template.index("TerranWraith"),\
-                template.index("TerranCloak")], 1))
+        ### Fast Wraith
+        wraith_data = filter_out_undef(data.take([\
+                template.index("TerranStarport"),\
+                template.index("TerranWraith")], 1))
         if EM:
-            cloak_em = expectation_maximization(cloak_data[1],\
+            wraith_em = expectation_maximization(wraith_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        cloak = r_em(cloak_data[1], nbclusters=2, plot=plotR)
+        wraith = r_em(wraith_data[1], nbclusters=2, plot=plotR)
 
-        print bbs
-        plot(bbs["clusters"], bbs_data[1], "bbs", bbs["params"])
+        #bbs['name'] = "bbs"
+        #print bbs
+        #plot(bbs, bbs_data[1])
+        bio['name'] = "bio"
+        print bio
+        plot(bio, bio_data[1])
+        rax_fe['name'] = "rax_fe"
         print rax_fe
-        plot(rax_fe["clusters"], rax_fe_data[1], "rax_fe", rax_fe["params"])
+        plot(rax_fe, rax_fe_data[1])
+        siege_exp['name'] = "siege_exp"
         print siege_exp
-        plot(siege_exp["clusters"], siege_exp_data[1], "siege_exp",\
-                siege_exp["params"])
+        plot(siege_exp, siege_exp_data[1])
+        two_facto['name'] = "two_facto"
         print two_facto
-        plot(two_facto["clusters"], two_facto_data[1], "two_facto",\
-                two_facto["params"])
+        plot(two_facto, two_facto_data[1])
+        vultures['name'] = "vultures"
         print vultures
-        plot(vultures["clusters"], vultures_data[1], "vultures",\
-                vultures["params"])
-        print cloak
-        plot(cloak["clusters"], cloak_data[1], "cloak", cloak["params"])
+        plot(vultures, vultures_data[1])
+        wraith['name'] = "wraith"
+        print wraith
+        plot(wraith, wraith_data[1])
 
     if race == "Z":
         # Main openings:
-        # - 4-6 pools very early glings rush
+        # - 4-6 pools very early glings rush [Disabled: can only scout it]
         # - ~9pool/9speed speedlings rush
         # - any kind of fast expand (overpool, 12 hatch...) into:
         #   * fast mutas (2 hatches muta, or even 1 hatch mutas in ZvZ
@@ -755,14 +839,18 @@ if __name__ == "__main__":
         #   * fast lurkers (3 hatch lurker)
         #   * hydras push/drop
 
-        ### Very early zerglings rush (4 to 6 pool)
-        glings_rush_data = filter_out_undef(data.take([\
-                template.index("ZergPool"),\
-                template.index("ZergZergling")], 1))
-        if EM:
-            glings_rush_em = expectation_maximization(glings_rush_data[1],\
-                    nbiter=nbiterations, normalize=True, monotony=True)
-        glings_rush = r_em(glings_rush_data[1], nbclusters=2, plot=plotR)
+        ### [Disabled] Very early zerglings rush (4 to 6 pool)
+#        glings_rush_data = filter_out_undef(data.take([\
+#                template.index("ZergPool"),\
+#                template.index("ZergZergling")], 1))
+#        glings_rush_data_int = filter_out_undef(data.take([\
+#                template.index("ZergPool"),\
+#                template.index("ZergZergling")], 1), typ=np.int64)
+#        if EM:
+#            glings_rush_em = expectation_maximization(glings_rush_data[1],\
+#                    nbiter=nbiterations, normalize=True, monotony=True)
+#        glings_rush_km = k_means(glings_rush_data_int[1], nbiter=nbiterations)
+#        glings_rush = r_em(glings_rush_data[1], nbclusters=2, plot=plotR)
 
         ### Speedlings rush
         speedlings_data = filter_out_undef(data.take([\
@@ -785,6 +873,10 @@ if __name__ == "__main__":
         ### Fast mutas
         fast_mutas_data = filter_out_undef(data.take([\
                 template.index("ZergMutalisk")], 1))
+        if kmeans:
+            fast_mutas_data_int = filter_out_undef(data.take([\
+                    template.index("ZergMutalisk")], 1), typ=np.int64)
+            fast_mutas_km = k_means(fast_mutas_data_int[1], nbiter=nbiterations)
         if EM:
             fast_mutas_em = expectation_maximization(fast_mutas_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
@@ -818,20 +910,30 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         hydras = r_em(hydras_data[1], nbclusters=2, plot=plotR)
 
-        print glings_rush
-        plot(glings_rush["clusters"], glings_rush_data[1], "glings_rush",\
-                glings_rush["params"])
+        #glings_rush['name'] = "glings_rush"
+        #print glings_rush
+        #plot(glings_rush, glings_rush_data[1])
+        speedlings['name'] = "speedlings"
         print speedlings
-        plot(speedlings["clusters"], speedlings_data[1], "speedlings",\
-                speedlings["params"])
+        plot(speedlings, speedlings_data[1])
+        #fast_exp['name'] = "fast_exp"
         #print fast_exp
-        #plot(fast_exp["clusters"], fast_exp_data[1], "fast_exp", fast_exp["params"])
+        #plot(fast_exp, fast_exp_data[1])
+        fast_mutas['name'] = "fast_mutas"
         print fast_mutas
-        plot(fast_mutas["clusters"], fast_mutas_data[1], "fast_mutas",\
-                fast_mutas["params"])
+        plot(fast_mutas, fast_mutas_data[1])
+        mutas['name'] = "mutas"
         print mutas
-        plot(mutas["clusters"], mutas_data[1], "mutas", mutas["params"])
+        plot(mutas, mutas_data[1])
+        lurkers['name'] = "lurkers"
         print lurkers
-        plot(lurkers["clusters"], lurkers_data[1], "lurkers", lurkers["params"])
+        plot(lurkers, lurkers_data[1])
+        hydras['name'] = "hydras"
         print hydras
-        plot(hydras["clusters"], hydras_data[1], "hydras", hydras["params"])
+        plot(hydras, hydras_data[1])
+
+        write_arff(annotate(datalist,\
+                (speedlings_data, speedlings), (fast_mutas_data, fast_mutas),\
+                (mutas_data, mutas), (lurkers_data, lurkers),\
+                (hydras_data, hydras)), "my"+sys.argv[1])
+        
