@@ -152,22 +152,33 @@ def r_em(t, nbclusters=0, plot=False):
         model = r.Mclust(t, G=nbclusters)
     else:
         model = r.Mclust(t)
+    if plot:
+        r.quartz("plot")
+        r.plot(model, t)
+    #for e in model:
+    #    print e
     params = []
-    for i in range(nbclusters):
-        params.append({'mu': np.array([model[7][2][i*nbfeatures+j]\
-                             for j in range(nbfeatures)], np.float64),\
-                'sigma': np.matrix(np.array([np.array([model[7][3][3]\
-                [i*(nbfeatures**2)+jj*nbfeatures+j] for j in range(nbfeatures)],\
-                np.float64) for jj in range(nbfeatures)], np.float64)),\
-                'proba': model[7][1][i]})
+    if model[7][3][0][0] == "E":
+        for i in range(nbclusters):
+            params.append({'mu': np.array([model[7][2][i*nbfeatures+j]\
+                                 for j in range(nbfeatures)], np.float64),\
+                    'sigma': np.matrix(np.array([np.array([model[7][3][3]\
+                    [jj*nbfeatures+j] for j in range(nbfeatures)],\
+                    np.float64) for jj in range(nbfeatures)], np.float64)),\
+                    'proba': model[7][1][i]})
+    else:
+        for i in range(nbclusters):
+            params.append({'mu': np.array([model[7][2][i*nbfeatures+j]\
+                                 for j in range(nbfeatures)], np.float64),\
+                    'sigma': np.matrix(np.array([np.array([model[7][3][3]\
+                    [i*(nbfeatures**2)+jj*nbfeatures+j] for j in range(nbfeatures)],\
+                    np.float64) for jj in range(nbfeatures)], np.float64)),\
+                    'proba': model[7][1][i]})
     result['quality'] = 42.0
     result['params'] = copy.deepcopy(params)
     result['clusters'] = [[o for o in range(nbobs)\
             if model[9][o] == c+1.0]\
             for c in range(nbclusters)]
-    if plot:
-        r.quartz("plot")
-        r.plot(model, t)
     return result
 
 def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
@@ -442,7 +453,11 @@ if __name__ == "__main__":
         print t2
         plot(t2["clusters"],t_data, "test EM", t2['params'])
         sys.exit(0)
-    nbiterations = 30 # TODO 100 when clustering for real
+    nbiterations = 5 # TODO 100 when clustering for real
+    kmeans = False
+    EM = False
+    plotR = False
+
     (template, datalist) = parse(open(sys.argv[1]))
     # ndarray([#lines, #columns], type) and here #columns without label/string
     data = np.ndarray([len(datalist), len(datalist[0]) - 1], np.float64)
@@ -462,95 +477,123 @@ if __name__ == "__main__":
     #full = r_em(full_data[1], plot=True)
 
     ### Fast DT
-    fast_dt_data_int = filter_out_undef(data.take(\
-            [template.index("ProtossDarkTemplar")], 1), typ=np.int64)
-    fast_dt = k_means(fast_dt_data_int[1], nbiter=nbiterations,\
-            distance = lambda x,y: abs(x-y))
+    if kmeans:
+        fast_dt_data_int = filter_out_undef(data.take(\
+                [template.index("ProtossDarkTemplar")], 1), typ=np.int64)
+        fast_dt_km = k_means(fast_dt_data_int[1], nbiter=nbiterations,\
+                distance = lambda x,y: abs(x-y))
     fast_dt_data = filter_out_undef(data.take(\
             [template.index("ProtossDarkTemplar")], 1))
-    fast_dt2 = expectation_maximization(fast_dt_data[1], nbiter=nbiterations,\
-            monotony=True, normalize=True)
-    fast_dt3 = r_em(fast_dt_data[1], nbclusters=2)
+    if EM:
+        fast_dt_em = expectation_maximization(fast_dt_data[1],\
+                nbiter=nbiterations, monotony=True, normalize=True)
+    fast_dt = r_em(fast_dt_data[1], nbclusters=2, plot=plotR)
 
     ### Fast Expand
+    if kmeans:
+        fast_exp_data_int = filter_out_undef(data.take(\
+                [template.index("ProtossFirstExpansion")], 1), typ=np.int64)
+        fast_exp_km = k_means(fast_exp_data_int[1], nbiter=nbiterations,\
+                distance = lambda x,y: abs(x-y))
     fast_exp_data = filter_out_undef(data.take(\
-            [template.index("ProtossFirstExpansion")], 1), typ=np.int64)
-    #fast_exp = k_means(fast_exp_data[1], nbiter=nbiterations,\
-    #        distance = lambda x,y: abs(x-y))
+            [template.index("ProtossFirstExpansion")], 1))
+    if EM:
+        fast_exp_em = expectation_maximization(fast_exp_data[1],\
+                nbiter=nbiterations, monotony=True, normalize=True)
+    fast_exp = r_em(fast_exp_data[1], nbclusters=2, plot=plotR)
+
     ### Reaver Drop
+    if kmeans:
+        reaver_drop_data_int = filter_out_undef(data.take([\
+                template.index("ProtossShuttle"), template.index("ProtossReavor")\
+                ], 1), typ=np.int64)
+        reaver_drop_km = k_means(reaver_drop_data_int[1], nbiter=nbiterations)
     reaver_drop_data = filter_out_undef(data.take([\
             template.index("ProtossShuttle"), template.index("ProtossReavor")\
             ], 1))
-    reaver_drop = k_means(reaver_drop_data[1], nbiter=nbiterations)
-    reaver_drop2 = expectation_maximization(reaver_drop_data[1],\
-            nbiter=nbiterations, normalize=True, monotony=True)
-#    reaver_drop3 = expectation_maximization(reaver_drop_data[1],\
-#            nbiter=nbiterations, normalize=True, monotony=True, nbclusters=6)
-    reaver_drop4 = r_em(reaver_drop_data[1], nbclusters=2)
+    if EM:
+        reaver_drop_em = expectation_maximization(reaver_drop_data[1],\
+                nbiter=nbiterations, normalize=True, monotony=True)
+    reaver_drop = r_em(reaver_drop_data[1], nbclusters=2, plot=plotR)
 
     ### Cannon Rush
+    if kmeans:
+        cannon_rush_data_int = filter_out_undef(data.take([\
+                template.index("ProtossForge"), template.index("ProtossCannon")\
+                ], 1), typ=np.int64)
+        cannon_rush_km = k_means(cannon_rush_data_int[1], nbiter=nbiterations)
     cannon_rush_data = filter_out_undef(data.take([\
             template.index("ProtossForge"), template.index("ProtossCannon")\
-            ], 1), typ=np.int64)
-#    cannon_rush = k_means(cannon_rush_data[1], nbiter=nbiterations)
-    #cannon_rush = expec#tation_maximization(cannon_rush_data[1],\
-    #        nbiter=nbiterations, normalize=True, monotony=True)
-    #cannon_rush = k_means(cannon_rush_data[1],\
-    #        nbiter=nbiterations)
+            ], 1))
+    if EM:
+        cannon_rush_em = expectation_maximization(cannon_rush_data[1],\
+                nbiter=nbiterations, normalize=True, monotony=True)
+    cannon_rush = r_em(cannon_rush_data[1], nbclusters=2, plot=plotR)
 
     ### +1 SpeedZeal
+    if kmeans:
+        speedzeal_data_int = filter_out_undef(data.take([\
+                template.index("ProtossGroundWeapons1"),\
+                template.index("ProtossLegs")\
+                ], 1), typ=np.int64)
+        speedzeal_km = k_means(speedzeal_data_int[1], nbiter=nbiterations)
     speedzeal_data = filter_out_undef(data.take([\
             template.index("ProtossGroundWeapons1"),\
             template.index("ProtossLegs")\
             ], 1))
-#    speedzeal = k_means(speedzeal_data[1], nbiter=nbiterations)
-    #speedzeal = expectation_maximization(speedzeal_data[1],\
-    #        nbiter=nbiterations, normalize=True, monotony=True)
+    if EM:
+        speedzeal_em = expectation_maximization(speedzeal_data[1],\
+                nbiter=nbiterations, normalize=True, monotony=True)
+    speedzeal = r_em(speedzeal_data[1], nbclusters=2, plot=plotR)
 
     ### Nony opening
+    if kmeans:
+        nony_data_int = filter_out_undef(data.take([\
+                template.index("ProtossRange"),\
+                template.index("ProtossSecondGatway")\
+                ], 1), typ=np.int64)
+        nony_km = k_means(nony_data_int[1], nbiter=nbiterations)
     nony_data = filter_out_undef(data.take([\
             template.index("ProtossRange"),\
             template.index("ProtossSecondGatway")\
             ], 1))
-#    nony = k_means(nony_data[1], nbiter=nbiterations)
+    if EM:
+        nony_em = expectation_maximization(nony_data[1],\
+                nbiter=nbiterations, normalize=True, monotony=True)
+    nony = r_em(nony_data[1], nbclusters=2, plot=plotR)
 
     ### Corsair opening
+    if kmeans:
+        corsair_data_int = filter_out_undef(data.take([\
+                template.index("ProtossCorsair")], 1), typ=np.int64)
+        corsair_km = k_means(corsair_data_int[1], nbiter=nbiterations)
     corsair_data = filter_out_undef(data.take([\
             template.index("ProtossCorsair")], 1))
-#    corsair = k_means(corsair_data[1], nbiter=nbiterations)
+    if EM:
+        corsair_em = expectation_maximization(corsair_data[1],\
+                nbiter=nbiterations, normalize=True, monotony=True)
+    corsair = r_em(corsair_data[1], nbclusters=2, plot=plotR)
 
     print fast_dt
     plot(fast_dt["clusters"], fast_dt_data[1], "fast dark templar")
-    print fast_dt2
-    plot(fast_dt2["clusters"], fast_dt_data[1], "fast dark templar")
-    print fast_dt3
-    plot(fast_dt3["clusters"], fast_dt_data[1], "fast dark templar")
 
-    #print fast_exp
-    #plot(fast_exp["clusters"], fast_exp_data[1], "fast expand")
+    print fast_exp
+    plot(fast_exp["clusters"], fast_exp_data[1], "fast expand")
 
     print reaver_drop
-    plot(reaver_drop["clusters"], reaver_drop_data[1], "reaver drop")
-    print reaver_drop2
-    plot(reaver_drop2["clusters"], reaver_drop_data[1], "reaver drop2",\
-            reaver_drop2["params"])
-    #print reaver_drop3
-    #plot(reaver_drop3["clusters"], reaver_drop_data[1], "reaver drop3",\
-    #        reaver_drop3["params"])
-    print reaver_drop4
-    plot(reaver_drop4["clusters"], reaver_drop_data[1], "reaver drop4",\
-            reaver_drop4["params"])
+    plot(reaver_drop["clusters"], reaver_drop_data[1], "reaver drop",\
+            reaver_drop["params"])
 
-    #print cannon_rush
-    #plot(cannon_rush["clusters"],cannon_rush_data[1], "cannon rush")#,\
-            #cannon_rush["params"])
+    print cannon_rush
+    plot(cannon_rush["clusters"],cannon_rush_data[1], "cannon rush",\
+            cannon_rush["params"])
 
     print speedzeal
     plot(speedzeal["clusters"],speedzeal_data[1], "speedzeal",\
             speedzeal["params"])
 
     print nony
-    plot(nony["clusters"],nony_data[1], "nony")
+    plot(nony["clusters"],nony_data[1], "nony", nony["params"])
 
     print corsair
-    plot(corsair["clusters"], corsair_data[1], "corsair")
+    plot(corsair["clusters"], corsair_data[1], "corsair", corsair["params"])
