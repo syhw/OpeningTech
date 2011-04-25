@@ -520,11 +520,14 @@ def annotate(data, *args):
             continue
         bestlabel = ''
         bestproba = 0.0
+        maxdim = 1.0 * max([len(v[1]) for v in annotations['metadata'][\
+                annotations['games'].index(game)].itervalues()])
         npgame = np.array(game[:len(game)-1], np.float64)
         for (k, v) in annotations['metadata'][annotations['games']\
                 .index(game)].iteritems():
             gp = v[0][v[2]]
             tmpproba = pnorm(npgame.take(v[1]), gp['mu'], gp['sigma'])
+            tmpproba = tmpproba**(maxdim/len(v[1]))
             if tmpproba > bestproba:
                 bestlabel = k
                 bestproba = tmpproba
@@ -936,8 +939,7 @@ if __name__ == "__main__":
         mutas['features'] = features_mutas
 
         ### Fast Lurkers (Third hatch should be late)
-        features_lurkers = [template.index("ZergLurker"),\
-                template.index("ZergThirdHatch")] # TODO remove 3rd hatch?
+        features_lurkers = [template.index("ZergLurker")]
         lurkers_data = filter_out_undef(data.take(features_lurkers, 1))
         if EM:
             lurkers_em = expectation_maximization(lurkers_data[1],\
@@ -948,8 +950,8 @@ if __name__ == "__main__":
         ### Mass hydras
         features_hydras = [template.index("ZergHydra"),\
                 template.index("ZergHydraSpeed"),\
-                template.index("ZergHydraRange"),\
-                template.index("ZergThirdHatch")] # TODO remove 3rd hatch?
+                template.index("ZergHydraRange")]
+                #template.index("ZergThirdHatch")] # TODO remove 3rd hatch?
         hydras_data = filter_out_undef(data.take(features_hydras, 1))
         if EM:
             hydras_em = expectation_maximization(hydras_data[1],\
