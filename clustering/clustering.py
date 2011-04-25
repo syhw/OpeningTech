@@ -373,7 +373,7 @@ def parse(arff):
 def filter_out_undef(tab, typ=np.float64):
     def not_undef(t):
         for e in t:
-            if e < 0:
+            if e < 0: # undef <=> < 0
                 return False
         return True
     indices = []
@@ -393,22 +393,21 @@ def plot(clusters, data, title='', gaussians=[], separate_plots=False):
     for k in range(len(clusters)):
         print ">>>> drawing ", k
         if len(clusters[k]):
-            xy = [[data[i,j] for i in clusters[k]] for j in range(len(data[0]))]
+            xy = [[data[i,j] for i in clusters[k]]\
+                    for j in range(len(data[0]))]
             if len(data[0]) < 3:
                 ax.scatter(xy[0], xy[len(data[0])-1],s=20,\
-                        c=colors[k % len(colors)], marker='s', edgecolors='none')
+                        c=colors[k % len(colors)],\
+                        marker='s', edgecolors='none')
             else:
                 # [len(data[0]) * (len(data[0])+1)] / 2 plots
                 total = math.sqrt(len(data[0])*(len(data[0])+1.0)/2.0)
                 w = int(math.floor(total))
                 h = int(math.floor(total+1))
-                print ">>> h,w:", h, w
                 plotno = 0 
                 for i in range(len(data[0])):
-                    print ">>>i:", i
                     r = range(i+1, len(data[0]))
                     for j in r:
-                        print ">>>j:", j
                         plotno += 1
                         ax = pl.subplot(h, w, plotno)
                         ax.scatter(xy[i], xy[j],s=20,\
@@ -474,9 +473,9 @@ if __name__ == "__main__":
         plot(t2["clusters"],t_data, "test EM", t2['params'])
         sys.exit(0)
     nbiterations = 5 # TODO 100 when clustering for real
-    kmeans = True
+    kmeans = False
     EM = False
-    plotR = False
+    plotR = True
 
     (template, datalist) = parse(open(sys.argv[1]))
     # ndarray([#lines, #columns], type) and here #columns without label/string
@@ -497,6 +496,32 @@ if __name__ == "__main__":
     #full = r_em(full_data[1], plot=True)
 
     if race == "P":
+        # Main openings:
+        # - 2 gateways aggression (proxy or not)
+        # - fast DT
+        # - FE into
+        #   * +1 speed (legs) zealot push
+        #   * templar tech: bisu build (sair/templar) or sair/DT
+        #   * sair/reaver TODO
+        # - gate/core/gate goons (nony)
+        # - reaver drop 
+        # - cannon rush
+
+        ### 2 gates rush opening
+        if kmeans:
+            two_gates_data_int = filter_out_undef(data.take([\
+                    template.index("ProtossGateway"),\
+                    template.index("ProtossSecondGatway")\
+                    ], 1), typ=np.int64)
+            two_gates_km = k_means(two_gates_data_int[1], nbiter=nbiterations)
+        two_gates_data = filter_out_undef(data.take([\
+                template.index("ProtossGateway"),\
+                template.index("ProtossSecondGatway")], 1))
+        if EM:
+            two_gates_em = expectation_maximization(two_gates_data[1],\
+                    nbiter=nbiterations, normalize=True, monotony=True)
+        two_gates = r_em(two_gates_data[1], nbclusters=2, plot=plotR)
+
         ### Fast DT
         if kmeans:
             fast_dt_data_int = filter_out_undef(data.take(\
@@ -522,6 +547,71 @@ if __name__ == "__main__":
             fast_exp_em = expectation_maximization(fast_exp_data[1],\
                     nbiter=nbiterations, monotony=True, normalize=True)
         fast_exp = r_em(fast_exp_data[1], nbclusters=2, plot=plotR)
+
+        ### +1 SpeedZeal
+        if kmeans:
+            speedzeal_data_int = filter_out_undef(data.take([\
+                    template.index("ProtossGroundWeapons1"),\
+                    template.index("ProtossLegs")\
+                    ], 1), typ=np.int64)
+            speedzeal_km = k_means(speedzeal_data_int[1], nbiter=nbiterations)
+        speedzeal_data = filter_out_undef(data.take([\
+                template.index("ProtossGroundWeapons1"),\
+                template.index("ProtossLegs")\
+                ], 1))
+        if EM:
+            speedzeal_em = expectation_maximization(speedzeal_data[1],\
+                    nbiter=nbiterations, normalize=True, monotony=True)
+        speedzeal = r_em(speedzeal_data[1], nbclusters=2, plot=plotR)
+
+        ### Bisu build
+        if kmeans:
+            bisu_data_int = filter_out_undef(data.take([\
+                    template.index("ProtossFirstExpansion"),\
+                    template.index("ProtossCorsair"),\
+                    template.index("ProtossArchives")\
+                    ], 1), typ=np.int64)
+            bisu_km = k_means(bisu_data_int[1], nbiter=nbiterations)
+        bisu_data = filter_out_undef(data.take([\
+                template.index("ProtossFirstExpansion"),\
+                template.index("ProtossCorsair"),\
+                template.index("ProtossArchives")\
+                ], 1))
+        if EM:
+            bisu_em = expectation_maximization(bisu_data[1],\
+                    nbiter=nbiterations, normalize=True, monotony=True)
+        bisu = r_em(bisu_data[1], nbclusters=2, plot=plotR)
+
+        ### Corsair opening
+        if kmeans:
+            corsair_data_int = filter_out_undef(data.take([\
+                    template.index("ProtossCorsair")], 1), typ=np.int64)
+            corsair_km = k_means(corsair_data_int[1], nbiter=nbiterations)
+        corsair_data = filter_out_undef(data.take([\
+                template.index("ProtossCorsair")], 1))
+        if EM:
+            corsair_em = expectation_maximization(corsair_data[1],\
+                    nbiter=nbiterations, normalize=True, monotony=True)
+        corsair = r_em(corsair_data[1], nbclusters=2, plot=plotR)
+
+        ### Nony opening
+        if kmeans:
+            nony_data_int = filter_out_undef(data.take([\
+                    template.index("ProtossRange"),\
+                    template.index("ProtossSecondGatway"),\
+                    template.index("ProtossGoon")
+                    ], 1), typ=np.int64)
+            nony_km = k_means(nony_data_int[1], nbiter=nbiterations)
+        nony_data = filter_out_undef(data.take([\
+                template.index("ProtossRange"),\
+                template.index("ProtossSecondGatway"),\
+                template.index("ProtossGoon")
+                ], 1))
+        if EM:
+            nony_em = expectation_maximization(nony_data[1],\
+                    nbiter=nbiterations, normalize=True, monotony=True)
+        nony = r_em(nony_data[1], nbclusters=2, plot=plotR)
+
 
         ### Reaver Drop
         if kmeans:
@@ -551,120 +641,197 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         cannon_rush = r_em(cannon_rush_data[1], nbclusters=2, plot=plotR)
 
-        ### +1 SpeedZeal
-        if kmeans:
-            speedzeal_data_int = filter_out_undef(data.take([\
-                    template.index("ProtossGroundWeapons1"),\
-                    template.index("ProtossLegs")\
-                    ], 1), typ=np.int64)
-            speedzeal_km = k_means(speedzeal_data_int[1], nbiter=nbiterations)
-        speedzeal_data = filter_out_undef(data.take([\
-                template.index("ProtossGroundWeapons1"),\
-                template.index("ProtossLegs")\
-                ], 1))
-        if EM:
-            speedzeal_em = expectation_maximization(speedzeal_data[1],\
-                    nbiter=nbiterations, normalize=True, monotony=True)
-        speedzeal = r_em(speedzeal_data[1], nbclusters=2, plot=plotR)
-
-        ### Nony opening
-        if kmeans:
-            nony_data_int = filter_out_undef(data.take([\
-                    template.index("ProtossRange"),\
-                    template.index("ProtossSecondGatway")\
-                    ], 1), typ=np.int64)
-            nony_km = k_means(nony_data_int[1], nbiter=nbiterations)
-        nony_data = filter_out_undef(data.take([\
-                template.index("ProtossRange"),\
-                template.index("ProtossSecondGatway")\
-                ], 1))
-        if EM:
-            nony_em = expectation_maximization(nony_data[1],\
-                    nbiter=nbiterations, normalize=True, monotony=True)
-        nony = r_em(nony_data[1], nbclusters=2, plot=plotR)
-
-        ### Corsair opening
-        if kmeans:
-            corsair_data_int = filter_out_undef(data.take([\
-                    template.index("ProtossCorsair")], 1), typ=np.int64)
-            corsair_km = k_means(corsair_data_int[1], nbiter=nbiterations)
-        corsair_data = filter_out_undef(data.take([\
-                template.index("ProtossCorsair")], 1))
-        if EM:
-            corsair_em = expectation_maximization(corsair_data[1],\
-                    nbiter=nbiterations, normalize=True, monotony=True)
-        corsair = r_em(corsair_data[1], nbclusters=2, plot=plotR)
-
-        ### 2 gates rush opening
-        if kmeans:
-            two_gates_data_int = filter_out_undef(data.take([\
-                    template.index("ProtossGateway"),\
-                    template.index("ProtossSecondGatway")\
-                    ], 1), typ=np.int64)
-            two_gates_km = k_means(two_gates_data_int[1], nbiter=nbiterations)
-        two_gates_data = filter_out_undef(data.take([\
-                template.index("ProtossGateway"),\
-                template.index("ProtossSecondGatway")], 1))
-        if EM:
-            two_gates_em = expectation_maximization(two_gates_data[1],\
-                    nbiter=nbiterations, normalize=True, monotony=True)
-        two_gates = r_em(two_gates_data[1], nbclusters=2, plot=plotR)
-
-        ### Bisu build
-        if kmeans:
-            bisu_data_int = filter_out_undef(data.take([\
-                    template.index("ProtossFirstExpansion"),\
-                    template.index("ProtossForge"),\
-                    template.index("ProtossGateway"),\
-                    template.index("ProtossFirstGas"),\
-                    template.index("ProtossCore")\
-                    ], 1), typ=np.int64)
-            bisu_km = k_means(bisu_data_int[1], nbiter=nbiterations)
-        bisu_data = filter_out_undef(data.take([\
-                template.index("ProtossFirstExpansion"),\
-                template.index("ProtossForge"),\
-                template.index("ProtossGateway"),\
-                template.index("ProtossFirstGas"),\
-                template.index("ProtossCore")\
-                ], 1))
-        if EM:
-            bisu_em = expectation_maximization(bisu_data[1],\
-                    nbiter=nbiterations, normalize=True, monotony=True)
-        bisu = r_em(bisu_data[1], nbclusters=2, plot=plotR)
-
+        print two_gates
+        plot(two_gates["clusters"], two_gates_data[1], "two_gates",\
+                two_gates["params"])
         print fast_dt
         plot(fast_dt["clusters"], fast_dt_data[1], "fast dark templar")
-
         print fast_exp
         plot(fast_exp["clusters"], fast_exp_data[1], "fast expand")
-
+        print speedzeal
+        plot(speedzeal["clusters"],speedzeal_data[1], "speedzeal",\
+                speedzeal["params"])
+        print bisu
+        plot(bisu["clusters"], bisu_data[1], "bisu", bisu["params"])
+        print corsair
+        plot(corsair["clusters"], corsair_data[1], "corsair", corsair["params"])
+        print nony
+        plot(nony["clusters"],nony_data[1], "nony", nony["params"])
         print reaver_drop
         plot(reaver_drop["clusters"], reaver_drop_data[1], "reaver drop",\
                 reaver_drop["params"])
-
         print cannon_rush
         plot(cannon_rush["clusters"],cannon_rush_data[1], "cannon rush",\
                 cannon_rush["params"])
 
-        print speedzeal
-        plot(speedzeal["clusters"],speedzeal_data[1], "speedzeal",\
-                speedzeal["params"])
-
-        print nony
-        plot(nony["clusters"],nony_data[1], "nony", nony["params"])
-
-        print corsair
-        plot(corsair["clusters"], corsair_data[1], "corsair", corsair["params"])
-
-        print two_gates
-        plot(two_gates["clusters"], two_gates_data[1], "two_gates", two_gates["params"])
-
-        print bisu_km
-        plot(bisu_km["clusters"], bisu_data[1], "bisu_km")
-        print bisu
-        plot(bisu["clusters"], bisu_data[1], "bisu", bisu["params"])
-
     if race == "T":
-        pass
+        # Main openings:
+        # - BBS rush (rax/rax/supply) and other styles of 8 rax
+        # - 1 Rax FE or 2 Rax FE
+        # - Siege Expand (facto into siege + expand)
+        # - 2 Factories (aggressive push / nada style)
+        # - Vultures harass
+        # - Fast Wraith cloak
+
+        ### BBS rush
+        bbs_data = filter_out_undef(data.take([\
+                template.index("TerranBarracks"),\
+                template.index("TerranSecondBarracks"),\
+                template.index("TerranDepot")], 1))
+        if EM:
+            bbs_em = expectation_maximization(bbs_data[1],\
+                    nbiter=nbiterations, normalize=True, monotony=True)
+        bbs = r_em(bbs_data[1], nbclusters=2, plot=plotR)
+
+        ### 1/2 Rax FE
+        rax_fe_data = filter_out_undef(data.take([\
+                template.index("TerranBarracks"),\
+                template.index("TerranExpansion")], 1))
+        if EM:
+            rax_fe_em = expectation_maximization(rax_fe_data[1],\
+                    nbiter=nbiterations, normalize=True, monotony=True)
+        rax_fe = r_em(rax_fe_data[1], nbclusters=2, plot=plotR)
+
+        ### Siege Expand
+        siege_exp_data = filter_out_undef(data.take([\
+                template.index("TerranSiege"),\
+                template.index("TerranExpansion")], 1))
+        if EM:
+            siege_exp_em = expectation_maximization(siege_exp_data[1],\
+                    nbiter=nbiterations, normalize=True, monotony=True)
+        siege_exp = r_em(siege_exp_data[1], nbclusters=2, plot=plotR)
+
+        ### 2 Facto
+        two_facto_data = filter_out_undef(data.take([\
+                template.index("TerranFactory"),\
+                template.index("TerranSecondFactory"),\
+                template.index("TerranTank")], 1))
+        if EM:
+            two_facto_em = expectation_maximization(two_facto_data[1],\
+                    nbiter=nbiterations, normalize=True, monotony=True)
+        two_facto = r_em(two_facto_data[1], nbclusters=2, plot=plotR)
+
+        ### Vultures harass
+        vultures_data = filter_out_undef(data.take([\
+                template.index("TerranVulture"),\
+                template.index("TerranMines")],1))
+        if EM:
+            vultures_em = expectation_maximization(vultures_data[1],\
+                    nbiter=nbiterations, normalize=True, monotony=True)
+        vultures = r_em(vultures_data[1], nbclusters=2, plot=plotR)
+
+        ### Fast Wraith cloak
+        cloak_data = filter_out_undef(data.take([\
+                template.index("TerranWraith"),\
+                template.index("TerranCloak")], 1))
+        if EM:
+            cloak_em = expectation_maximization(cloak_data[1],\
+                    nbiter=nbiterations, normalize=True, monotony=True)
+        cloak = r_em(cloak_data[1], nbclusters=2, plot=plotR)
+
+        print bbs
+        plot(bbs["clusters"], bbs_data[1], "bbs", bbs["params"])
+        print rax_fe
+        plot(rax_fe["clusters"], rax_fe_data[1], "rax_fe", rax_fe["params"])
+        print siege_exp
+        plot(siege_exp["clusters"], siege_exp_data[1], "siege_exp",\
+                siege_exp["params"])
+        print two_facto
+        plot(two_facto["clusters"], two_facto_data[1], "two_facto",\
+                two_facto["params"])
+        print vultures
+        plot(vultures["clusters"], vultures_data[1], "vultures",\
+                vultures["params"])
+        print cloak
+        plot(cloak["clusters"], cloak_data[1], "cloak", cloak["params"])
+
     if race == "Z":
-        pass
+        # Main openings:
+        # - 4-6 pools very early glings rush
+        # - ~9pool/9speed speedlings rush
+        # - any kind of fast expand (overpool, 12 hatch...) into:
+        #   * fast mutas (2 hatches muta, or even 1 hatch mutas in ZvZ
+        #   * mass mutas (3 hatches, or more, into mutas)
+        #   * fast lurkers (3 hatch lurker)
+        #   * hydras push/drop
+
+        ### Very early zerglings rush (4 to 6 pool)
+        glings_rush_data = filter_out_undef(data.take([\
+                template.index("ZergPool"),\
+                template.index("ZergZergling")], 1))
+        if EM:
+            glings_rush_em = expectation_maximization(glings_rush_data[1],\
+                    nbiter=nbiterations, normalize=True, monotony=True)
+        glings_rush = r_em(glings_rush_data[1], nbclusters=2, plot=plotR)
+
+        ### Speedlings rush
+        speedlings_data = filter_out_undef(data.take([\
+                template.index("ZergPool"),\
+                template.index("ZergZerglingSpeed")], 1))
+        if EM:
+            speedlings_em = expectation_maximization(speedlings_data[1],\
+                    nbiter=nbiterations, normalize=True, monotony=True)
+        speedlings = r_em(speedlings_data[1], nbclusters=2, plot=plotR)
+
+        ### [Disabled] Hatch first
+#        fast_exp_data = filter_out_undef(data.take([\
+#                template.index("ZergSecondHatch"),\
+#                template.index("ZergPool")], 1))
+#        if EM:
+#            fast_exp_em = expectation_maximization(fast_exp_data[1],\
+#                    nbiter=nbiterations, normalize=True, monotony=True)
+#        fast_exp = r_em(fast_exp_data[1], nbclusters=2, plot=plotR)
+
+        ### Fast mutas
+        fast_mutas_data = filter_out_undef(data.take([\
+                template.index("ZergMutalisk")], 1))
+        if EM:
+            fast_mutas_em = expectation_maximization(fast_mutas_data[1],\
+                    nbiter=nbiterations, normalize=True, monotony=True)
+        fast_mutas = r_em(fast_mutas_data[1], nbclusters=2, plot=plotR)
+
+        ### 3 Hatch mutas / Mass mutas
+        mutas_data = filter_out_undef(data.take([\
+                template.index("ZergSecondHatch"),\
+                template.index("ZergThirdHatch"),\
+                template.index("ZergMutalisk")], 1))
+        if EM:
+            mutas_em = expectation_maximization(mutas_data[1],\
+                    nbiter=nbiterations, normalize=True, monotony=True)
+        mutas = r_em(mutas_data[1], nbclusters=2, plot=plotR)
+
+        ### Lurkers
+        lurkers_data = filter_out_undef(data.take([\
+                template.index("ZergLurker")], 1))
+        if EM:
+            lurkers_em = expectation_maximization(lurkers_data[1],\
+                    nbiter=nbiterations, normalize=True, monotony=True)
+        lurkers = r_em(lurkers_data[1], nbclusters=2, plot=plotR)
+
+        ### Mass hydras
+        hydras_data = filter_out_undef(data.take([\
+                template.index("ZergHydra"),\
+                template.index("ZergHydraSpeed"),\
+                template.index("ZergHydraRange")], 1))
+        if EM:
+            hydras_em = expectation_maximization(hydras_data[1],\
+                    nbiter=nbiterations, normalize=True, monotony=True)
+        hydras = r_em(hydras_data[1], nbclusters=2, plot=plotR)
+
+        print glings_rush
+        plot(glings_rush["clusters"], glings_rush_data[1], "glings_rush",\
+                glings_rush["params"])
+        print speedlings
+        plot(speedlings["clusters"], speedlings_data[1], "speedlings",\
+                speedlings["params"])
+        #print fast_exp
+        #plot(fast_exp["clusters"], fast_exp_data[1], "fast_exp", fast_exp["params"])
+        print fast_mutas
+        plot(fast_mutas["clusters"], fast_mutas_data[1], "fast_mutas",\
+                fast_mutas["params"])
+        print mutas
+        plot(mutas["clusters"], mutas_data[1], "mutas", mutas["params"])
+        print lurkers
+        plot(lurkers["clusters"], lurkers_data[1], "lurkers", lurkers["params"])
+        print hydras
+        plot(hydras["clusters"], hydras_data[1], "hydras", hydras["params"])
