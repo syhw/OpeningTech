@@ -5,6 +5,7 @@
 # Python License 2.0.1 http://www.python.org/download/releases/2.0.1/license/
 # Copyright 2011 Gabriel Synnaeve
 
+# TODO a usage documentation (gather "DOC")
 
 import sys, random, copy, math
 try:
@@ -181,6 +182,20 @@ def r_em(t, nbclusters=0, plot=False):
             for c in range(nbclusters)]
     return result
 
+def pnorm(x, m, s):
+    """ 
+    Compute the multivariate normal distribution with values vector x,
+    mean vector m, sigma (variances/covariances) matrix s
+    """
+    xmt = np.matrix(x-m).transpose()
+    for i in range(len(s)):
+        if s[i,i] <= sys.float_info[3]: # min float
+            s[i,i] = sys.float_info[3]
+    sinv = np.linalg.inv(s)
+    xm = np.matrix(x-m)
+    return (2.0*math.pi)**(-len(x)/2.0)*(1.0/math.sqrt(np.linalg.det(s)))\
+            *math.exp(-0.5*(xm*sinv*xmt))
+
 def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
         epsilon=0.001, monotony=False, datasetinit=True):
     """ 
@@ -201,18 +216,6 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
     -> Compute E_t=∑_{obs} log(P(obs)^t)
        Repeat Steps 2 and 3 until |E_t - E_{t-1}| < ε
     """
-    def pnorm(x, m, s):
-        #return (1/(math.sqrt(2*math.pi*s**2)))\
-        #        * math.exp((x-m)**2/(2*s**2))
-        xmt = np.matrix(x-m).transpose()
-        for i in range(len(s)):
-            if s[i,i] <= sys.float_info[3]: # min float
-                s[i,i] = sys.float_info[3]
-        sinv = np.linalg.inv(s)
-        xm = np.matrix(x-m)
-        return (2.0*math.pi)**(-len(x)/2.0)*(1.0/math.sqrt(np.linalg.det(s)))\
-                *math.exp(-0.5*(xm*sinv*xmt))
-
     def draw_params():
             if datasetinit:
                 tmpmu = np.array([1.0*t[random.uniform(0,nbobs),:]],np.float64)
@@ -360,7 +363,7 @@ def parse(arff):
                 if elem[0] in "0123456789":
                     # Convert to int, and 24 frames per second:
                     # we don't need such a high resolution
-                    tmp.append(int(elem)/24) 
+                    tmp.append(int(elem))#/24) 
                 else:
                     tmp.append(elem.rstrip('\n'))
             t.append(tmp)
@@ -465,8 +468,13 @@ def annotate(data, *args):
     annotations = {}
     annotations['openings'] = []
     annotations['games'] = copy.deepcopy(data)
+    annotations['metadata'] = []
     labelind = len(data[0]) - 1
-    #for i range(len(data)):
+    # Remove the precedents labels/strategies/openings
+    for game in annotations['games']:
+        game[labelind] = ''
+        annotations['metadata'].append({})
+    # Determine which are the labels of brought by "clusters"
     for (data, clusters) in args:
         # data[0] are the true indices in data of data[1] (filtered data)
         # clusters['name'] / clusters['clusters'] / clusters['params']
@@ -475,7 +483,7 @@ def annotate(data, *args):
         ### /!\ shitty heuristic to determine which cluster is the one labeled
         # the labeling cluster should be the one with globally smaller means
         cind = -1
-        minnorm = 100000000000000000000000000000000000000000000.0
+        minnorm = 100000000000000000000000000000000000000000000.0 # ;)
         if clusters.has_key('params'):
             params = clusters['params']
         elif clusters.has_key('centroids'):
@@ -492,8 +500,36 @@ def annotate(data, *args):
         # clusters['name'] in data[1], their indices in data is in data[0]
         ### /!\ /shitty heuristic
         
+        # Add each label to each game
         for g in clusters['clusters'][cind]:
-            annotations['games'][data[0][g]][labelind] += clusters['name']
+            annotations['games'][data[0][g]][labelind] += clusters['name']+' '
+            if clusters.has_key('params'):
+                annotations['metadata'][data[0][g]][clusters['name']] = \
+                        (clusters['params'], clusters['features'], cind)
+            elif clusters.has_key('centroids'):
+                annotations['metadata'][data[0][g]][clusters['name']] = \
+                        (clusters['centroids'], clusters['features'], cind)
+    # we can return here and print the full labels of replays
+    # Make a selection of one label/strategy/opening per replay
+    for game in annotations['games']:
+        game[labelind].rstrip(' ')
+        sp = game[labelind].split(' ')
+        if len(sp) <= 1:
+            if game[labelind] == '':
+                game[labelind] == 'unknown'
+            continue
+        bestlabel = ''
+        bestproba = 0.0
+        npgame = np.array(game[:len(game)-1], np.float64)
+        for (k, v) in annotations['metadata'][annotations['games']\
+                .index(game)].iteritems():
+            gp = v[0][v[2]]
+            tmpproba = pnorm(npgame.take(v[1]), gp['mu'], gp['sigma'])
+            if tmpproba > bestproba:
+                bestlabel = k
+                bestproba = tmpproba
+            #v[1][0] =  # DOC: the first feature is always the "most important"
+        game[labelind] = bestlabel
     return annotations
 
 def write_arff(template, annotations,fn):
@@ -509,8 +545,8 @@ def write_arff(template, annotations,fn):
                     ','.join(annotations['openings'])+'}\n')
     f.write('\n@data\n')
     for game in annotations['games']:
-        print game
-        #f.write(','.join(str(game))+'\n')
+        #print ','.join([str(i) for i in game])
+        f.write(','.join([str(i) for i in game])+'\n')
     return 
 
 if __name__ == "__main__":
@@ -538,6 +574,7 @@ if __name__ == "__main__":
     (template, datalist) = parse(open(sys.argv[1]))
     # build data without the "label"/opening/strategy column
     data = np.ndarray([len(datalist), len(datalist[0]) - 1], np.float64)
+    data /= 24
     # transform the kind & dynamic python list into a static numpy.ndarray
     for i in range(len(datalist)):
         for j in range(len(datalist[0]) - 1):
@@ -559,124 +596,118 @@ if __name__ == "__main__":
         # - cannon rush [Disabled: can only scout it]
 
         ### 2 gates rush opening
+        features_two_gates = [template.index("ProtossSecondGatway"),\
+                template.index("ProtossGateway")]
         if kmeans:
-            two_gates_data_int = filter_out_undef(data.take([\
-                    template.index("ProtossGateway"),\
-                    template.index("ProtossSecondGatway")\
-                    ], 1), typ=np.int64)
+            two_gates_data_int = filter_out_undef(data.take(\
+                    features_two_gates, 1), typ=np.int64)
             two_gates_km = k_means(two_gates_data_int[1], nbiter=nbiterations)
-        two_gates_data = filter_out_undef(data.take([\
-                template.index("ProtossGateway"),\
-                template.index("ProtossSecondGatway")], 1))
+        two_gates_data = filter_out_undef(data.take(features_two_gates, 1))
         if EM:
             two_gates_em = expectation_maximization(two_gates_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
         two_gates = r_em(two_gates_data[1], nbclusters=2, plot=plotR)
+        two_gates['features'] = features_two_gates
 
         ### Fast DT
+        features_fast_dt = [template.index("ProtossDarkTemplar")]
         if kmeans:
             fast_dt_data_int = filter_out_undef(data.take(\
-                    [template.index("ProtossDarkTemplar")], 1), typ=np.int64)
+                    features_fast_dt, 1), typ=np.int64)
             fast_dt_km = k_means(fast_dt_data_int[1], nbiter=nbiterations,\
                     distance = lambda x,y: abs(x-y))
-        fast_dt_data = filter_out_undef(data.take(\
-                [template.index("ProtossDarkTemplar")], 1))
+        fast_dt_data = filter_out_undef(data.take(features_fast_dt,1))
         if EM:
             fast_dt_em = expectation_maximization(fast_dt_data[1],\
                     nbiter=nbiterations, monotony=True, normalize=True)
         fast_dt = r_em(fast_dt_data[1], nbclusters=2, plot=plotR)
+        fast_dt['features'] = features_fast_dt
 
         ### Fast Expand
+        features_fast_exp = [template.index("ProtossFirstExpansion")]
         if kmeans:
             fast_exp_data_int = filter_out_undef(data.take(\
-                    [template.index("ProtossFirstExpansion")], 1), typ=np.int64)
+                    features_fast_exp, 1), typ=np.int64)
             fast_exp_km = k_means(fast_exp_data_int[1], nbiter=nbiterations,\
                     distance = lambda x,y: abs(x-y))
-        fast_exp_data = filter_out_undef(data.take(\
-                [template.index("ProtossFirstExpansion")], 1))
+        fast_exp_data = filter_out_undef(data.take(features_fast_exp, 1))
         if EM:
             fast_exp_em = expectation_maximization(fast_exp_data[1],\
                     nbiter=nbiterations, monotony=True, normalize=True)
         fast_exp = r_em(fast_exp_data[1], nbclusters=2, plot=plotR)
+        fast_exp['features'] = features_fast_exp
 
         ### +1 SpeedZeal
+        features_speedzeal = [template.index("ProtossGroundWeapons1"),\
+                    template.index("ProtossLegs")]
         if kmeans:
-            speedzeal_data_int = filter_out_undef(data.take([\
-                    template.index("ProtossGroundWeapons1"),\
-                    template.index("ProtossLegs")\
-                    ], 1), typ=np.int64)
+            speedzeal_data_int = filter_out_undef(data.take(\
+                    features_speedzeal, 1), typ=np.int64)
             speedzeal_km = k_means(speedzeal_data_int[1], nbiter=nbiterations)
-        speedzeal_data = filter_out_undef(data.take([\
-                template.index("ProtossGroundWeapons1"),\
-                template.index("ProtossLegs")\
-                ], 1))
+        speedzeal_data = filter_out_undef(data.take(features_speedzeal, 1))
         if EM:
             speedzeal_em = expectation_maximization(speedzeal_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
         speedzeal = r_em(speedzeal_data[1], nbclusters=2, plot=plotR)
+        speedzeal['features'] = features_speedzeal
 
         ### Bisu build
-        if kmeans:
-            bisu_data_int = filter_out_undef(data.take([\
-                    template.index("ProtossFirstExpansion"),\
+        features_bisu = [template.index("ProtossFirstExpansion"),\
                     template.index("ProtossCorsair"),\
-                    template.index("ProtossArchives")\
-                    ], 1), typ=np.int64)
+                    template.index("ProtossDarkTemplar")]
+        if kmeans:
+            bisu_data_int = filter_out_undef(data.take(\
+                    features_bisu, 1), typ=np.int64)
             bisu_km = k_means(bisu_data_int[1], nbiter=nbiterations)
-        bisu_data = filter_out_undef(data.take([\
-                template.index("ProtossFirstExpansion"),\
-                template.index("ProtossCorsair"),\
-                template.index("ProtossArchives")\
-                ], 1))
+        bisu_data = filter_out_undef(data.take(features_bisu, 1))
         if EM:
             bisu_em = expectation_maximization(bisu_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
         bisu = r_em(bisu_data[1], nbclusters=2, plot=plotR)
+        bisu['features'] = features_bisu
 
         ### Corsair opening
+        features_corsair = [template.index("ProtossCorsair")]
         if kmeans:
-            corsair_data_int = filter_out_undef(data.take([\
-                    template.index("ProtossCorsair")], 1), typ=np.int64)
+            corsair_data_int = filter_out_undef(data.take(\
+                    features_corsair, 1), typ=np.int64)
             corsair_km = k_means(corsair_data_int[1], nbiter=nbiterations)
-        corsair_data = filter_out_undef(data.take([\
-                template.index("ProtossCorsair")], 1))
+        corsair_data = filter_out_undef(data.take(features_corsair, 1))
         if EM:
             corsair_em = expectation_maximization(corsair_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
         corsair = r_em(corsair_data[1], nbclusters=2, plot=plotR)
+        corsair['features'] = features_corsair
 
         ### Nony opening
-        if kmeans:
-            nony_data_int = filter_out_undef(data.take([\
-                    template.index("ProtossRange"),\
+        features_nony = [template.index("ProtossRange"),\
                     template.index("ProtossSecondGatway"),\
-                    template.index("ProtossGoon")
-                    ], 1), typ=np.int64)
+                    template.index("ProtossGoon")]
+        if kmeans:
+            nony_data_int = filter_out_undef(data.take(\
+                    features_nony, 1), typ=np.int64)
             nony_km = k_means(nony_data_int[1], nbiter=nbiterations)
-        nony_data = filter_out_undef(data.take([\
-                template.index("ProtossRange"),\
-                template.index("ProtossSecondGatway"),\
-                template.index("ProtossGoon")
-                ], 1))
+        nony_data = filter_out_undef(data.take(features_nony, 1))
         if EM:
             nony_em = expectation_maximization(nony_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
         nony = r_em(nony_data[1], nbclusters=2, plot=plotR)
+        nony['features'] = features_nony
 
 
         ### Reaver Drop
+        features_reaver_drop = [template.index("ProtossReavor"),\
+                template.index("ProtossShuttle")]
         if kmeans:
-            reaver_drop_data_int = filter_out_undef(data.take([\
-                    template.index("ProtossShuttle"), template.index("ProtossReavor")\
-                    ], 1), typ=np.int64)
+            reaver_drop_data_int = filter_out_undef(data.take(\
+                    features_reaver_drop, 1), typ=np.int64)
             reaver_drop_km = k_means(reaver_drop_data_int[1], nbiter=nbiterations)
-        reaver_drop_data = filter_out_undef(data.take([\
-                template.index("ProtossShuttle"), template.index("ProtossReavor")\
-                ], 1))
+        reaver_drop_data = filter_out_undef(data.take(features_reaver_drop, 1))
         if EM:
             reaver_drop_em = expectation_maximization(reaver_drop_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
         reaver_drop = r_em(reaver_drop_data[1], nbclusters=2, plot=plotR)
+        reaver_drop['features'] = features_reaver_drop
 
         ### [Disabled] Cannon Rush
 #        if kmeans:
@@ -749,60 +780,66 @@ if __name__ == "__main__":
 #        bbs = r_em(bbs_data[1], nbclusters=2, plot=plotR)
 
         ### Bio push
-        bio_data = filter_out_undef(data.take([\
-                template.index("TerranBarracks"),\
+        features_bio = [template.index("TerranThirdBarracks"),\
                 template.index("TerranSecondBarracks"),\
-                template.index("TerranThirdBarracks")], 1))
+                template.index("TerranBarracks")]
+        bio_data = filter_out_undef(data.take(features_bio, 1))
         if EM:
             bio_em = expectation_maximization(bio_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
         bio = r_em(bio_data[1], nbclusters=2, plot=plotR)
+        bio['features'] = features_bio
 
         ### 1/2 Rax FE
-        rax_fe_data = filter_out_undef(data.take([\
-                template.index("TerranBarracks"),\
-                template.index("TerranExpansion")], 1))
+        features_rax_fe = [template.index("TerranExpansion"),\
+                template.index("TerranBarracks")]
+        rax_fe_data = filter_out_undef(data.take(features_rax_fe , 1))
         if EM:
             rax_fe_em = expectation_maximization(rax_fe_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
         rax_fe = r_em(rax_fe_data[1], nbclusters=2, plot=plotR)
+        rax_fe['features'] = features_rax_fe
 
         ### Siege Expand
-        siege_exp_data = filter_out_undef(data.take([\
-                template.index("TerranSiege"),\
-                template.index("TerranExpansion")], 1))
+        features_siege_exp = [template.index("TerranSiege"),\
+                template.index("TerranExpansion")]
+        siege_exp_data = filter_out_undef(data.take(features_siege_exp, 1))
         if EM:
             siege_exp_em = expectation_maximization(siege_exp_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
         siege_exp = r_em(siege_exp_data[1], nbclusters=2, plot=plotR)
+        siege_exp['features'] = features_siege_exp
+        siege_exp['features'] = features_siege_exp
 
         ### 2 Facto
-        two_facto_data = filter_out_undef(data.take([\
-                template.index("TerranFactory"),\
-                template.index("TerranSecondFactory"),\
-                template.index("TerranTank")], 1))
+        features_two_facto = [template.index("TerranSecondFactory"),\
+                template.index("TerranTank")]
+        two_facto_data = filter_out_undef(data.take(features_two_facto, 1))
         if EM:
             two_facto_em = expectation_maximization(two_facto_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
         two_facto = r_em(two_facto_data[1], nbclusters=2, plot=plotR)
+        two_facto['features'] = features_two_facto
 
         ### Vultures harass
-        vultures_data = filter_out_undef(data.take([\
-                template.index("TerranVulture"),\
-                template.index("TerranMines")],1))
+        features_vultures = [template.index("TerranMines"),\
+                template.index("TerranVulture")]
+        vultures_data = filter_out_undef(data.take(features_vultures, 1))
         if EM:
             vultures_em = expectation_maximization(vultures_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
         vultures = r_em(vultures_data[1], nbclusters=2, plot=plotR)
+        vultures['features'] = features_vultures
 
         ### Fast Wraith
-        wraith_data = filter_out_undef(data.take([\
-                template.index("TerranStarport"),\
-                template.index("TerranWraith")], 1))
+        features_wraith = [template.index("TerranWraith"),\
+                template.index("TerranStarport")]
+        wraith_data = filter_out_undef(data.take(features_wraith, 1))
         if EM:
             wraith_em = expectation_maximization(wraith_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
         wraith = r_em(wraith_data[1], nbclusters=2, plot=plotR)
+        wraith['features'] = features_wraith
 
         bio['name'] = "bio"
         rax_fe['name'] = "rax_fe"
@@ -857,13 +894,14 @@ if __name__ == "__main__":
 #        glings_rush = r_em(glings_rush_data[1], nbclusters=2, plot=plotR)
 
         ### Speedlings rush
-        speedlings_data = filter_out_undef(data.take([\
-                template.index("ZergPool"),\
-                template.index("ZergZerglingSpeed")], 1))
+        features_speedlings = [template.index("ZergZerglingSpeed"),\
+                template.index("ZergPool")]
+        speedlings_data = filter_out_undef(data.take(features_speedlings, 1))
         if EM:
             speedlings_em = expectation_maximization(speedlings_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
         speedlings = r_em(speedlings_data[1], nbclusters=2, plot=plotR)
+        speedlings['features'] = features_speedlings
 
         ### [Disabled] Hatch first
 #        fast_exp_data = filter_out_undef(data.take([\
@@ -875,8 +913,8 @@ if __name__ == "__main__":
 #        fast_exp = r_em(fast_exp_data[1], nbclusters=2, plot=plotR)
 
         ### Fast mutas
-        fast_mutas_data = filter_out_undef(data.take([\
-                template.index("ZergMutalisk")], 1))
+        features_fast_mutas = [template.index("ZergMutalisk")]
+        fast_mutas_data = filter_out_undef(data.take(features_fast_mutas, 1))
         if kmeans:
             fast_mutas_data_int = filter_out_undef(data.take([\
                     template.index("ZergMutalisk")], 1), typ=np.int64)
@@ -885,34 +923,39 @@ if __name__ == "__main__":
             fast_mutas_em = expectation_maximization(fast_mutas_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
         fast_mutas = r_em(fast_mutas_data[1], nbclusters=2, plot=plotR)
+        fast_mutas['features'] = features_fast_mutas
 
         ### 3 Hatch mutas / Mass mutas
-        mutas_data = filter_out_undef(data.take([\
-                template.index("ZergSecondHatch"),\
-                template.index("ZergThirdHatch"),\
-                template.index("ZergMutalisk")], 1))
+        features_mutas = [template.index("ZergThirdHatch"),\
+                template.index("ZergMutalisk")]
+        mutas_data = filter_out_undef(data.take(features_mutas, 1))
         if EM:
             mutas_em = expectation_maximization(mutas_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
         mutas = r_em(mutas_data[1], nbclusters=2, plot=plotR)
+        mutas['features'] = features_mutas
 
-        ### Lurkers
-        lurkers_data = filter_out_undef(data.take([\
-                template.index("ZergLurker")], 1))
+        ### Fast Lurkers (Third hatch should be late)
+        features_lurkers = [template.index("ZergLurker"),\
+                template.index("ZergThirdHatch")] # TODO remove 3rd hatch?
+        lurkers_data = filter_out_undef(data.take(features_lurkers, 1))
         if EM:
             lurkers_em = expectation_maximization(lurkers_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
         lurkers = r_em(lurkers_data[1], nbclusters=2, plot=plotR)
+        lurkers['features'] = features_lurkers
 
         ### Mass hydras
-        hydras_data = filter_out_undef(data.take([\
-                template.index("ZergHydra"),\
+        features_hydras = [template.index("ZergHydra"),\
                 template.index("ZergHydraSpeed"),\
-                template.index("ZergHydraRange")], 1))
+                template.index("ZergHydraRange"),\
+                template.index("ZergThirdHatch")] # TODO remove 3rd hatch?
+        hydras_data = filter_out_undef(data.take(features_hydras, 1))
         if EM:
             hydras_em = expectation_maximization(hydras_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
         hydras = r_em(hydras_data[1], nbclusters=2, plot=plotR)
+        hydras['features'] = features_hydras
 
         speedlings['name'] = "speedlings"
         fast_mutas['name'] = "fast_mutas"
