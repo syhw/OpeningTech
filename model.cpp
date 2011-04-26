@@ -1,30 +1,17 @@
-#include <pl.h>
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <set>
-#include <algorithm>
-#include "enums_name_tables.h"
-#include "x_values.h"
-#include "replays.h"
-#include "parameters.h"
-#include <boost/random/linear_congruential.hpp>
-#include <boost/random/uniform_real.hpp>
-#include <boost/random/uniform_int.hpp>
-#include <boost/random/variate_generator.hpp>
+#include "model.h"
 
 /// Copyright Gabriel Synnaeve 2011
 /// This code is under 3-clauses (new) BSD License
 
 using namespace std;
 
-typedef void iovoid;
-
 /// POSSIBLE: use an iterator in values[] so that we directly
 /// POSSIBLE: put a std::set instead of std::vector for vector_X
 /// TODO: replace set by unordered_set (TR1 or boost) in a lot of places
 
 std::vector<std::set<int> > vector_X;
+int nbBuildings;
+const char** buildings_name;
 
 #ifdef BENCH
 /**
@@ -52,7 +39,7 @@ plValues max(const map<plValues, plProbValue>& m)
 
 #if PLOT > 0
 void gnuplot_vector_probas(const vector<vector<plProbValue> >& tab, 
-        vector<string>& openings, const string& filename)
+        const vector<string>& openings, const string& filename)
 {
     ofstream file;
     // gnuplot file
@@ -311,21 +298,306 @@ void learn_T_and_X(ifstream& inputstream,
     cout << "*** Number of different pairs (X, Opening): " 
         << count_X_Op_examples.size() << endl;
 #endif
-    /*
-    for (unsigned int i = 0; i < vector_X.size(); i++)
+}
+
+OpeningPredictor::OpeningPredictor(const vector<string>& op,
+        const char* learningFileName)
+: openings(op)
+{
+    /**********************************************************************
+      VARIABLES SPECIFICATION
+     **********************************************************************/
+    X = plSymbol("X", plIntegerType(0, vector_X.size()));
+    lambda = plSymbol("lambda", PL_BINARY_TYPE);
+    // what has been observed
+    for (unsigned int i = 0; i < nbBuildings; i++)
+        observed.push_back(plSymbol(buildings_name[i], PL_BINARY_TYPE));
+    Opening = plSymbol("Opening", plLabelType(openings));
+#ifdef DIRAC_ON_LAST_OPENING
+    LastOpening = plSymbol("LastOpening", plLabelType(openings));
+#endif
+    Time = plSymbol("Time", plIntegerType(1, LEARN_TIME_LIMIT)); 
+
+    /**********************************************************************
+      PARAMETRIC FORMS SPECIFICATION
+     **********************************************************************/
+    // Specification of P(Opening)
+    for (unsigned int i = 0; i < openings.size(); i++) 
+        tableOpening.push_back(1.0);
+#ifdef DIRAC_ON_LAST_OPENING
+    P_LastOpening = plMutableDistribution(
+            plProbTable(LastOpening, tableOpening, false));
+    same_opening = plExternalFunction(Opening, LastOpening,
+            test_same_opening);
+    P_Opening = plFunctionalDirac(Opening, LastOpening, same_opening);
+#else
+    P_Opening = plProbTable(Opening, tableOpening, false);
+#endif
+
+    // Specification of P(X | Opening) (possible tech trees)
+    xLearner = plCndLearnObject<plLearnHistogram>(X, Opening);
+    std::vector<plProbValue> tableX;
+    for (unsigned int i = 0; i < vector_X.size(); i++) 
+        tableX.push_back(1.0);
+    P_X = plProbTable(X, tableX, false);
+
+    // Specification of P(O_1..NB_<RACE>_BUILDINGS)
+    plProbValue tmp_table[] = {0.5, 0.5};
+    for (unsigned int i = 0; i < nbBuildings; i++)
     {
-        plValues rightValues(X^Opening); 
-        rightValues[Opening] = "FastExpand";
-        rightValues[X] = i;
-        cout << "Right values: " << rightValues << endl;
-        cout << "Learnt parameters, mu: " 
-        << static_cast<plBellShape>(timeLearner.get_learnt_object_for_value(
-        rightValues)->get_distribution()).mean() 
-        << ", stddev: " 
-        << static_cast<plBellShape>(timeLearner.get_learnt_object_for_value(
-        rightValues)->get_distribution()).standard_deviation() 
-        << endl;
-    }/**/
+        P_Observed.push_back(plProbTable(observed[i], tmp_table, true));
+        listObs *= plProbTable(observed[i], tmp_table, true);
+    }
+
+    // Specification of P(lambda | X, O_1..NB_<RACE>_BUILDINGS)
+    for (std::vector<plSymbol>::const_iterator it = observed.begin();
+            it != observed.end(); ++it)
+        ObsConj ^= (*it);
+    X_Obs_conj = X^ObsConj;
+    coherence = plExternalFunction(lambda, X_Obs_conj, 
+            test_X_possible);
+    P_lambda = plFunctionalDirac(lambda, X_Obs_conj ,coherence);
+
+    // Specification of P(T | X, Opening)
+    timeLearner = plCndLearnObject<plLearnBellShape>(Time, X^Opening);
+    cout << ">>>> Learning from: " << learningFileName << endl;
+    ifstream inputstream(learningFileName);
+    if (learningFileName[1] == 'P')
+        learn_T_and_X<Protoss_Buildings>(inputstream, timeLearner, xLearner,
+                Opening, X, Time);
+    else if (learningFileName[1] == 'T')
+        learn_T_and_X<Terran_Buildings>(inputstream, timeLearner, xLearner,
+                Opening, X, Time);
+    else if (learningFileName[1] == 'Z')
+        learn_T_and_X<Zerg_Buildings>(inputstream, timeLearner, xLearner,
+                Opening, X, Time);
+#if DEBUG_OUTPUT > 2
+    cout << "*** Number of possible pairs (X, Opening): "
+        << vector_X.size()*openings.size();
+    cout << timeLearner.get_computable_object() << endl;
+#endif
+
+    /**********************************************************************
+      DECOMPOSITION
+     **********************************************************************/
+    knownConj = ObsConj^lambda^Time;
+#ifdef DIRAC_ON_LAST_OPENING
+    jd = plJointDistribution(X^Opening^LastOpening^knownConj, P_LastOpening*
+#else
+    jd = plJointDistribution(X^Opening^knownConj,
+#endif
+#ifdef X_KNOWING_OPENING
+                xLearner.get_computable_object()*P_Opening*listObs*P_lambda
+#else
+                P_X*P_Opening*listObs*P_lambda
+#endif
+                *timeLearner.get_computable_object()); // <=> P_Time);
+    jd.draw_graph("jd.fig");
+#if DEBUG_OUTPUT > 0
+    cout << "Joint distribution built." << endl;
+#endif
+
+    /**********************************************************************
+      PROGRAM QUESTION
+     **********************************************************************/
+#if PLOT > 1
+    X_Op = X^Opening;
+    jd.ask(Cnd_P_Time_X_knowing_Op, Time^X, Opening);
+#if DEBUG_OUTPUT > 2
+    cout << Cnd_P_Time_X_knowing_Op << endl;
+#endif
+
+#if PLOT > 2
+    jd.ask(Cnd_P_Time_knowing_X_Op, Time, X_Op);
+#if DEBUG_OUTPUT > 2
+    cout << Cnd_P_Time_knowing_X_Op << endl;
+#endif
+#endif
+    for (unsigned int i = 0; i < openings.size(); i++) // Openings
+    {
+        plValues evidence(Opening);
+        evidence[Opening] = i;
+        plDistribution PP_Time_X;
+        Cnd_P_Time_X_knowing_Op.instantiate(PP_Time_X, evidence);
+        plDistribution T_P_Time_X;
+        PP_Time_X.compile(T_P_Time_X);
+        std::stringstream tmp;
+        tmp << "Opening" << openings[i] << ".gnuplot";
+        T_P_Time_X.plot(tmp.str().c_str());
+
+#if PLOT > 2
+        for (unsigned int j = 0; j < vector_X.size(); ++j)
+        {
+            plValues evidence2(Opening^X);
+            evidence2[Opening] = i;
+            evidence2[X] = j; 
+            // next line generates plWarning when == 0
+            if (timeLearner.get_learnt_object_for_value(evidence2) != 0)
+            {
+                Cnd_P_Time_knowing_X_Op.instantiate(PP_Time_X, evidence2);
+                PP_Time_X.compile(T_P_Time_X);
+                std::stringstream tmp2;
+                tmp2 << "Opening" << openings[i] << "X" << j << ".gnuplot";
+                T_P_Time_X.plot(tmp2.str().c_str());
+            }
+        }
+#endif
+    }
+#ifdef PLOT_ONLY
+    return 0;
+#endif
+#endif // endif of PLOT > 1
+
+    jd.ask(Cnd_P_Opening_knowing_rest, Opening, knownConj);
+#if DEBUG_OUTPUT > 0
+    cout << Cnd_P_Opening_knowing_rest << endl;
+#endif
+
+#ifdef BENCH
+    positive_classif_finale = 0;
+    positive_classif_online = 0;
+    cpositive_classif_finale = 0;
+    for (vector<string>::const_iterator it = openings.begin();
+            it != openings.end(); ++it)
+    {
+        plValues tmp(Opening);
+        tmp[Opening] = *it;
+        cumulative_prob.insert(make_pair<plValues, plProbValue>(tmp, 0.0));
+    }
+#endif
+}
+
+OpeningPredictor::~OpeningPredictor()
+{
+}
+
+void OpeningPredictor::init_game()
+{
+#ifdef BENCH
+    times_label_predicted = 0;
+#endif
+    evidence = plValues(knownConj);
+    // we assume we didn't see any buildings
+    for (unsigned int i = 1; i < nbBuildings; ++i)
+        evidence[observed[i]] = 0;
+    evidence[lambda] = 1; // we want coherence ;)
+    evidence[observed[0]] = 1; // the first Nexus/CC/Hatch exists
+#if PLOT > 0
+#ifdef DIRAC_ON_LAST_OPENING
+    P_LastOpening.tabulate(tmpProbV);
+#else 
+    P_Opening.tabulate(tmpProbV);
+#endif
+    T_P_Opening_v.push_back(tmpProbV);
+#endif
+}
+
+int OpeningPredictor::instantiate_and_compile(int time,
+        const Building& building, const string& tmpOpening)
+{
+    evidence[observed[building.getEnumValue()]] = 1;
+    evidence[Time] = time;
+
+#if DEBUG_OUTPUT > 1
+    cout << "====== evidence ======" << endl;
+    cout << evidence << endl;
+#endif
+    plDistribution PP_Opening;
+    Cnd_P_Opening_knowing_rest.instantiate(PP_Opening, evidence);
+#if DEBUG_OUTPUT > 1
+    cout << "====== P(Opening | rest).instantiate ======" << endl;
+    cout << Cnd_P_Opening_knowing_rest << endl;
+    cout << PP_Opening.get_left_variables() << endl;
+    cout << PP_Opening.get_right_variables() << endl;
+#endif
+    PP_Opening.compile(T_P_Opening);
+#if DEBUG_OUTPUT >= 1
+    cout << "====== P(Opening | evidence), building: "
+        << building << " ======" << endl;
+    cout << T_P_Opening << endl;
+#endif
+#ifdef BENCH
+    if (T_P_Opening.is_null())
+        return -1;
+    vector<pair<plValues, plProbValue> > outvals;
+    T_P_Opening.sorted_tabulate(outvals);
+#if PLOT > 0
+    vector<plValues> dummy;
+    tmpProbV.clear();
+    T_P_Opening.tabulate(dummy, tmpProbV);
+    T_P_Opening_v.push_back(tmpProbV);
+#endif
+    for (vector<pair<plValues, plProbValue> >::const_iterator 
+            jt = outvals.begin(); jt != outvals.end(); ++jt)
+    {
+        cumulative_prob[jt->first] += jt->second;
+    }
+#endif
+#ifdef DIRAC_ON_LAST_OPENING
+    P_LastOpening.mutate(static_cast<plDistribution>(
+                PP_Opening.compile().rename(LastOpening)));
+#endif
+#ifdef BENCH
+    plValues toTest(Opening);
+    toTest[Opening] = tmpOpening;
+    if (T_P_Opening.best()[Opening] == toTest[Opening])
+        //&& T_P_Opening[toTest[Opening]] > 0.5)
+        ++times_label_predicted ;
+#endif
+    return 0;
+}
+
+int OpeningPredictor::quit_game(const string& tmpOpening, int noreplay)
+{
+#ifdef BENCH
+    for (map<plValues, plProbValue>::const_iterator 
+            jt = cumulative_prob.begin(); jt != cumulative_prob.end(); ++jt)
+    {
+        cout << "|||| ";
+        jt->first.Output(cout);
+        cout << " => sum on probs: " << jt->second << endl;
+    }
+    plValues toTest(Opening);
+    toTest[Opening] = tmpOpening;
+    if (T_P_Opening.is_null())
+        return -1;
+    if (toTest[Opening] == T_P_Opening.best()[Opening])
+        ++positive_classif_finale;
+    if (toTest[Opening] == max(cumulative_prob)[Opening])
+        ++cpositive_classif_finale;
+    if (times_label_predicted >= 2)
+        ++positive_classif_online;
+    std::stringstream tmpfn;
+#endif
+#if PLOT > 0
+#ifdef DIRAC_ON_LAST_OPENING
+    tmpfn << "OpeningsRep" << noreplay << ".gnuplot";
+#else
+    tmpfn << "SFOpeningsRep" << noreplay << ".gnuplot";
+#endif
+    gnuplot_vector_probas(T_P_Opening_v, openings, tmpfn.str());
+    T_P_Opening_v.clear();
+#endif
+#ifdef DIRAC_ON_LAST_OPENING
+    P_LastOpening.mutate(static_cast<plDistribution>(
+                plProbTable(LastOpening, tableOpening, false)));
+#endif
+    return 0;
+}
+
+void OpeningPredictor::results(int noreplay)
+{
+#ifdef BENCH
+    cout << ">>> Positive classif online: " << positive_classif_online
+        << " on " << noreplay << " replays, ratio: "
+        << static_cast<double>(positive_classif_online)/noreplay << endl;
+    cout << ">>> Positive classif: " << positive_classif_finale
+        << " on " << noreplay << " replays, ratio: "
+        << static_cast<double>(positive_classif_finale)/noreplay << endl;
+    cout << ">>> Cumulative positive classif: " << cpositive_classif_finale
+        << " on " << noreplay << " replays, ratio: "
+        << static_cast<double>(cpositive_classif_finale)/noreplay << endl;
+#endif
 }
 
 int main(int argc, const char *argv[])
@@ -392,8 +664,6 @@ int main(int argc, const char *argv[])
 #endif
 
     std::vector<std::string> openings;
-    int nbBuildings;
-    const char** buildings_name;
 
     if (argv[1] != NULL &&
             (argv[1][1] == 'P' || argv[1][1] == 'T' || argv[1][1] == 'Z'))
@@ -451,162 +721,7 @@ int main(int argc, const char *argv[])
         return 1;
     }
 
-    /**********************************************************************
-      VARIABLES SPECIFICATION
-     **********************************************************************/
-    plSymbol X("X", plIntegerType(0, vector_X.size()));
-    std::vector<plSymbol> observed;
-    plSymbol lambda("lambda", PL_BINARY_TYPE);
-    // what has been observed
-    for (unsigned int i = 0; i < nbBuildings; i++)
-        observed.push_back(plSymbol(buildings_name[i], PL_BINARY_TYPE));
-    plSymbol Opening("Opening", plLabelType(openings));
-#ifdef DIRAC_ON_LAST_OPENING
-    plSymbol LastOpening("LastOpening", plLabelType(openings));
-#endif
-
-    plSymbol Time("Time", plIntegerType(1, LEARN_TIME_LIMIT)); 
-
-    /**********************************************************************
-      PARAMETRIC FORM SPECIFICATION
-     **********************************************************************/
-    // Specification of P(Opening)
-    std::vector<plProbValue> tableOpening;
-    for (unsigned int i = 0; i < openings.size(); i++) 
-        tableOpening.push_back(1.0);
-#ifdef DIRAC_ON_LAST_OPENING
-    plMutableDistribution P_LastOpening(
-            plProbTable(LastOpening, tableOpening, false));
-    plExternalFunction same_opening = plExternalFunction(Opening, LastOpening,
-            test_same_opening);
-    plFunctionalDirac P_Opening(Opening, LastOpening, same_opening);
-#else
-    plProbTable P_Opening(Opening, tableOpening, false);
-#endif
-
-    // Specification of P(X | Opening) (possible tech trees)
-    plCndLearnObject<plLearnHistogram> xLearner(X, Opening);
-    std::vector<plProbValue> tableX;
-    for (unsigned int i = 0; i < vector_X.size(); i++) 
-        tableX.push_back(1.0);
-    plProbTable P_X(X, tableX, false);
-    
-
-    // Specification of P(O_1..NB_<RACE>_BUILDINGS)
-    plComputableObjectList listObs;
-    std::vector<plProbTable> P_Observed;
-    plProbValue tmp_table[] = {0.5, 0.5};
-    for (unsigned int i = 0; i < nbBuildings; i++)
-    {
-        P_Observed.push_back(plProbTable(observed[i], tmp_table, true));
-        listObs *= plProbTable(observed[i], tmp_table, true);
-    }
-
-    // Specification of P(lambda | X, O_1..NB_<RACE>_BUILDINGS)
-    plVariablesConjunction ObsConj;
-    for (std::vector<plSymbol>::const_iterator it = observed.begin();
-            it != observed.end(); ++it)
-        ObsConj ^= (*it);
-    plVariablesConjunction X_Obs_conj = X^ObsConj;
-    plExternalFunction coherence = plExternalFunction(lambda, X_Obs_conj, 
-            test_X_possible);
-    plFunctionalDirac P_lambda(lambda, X_Obs_conj ,coherence);
-    
-    // Specification of P(T | X, Opening)
-    plCndLearnObject<plLearnBellShape> timeLearner(Time, X^Opening);
-    cout << ">>>> Learning from: " << argv[1] << endl;
-    ifstream inputstream(argv[1]);
-    if (argv[1][1] == 'P')
-        learn_T_and_X<Protoss_Buildings>(inputstream, timeLearner, xLearner,
-                Opening, X, Time);
-    else if (argv[1][1] == 'T')
-        learn_T_and_X<Terran_Buildings>(inputstream, timeLearner, xLearner,
-                Opening, X, Time);
-    else if (argv[1][1] == 'Z')
-        learn_T_and_X<Zerg_Buildings>(inputstream, timeLearner, xLearner,
-                Opening, X, Time);
-#if DEBUG_OUTPUT > 2
-    cout << "*** Number of possible pairs (X, Opening): "
-        << vector_X.size()*openings.size();
-    cout << timeLearner.get_computable_object() << endl;
-#endif
-
-    /**********************************************************************
-      DECOMPOSITION
-     **********************************************************************/
-    plVariablesConjunction knownConj = ObsConj^lambda^Time;
-#ifdef DIRAC_ON_LAST_OPENING
-    plJointDistribution jd(X^Opening^LastOpening^knownConj, P_LastOpening*
-#else
-    plJointDistribution jd(X^Opening^knownConj,
-#endif
-#ifdef X_KNOWING_OPENING
-            xLearner.get_computable_object()*P_Opening*listObs*P_lambda
-#else
-            P_X*P_Opening*listObs*P_lambda
-#endif
-            *timeLearner.get_computable_object()); // <=> P_Time);
-    jd.draw_graph("jd.fig");
-#if DEBUG_OUTPUT > 0
-    cout << "Joint distribution built." << endl;
-#endif
-
-    /**********************************************************************
-      PROGRAM QUESTION
-     **********************************************************************/
-#if PLOT > 1
-    plVariablesConjunction X_Op = X^Opening;
-    plCndDistribution Cnd_P_Time_X_knowing_Op;
-    jd.ask(Cnd_P_Time_X_knowing_Op, Time^X, Opening);
-#if DEBUG_OUTPUT > 2
-    cout << Cnd_P_Time_X_knowing_Op << endl;
-#endif
-
-#if PLOT > 2
-    plCndDistribution Cnd_P_Time_knowing_X_Op;
-    jd.ask(Cnd_P_Time_knowing_X_Op, Time, X_Op);
-#if DEBUG_OUTPUT > 2
-    cout << Cnd_P_Time_knowing_X_Op << endl;
-#endif
-#endif
-    for (unsigned int i = 0; i < openings.size(); i++) // Openings
-    {
-        plValues evidence(Opening);
-        evidence[Opening] = i;
-        plDistribution PP_Time_X;
-        Cnd_P_Time_X_knowing_Op.instantiate(PP_Time_X, evidence);
-        plDistribution T_P_Time_X;
-        PP_Time_X.compile(T_P_Time_X);
-        std::stringstream tmp;
-        tmp << "Opening" << openings[i] << ".gnuplot";
-        T_P_Time_X.plot(tmp.str().c_str());
-
-#if PLOT > 2
-        for (unsigned int j = 0; j < vector_X.size(); ++j)
-        {
-            plValues evidence2(Opening^X);
-            evidence2[Opening] = i;
-            evidence2[X] = j; 
-            // next line generates plWarning when == 0
-            if (timeLearner.get_learnt_object_for_value(evidence2) != 0)
-            {
-                Cnd_P_Time_knowing_X_Op.instantiate(PP_Time_X, evidence2);
-                PP_Time_X.compile(T_P_Time_X);
-                std::stringstream tmp2;
-                tmp2 << "Opening" << openings[i] << "X" << j << ".gnuplot";
-                T_P_Time_X.plot(tmp2.str().c_str());
-            }
-        }
-#endif
-    }
-    //return 0;
-#endif
-
-    plCndDistribution Cnd_P_Opening_knowing_rest;
-    jd.ask(Cnd_P_Opening_knowing_rest, Opening, knownConj);
-#if DEBUG_OUTPUT > 0
-    cout << Cnd_P_Opening_knowing_rest << endl;
-#endif
+    OpeningPredictor op = OpeningPredictor(openings, argv[1]);
 
     if (argc < 2)
         return 1;
@@ -615,160 +730,53 @@ int main(int argc, const char *argv[])
     cout << endl;
     cout << ">>>> Testing from: " << argv[2] << endl;
     unsigned int noreplay = 0;
-#ifdef BENCH
-    unsigned int positive_classif_finale = 0;
-    unsigned int positive_classif_online = 0;
-    unsigned int cpositive_classif_finale = 0;
-    map<plValues, plProbValue> cumulative_prob;
-    for (vector<string>::const_iterator it = openings.begin();
-            it != openings.end(); ++it)
-    {
-        plValues tmp(Opening);
-        tmp[Opening] = *it;
-        cumulative_prob.insert(make_pair<plValues, plProbValue>(tmp, 0.0));
-    }
-#endif
 
     while (getline(inputfile_test, input))
     {
-        unsigned int times_label_predicted = 0;
-        plValues evidence(knownConj);
-        evidence[lambda] = 1;
         if (input.empty())
             break;
         string tmpOpening = pruneOpeningVal(input);
         if (tmpOpening == "")
             continue;
         multimap<int, Building> tmpBuildings;
-        getBuildings(input, tmpBuildings, LEARN_TIME_LIMIT - 50); // TODO 
-                                                // completely arbitrary 50
+        getBuildings(input, tmpBuildings, LEARN_TIME_LIMIT - 50); // TODO:
+                                        // change completely arbitrary 50
         tmpBuildings.erase(0); // key == 0 i.e. buildings not constructed
         if (tmpBuildings.empty())
             continue;
+
+        op.init_game();
+
 #if DEBUG_OUTPUT >= 1
-#if PLOT > 0
-        vector<vector<plProbValue> > T_P_Opening_v;
-        vector<plProbValue> tmpProbV;
-#ifdef DIRAC_ON_LAST_OPENING
-        P_LastOpening.tabulate(tmpProbV);
-#else 
-        P_Opening.tabulate(tmpProbV);
-#endif
-        T_P_Opening_v.push_back(tmpProbV);
-#endif
         cout << "******** end replay number: " 
             << noreplay << " ********" << endl;
-        ++noreplay;
         cout << endl << endl << endl;
         cout << "******** Real Opening: " << tmpOpening 
             << " replay number: " << noreplay
             << " ********" << endl;
 #endif
-        evidence[observed[0]] = 1; // the first Nexus/CC/Hatch exists
-        // we assume we didn't see any buildings
-        for (unsigned int i = 1; i < nbBuildings; ++i)
-            evidence[observed[i]] = 0;
+#ifdef BENCH
+        ++noreplay;
+#endif
 
-        plDistribution T_P_Opening;
         // we assume we see the buildings as soon as they get constructed
         for (map<int, Building>::const_iterator it 
                 = tmpBuildings.begin(); 
                 it != tmpBuildings.end(); ++it)
         {
-            evidence[observed[it->second.getEnumValue()]] = 1;
-            evidence[Time] = it->first;
 
-#if DEBUG_OUTPUT > 1
-            cout << "====== evidence ======" << endl;
-            cout << evidence << endl;
-#endif
-
-            plDistribution PP_Opening;
-            Cnd_P_Opening_knowing_rest.instantiate(PP_Opening, evidence);
-#if DEBUG_OUTPUT > 1
-            cout << "====== P(Opening | rest).instantiate ======" << endl;
-            cout << Cnd_P_Opening_knowing_rest << endl;
-            cout << PP_Opening.get_left_variables() << endl;
-            cout << PP_Opening.get_right_variables() << endl;
-#endif
-            PP_Opening.compile(T_P_Opening);
-#if DEBUG_OUTPUT >= 1
-            cout << "====== P(Opening | evidence), building: "
-                << it->second << " ======" << endl;
-            cout << T_P_Opening << endl;
-#endif
-#ifdef BENCH
-            if (T_P_Opening.is_null())
+            if (!op.instantiate_and_compile(it->first, it->second,
+                        tmpOpening))
                 continue;
-            vector<pair<plValues, plProbValue> > outvals;
-            T_P_Opening.sorted_tabulate(outvals);
-#if PLOT > 0
-            vector<plValues> dummy;
-            tmpProbV.clear();
-            T_P_Opening.tabulate(dummy, tmpProbV);
-            T_P_Opening_v.push_back(tmpProbV);
-#endif
-            for (vector<pair<plValues, plProbValue> >::const_iterator 
-                    jt = outvals.begin(); jt != outvals.end(); ++jt)
-            {
-                cumulative_prob[jt->first] += jt->second;
-            }
-            plValues toTest(Opening);
-            toTest[Opening] = tmpOpening;
-            if (T_P_Opening.best()[Opening] == toTest[Opening])
-                    //&& T_P_Opening[toTest[Opening]] > 0.5)
-                ++times_label_predicted ;
-#endif
-#ifdef DIRAC_ON_LAST_OPENING
-            P_LastOpening.mutate(static_cast<plDistribution>(
-                        PP_Opening.compile().rename(LastOpening)));
-#endif
+
         }
-#ifdef BENCH
-        for (map<plValues, plProbValue>::const_iterator 
-                jt = cumulative_prob.begin(); jt != cumulative_prob.end(); ++jt)
-        {
-            cout << "|||| ";
-            jt->first.Output(cout);
-            cout << " => sum on probs: " << jt->second << endl;
-        }
-        plValues toTest(Opening);
-        toTest[Opening] = tmpOpening;
-        if (T_P_Opening.is_null())
+
+        if (!op.quit_game(tmpOpening, noreplay))
             continue;
-        if (toTest[Opening] == T_P_Opening.best()[Opening])
-            ++positive_classif_finale;
-        if (toTest[Opening] == max(cumulative_prob)[Opening])
-            ++cpositive_classif_finale;
-        if (times_label_predicted >= 2)
-            ++positive_classif_online;
-        std::stringstream tmpfn;
-#if PLOT > 0
-#ifdef DIRAC_ON_LAST_OPENING
-        tmpfn << "OpeningsRep" << noreplay << ".gnuplot";
-#else
-        tmpfn << "SFOpeningsRep" << noreplay << ".gnuplot";
-#endif
-        gnuplot_vector_probas(T_P_Opening_v, openings, tmpfn.str());
-        T_P_Opening_v.clear();
-#endif
-#endif
-#ifdef DIRAC_ON_LAST_OPENING
-        P_LastOpening.mutate(static_cast<plDistribution>(
-                plProbTable(LastOpening, tableOpening, false)));
-#endif
+
     }
-#ifdef BENCH
-    cout << ">>> Positive classif online: " << positive_classif_online
-        << " on " << noreplay << " replays, ratio: "
-        << static_cast<double>(positive_classif_online)/noreplay << endl;
-    cout << ">>> Positive classif: " << positive_classif_finale
-        << " on " << noreplay << " replays, ratio: "
-        << static_cast<double>(positive_classif_finale)/noreplay << endl;
-    cout << ">>> Cumulative positive classif: " << cpositive_classif_finale
-        << " on " << noreplay << " replays, ratio: "
-        << static_cast<double>(cpositive_classif_finale)/noreplay << endl;
-#endif
+    
+    op.results(noreplay);
 
     /*plSerializer my_serializer();
     my_serializer.add_object("P_CB", P_CB);
