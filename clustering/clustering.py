@@ -518,8 +518,10 @@ def annotate(data, *args):
             if game[labelind] == '':
                 game[labelind] == 'unknown'
             continue
-        bestlabel = ''
+        bestlabelp = ''
         bestproba = 0.0
+        bestlabelt = ''
+        mintime = 10000000.0
         maxdim = 1.0 * max([len(v[1]) for v in annotations['metadata'][\
                 annotations['games'].index(game)].itervalues()])
         npgame = np.array(game[:len(game)-1], np.float64)
@@ -529,10 +531,16 @@ def annotate(data, *args):
             tmpproba = pnorm(npgame.take(v[1]), gp['mu'], gp['sigma'])
             tmpproba = tmpproba**(maxdim/len(v[1]))
             if tmpproba > bestproba:
-                bestlabel = k
+                bestlabelp = k
                 bestproba = tmpproba
-            #v[1][0] =  # DOC: the first feature is always the "most important"
-        game[labelind] = bestlabel
+            # v[1][0] =  # DOC: the first feature is always the "most important"
+            if v[1][0] < mintime:
+                mintime = v[1][0]
+                bestlabelt = k
+        if (bestlabelp == bestlabelt):
+            game[labelind] = bestlabelp
+        else:
+            game[labelind] = 'unknown'
     return annotations
 
 def write_arff(template, annotations,fn):
