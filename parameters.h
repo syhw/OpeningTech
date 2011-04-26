@@ -22,6 +22,6 @@
 #define ERROR_CHECKS // TODO change when probt-users will have answered
 #define BENCH
 
-#define MY_OPENINGS_LABELS
+//#define MY_OPENINGS_LABELS
 
 #endif

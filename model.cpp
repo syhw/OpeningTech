@@ -99,11 +99,15 @@ void gnuplot_vector_probas(const vector<vector<plProbValue> >& tab,
 iovoid usage()
 {
     cout << "usage: ./model learn_from test_from" << endl;
-    cout << "with names such as 'xRvS': " << endl;
-    cout << " - x = l (learn) or t (test)" << endl;
-    cout << " - R = T or P or Z, race against/of the buildings" << endl;
-    cout << " v stands for versus" << endl;
-    cout << " - S = T or P or Z, other race of the matchup" << endl;
+    cout << "with names such as '.{1}R.{1}S*' / 'xRvS': " << endl;
+    cout << " - x = l (learn) or t (test) [recommended]" << endl;
+    cout << " - R = T or P or Z, race against/of the buildings [compulsory]"
+        << endl;
+    cout << " v stands for versus [compulsory placeholder]" << endl;
+    cout << " - S = T or P or Z, other race of the matchup [compulsory]" 
+        << endl;
+    cout << "what is compulsory is to have R and S in positions 1 and 3!" 
+        << endl;
 }
 
 /** 
@@ -337,6 +341,7 @@ int main(int argc, const char *argv[])
     terran_openings.push_back("two_facto");
     terran_openings.push_back("vultures");
     terran_openings.push_back("wraith");
+    terran_openings.push_back("unknown");
 #else
     terran_openings.push_back("Bio");
     terran_openings.push_back("TwoFactory");
@@ -357,6 +362,7 @@ int main(int argc, const char *argv[])
     protoss_openings.push_back("corsair");
     protoss_openings.push_back("nony");
     protoss_openings.push_back("reaver_drop");
+    protoss_openings.push_back("unknown");
 #else
     protoss_openings.push_back("FastLegs");
     protoss_openings.push_back("FastDT");
@@ -375,6 +381,7 @@ int main(int argc, const char *argv[])
     zerg_openings.push_back("mutas");
     zerg_openings.push_back("lurkers");
     zerg_openings.push_back("hydras");
+    zerg_openings.push_back("unknown");
 #else
     zerg_openings.push_back("TwoHatchMuta");
     zerg_openings.push_back("ThreeHatchMuta");

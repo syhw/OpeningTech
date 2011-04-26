@@ -29,6 +29,9 @@ debugrun:
 	DYLD_LIBRARY_PATH=$(PROBT_LIB):DYLD_LIBRARY_PATH gdb ./model < PvP.txt
 	echo $(PROBT_LIB)
 
+mylabels:
+	g++ -ggdb -arch i386 -DMY_OPENINGS_LABELS -I$(PROBT_INCLUDE) model.cpp -L$(PROBT_LIB) -lpl -o model
+
 test_x_values: tests
 	./test_x_values
 
