@@ -1,6 +1,19 @@
 
 import sys, random
 
+if len(sys.argv) > 1:
+    random.seed()
+    l= open("l"+sys.argv[1], 'w')
+    t= open("t"+sys.argv[1], 'w')
+    for line in open(sys.argv[1]):
+        if (random.random() < 0.1):
+            t.write(line)
+        else:
+            l.write(line)
+    l.close()
+    t.close()
+    sys.exit(0)
+
 random.seed()
 l= open("lPvP.txt", 'w')
 t= open("tPvP.txt", 'w')
