@@ -617,6 +617,7 @@ int main(int argc, const char *argv[])
     unsigned int noreplay = 0;
 #ifdef BENCH
     unsigned int positive_classif_finale = 0;
+    unsigned int positive_classif_online = 0;
     unsigned int cpositive_classif_finale = 0;
     map<plValues, plProbValue> cumulative_prob;
     for (vector<string>::const_iterator it = openings.begin();
@@ -630,6 +631,7 @@ int main(int argc, const char *argv[])
 
     while (getline(inputfile_test, input))
     {
+        unsigned int times_label_predicted = 0;
         plValues evidence(knownConj);
         evidence[lambda] = 1;
         if (input.empty())
@@ -711,6 +713,11 @@ int main(int argc, const char *argv[])
             {
                 cumulative_prob[jt->first] += jt->second;
             }
+            plValues toTest(Opening);
+            toTest[Opening] = tmpOpening;
+            if (T_P_Opening.best()[Opening] == toTest[Opening])
+                    //&& T_P_Opening[toTest[Opening]] > 0.5)
+                ++times_label_predicted ;
 #endif
 #ifdef DIRAC_ON_LAST_OPENING
             P_LastOpening.mutate(static_cast<plDistribution>(
@@ -733,6 +740,8 @@ int main(int argc, const char *argv[])
             ++positive_classif_finale;
         if (toTest[Opening] == max(cumulative_prob)[Opening])
             ++cpositive_classif_finale;
+        if (times_label_predicted >= 2)
+            ++positive_classif_online;
         std::stringstream tmpfn;
 #if PLOT > 0
 #ifdef DIRAC_ON_LAST_OPENING
@@ -750,6 +759,9 @@ int main(int argc, const char *argv[])
 #endif
     }
 #ifdef BENCH
+    cout << ">>> Positive classif online: " << positive_classif_online
+        << " on " << noreplay << " replays, ratio: "
+        << static_cast<double>(positive_classif_online)/noreplay << endl;
     cout << ">>> Positive classif: " << positive_classif_finale
         << " on " << noreplay << " replays, ratio: "
         << static_cast<double>(positive_classif_finale)/noreplay << endl;
