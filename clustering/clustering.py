@@ -520,6 +520,7 @@ def annotate(data, *args):
             continue
         bestlabelp = ''
         bestproba = 0.0
+        probat = 0.0
         bestlabelt = ''
         mintime = 10000000.0
         maxdim = 1.0 * max([len(v[1]) for v in annotations['metadata'][\
@@ -537,8 +538,9 @@ def annotate(data, *args):
             if v[1][0] < mintime:
                 mintime = v[1][0]
                 bestlabelt = k
-        if (bestlabelp == bestlabelt):
-            game[labelind] = bestlabelp
+                probat = tmpproba
+        if bestlabelp == bestlabelt or bestproba < (probat + 0.01**maxdim):
+            game[labelind] = bestlabelt # if probat is only at 1% of bestproba
         else:
             game[labelind] = 'unknown'
     return annotations
@@ -579,7 +581,7 @@ if __name__ == "__main__":
     nbiterations = 5 # TODO 100 when clustering for real
     kmeans = False
     EM = False
-    plotR = False
+    plotR = True
     plotM = False
 
     (template, datalist) = parse(open(sys.argv[1]))
