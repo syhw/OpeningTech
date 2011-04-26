@@ -29,8 +29,8 @@ debugrun:
 	DYLD_LIBRARY_PATH=$(PROBT_LIB):DYLD_LIBRARY_PATH gdb ./model < PvP.txt
 	echo $(PROBT_LIB)
 
-mylabels:
-	g++ -ggdb -arch i386 -DMY_OPENINGS_LABELS -I$(PROBT_INCLUDE) model.cpp -L$(PROBT_LIB) -lpl -o model
+mymodel:
+	g++ -ggdb -arch i386 -DMY_OPENINGS_LABELS -I$(PROBT_INCLUDE) model.cpp -L$(PROBT_LIB) -lpl -o mymodel
 
 test_x_values: tests
 	./test_x_values
@@ -66,6 +66,16 @@ test_getBuildings: tests
 	./test_getBuildings < lPall.txt | less
 
 runtests: test_x_values test_functional_dirac test_lambda test_getOpeningVal test_getBuildings
+
+benchs: model mymodel
+	echo "Benchmarks with Ben Weber labels:\n" > benchs.txt
+	for name in [TPZ]v[TPZ].txt; do echo "$${name%.*}: " >> benchs.txt &&\
+		./model l$$name t$$name | grep ">>> Positive classif:" >> benchs.txt\
+		&& echo "\n" >> benchs.txt; done
+	echo "Benchmarks with my labels:\n" >> benchs.txt
+	for name in [TPZ]v[TPZ]x.txt; do echo "$${name%.*}: " >> benchs.txt &&\
+		./mymodel l$$name t$$name | grep ">>> Positive classif:" >> benchs.txt\
+		&& echo "\n" >> benchs.txt; done
 
 .PHONY: model tests
 

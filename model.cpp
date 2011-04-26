@@ -340,7 +340,7 @@ int main(int argc, const char *argv[])
     terran_openings.push_back("siege_exp");
     terran_openings.push_back("two_facto");
     terran_openings.push_back("vultures");
-    terran_openings.push_back("wraith");
+    terran_openings.push_back("air");
     terran_openings.push_back("unknown");
 #else
     terran_openings.push_back("Bio");
@@ -356,9 +356,8 @@ int main(int argc, const char *argv[])
 #ifdef MY_OPENINGS_LABELS
     protoss_openings.push_back("two_gates");
     protoss_openings.push_back("fast_dt");
-    protoss_openings.push_back("fast_exp");
+    protoss_openings.push_back("templar");
     protoss_openings.push_back("speedzeal");
-    protoss_openings.push_back("bisu");
     protoss_openings.push_back("corsair");
     protoss_openings.push_back("nony");
     protoss_openings.push_back("reaver_drop");
@@ -639,7 +638,8 @@ int main(int argc, const char *argv[])
         if (tmpOpening == "")
             continue;
         multimap<int, Building> tmpBuildings;
-        getBuildings(input, tmpBuildings, LEARN_TIME_LIMIT - 50);
+        getBuildings(input, tmpBuildings, LEARN_TIME_LIMIT - 50); // TODO 
+                                                // completely arbitrary 50
         tmpBuildings.erase(0); // key == 0 i.e. buildings not constructed
         if (tmpBuildings.empty())
             continue;
