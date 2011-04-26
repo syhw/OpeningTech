@@ -4,8 +4,8 @@
 #define X_KNOWING_OPENING
 #define DIRAC_ON_LAST_OPENING
 
-//#define LEARN_TIME_LIMIT 1080 // 18 minutes, TODO change
-#define LEARN_TIME_LIMIT 600
+#define LEARN_TIME_LIMIT 1080 // 18 minutes, TODO change
+//#define LEARN_TIME_LIMIT 600
 //#define GENERATE_X_VALUES
 #define DEBUG_OUTPUT 1
 /**
@@ -21,5 +21,7 @@
 #endif
 #define ERROR_CHECKS // TODO change when probt-users will have answered
 #define BENCH
+
+#define MY_OPENINGS_LABELS
 
 #endif

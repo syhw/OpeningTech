@@ -202,9 +202,9 @@ for line in input:
             game[lookup[i]] = l[i].rstrip('\n\r')
         games.append(game)
     else:
-        if '@ATTRIBUTE' in line:
+        if '@ATTRIBUTE' in line or '@attribute' in line:
             lookup.append(line.split(' ')[1])
-        if '@DATA' in line:
+        if '@DATA' in line or '@data' in line:
             adapt(lookup)
             data = 1
 input.close()

@@ -330,15 +330,14 @@ int main(int argc, const char *argv[])
       INITIALIZATION
      **********************************************************************/
     std::vector<std::string> terran_openings;
-    /*terran_openings.push_back("fast_drop"); // facto-starport-control tower
-    terran_openings.push_back("full_metal"); // facto x2 + machine shop
-    terran_openings.push_back("MM"); // raxes-academy
-    terran_openings.push_back("fast_expand"); // CC first
-    terran_openings.push_back("1rax_FE"); // rax-CC
-    terran_openings.push_back("mech_timing_push"); // facto-armory-facto
-    terran_openings.push_back("fast_air"); // starport x2
-    terran_openings.push_back("BBS"); // rax-rax-supply
-    terran_openings.push_back("unkown");*/
+#ifdef MY_OPENINGS_LABELS
+    terran_openings.push_back("bio");
+    terran_openings.push_back("rax_fe");
+    terran_openings.push_back("siege_exp");
+    terran_openings.push_back("two_facto");
+    terran_openings.push_back("vultures");
+    terran_openings.push_back("wraith");
+#else
     terran_openings.push_back("Bio");
     terran_openings.push_back("TwoFactory");
     terran_openings.push_back("VultureHarass");
@@ -346,18 +345,19 @@ int main(int argc, const char *argv[])
     terran_openings.push_back("Standard");
     terran_openings.push_back("FastDropship");
     terran_openings.push_back("Unknown");
+#endif
 
     std::vector<std::string> protoss_openings;
-    /*protoss_openings.push_back("fast_legs"); // core-citadel-gates-legs
-    protoss_openings.push_back("fast_DT"); // citadel-archives-DT
-    protoss_openings.push_back("fast_air"); // gate-core-stargates
-    protoss_openings.push_back("fast_expand"); // nexus first
-    protoss_openings.push_back("reaver"); // robot-support bay
-    protoss_openings.push_back("standard"); // 2 gates-core-robo-observatory
-    protoss_openings.push_back("goons"); // gate-core-gates-range (NonY)
-    protoss_openings.push_back("proxy_gates"); // pylon-gates @enemy
-    protoss_openings.push_back("photon_rush"); // forge-pylon @enemy
-    protoss_openings.push_back("unknown");*/
+#ifdef MY_OPENINGS_LABELS
+    protoss_openings.push_back("two_gates");
+    protoss_openings.push_back("fast_dt");
+    protoss_openings.push_back("fast_exp");
+    protoss_openings.push_back("speedzeal");
+    protoss_openings.push_back("bisu");
+    protoss_openings.push_back("corsair");
+    protoss_openings.push_back("nony");
+    protoss_openings.push_back("reaver_drop");
+#else
     protoss_openings.push_back("FastLegs");
     protoss_openings.push_back("FastDT");
     protoss_openings.push_back("FastObs");
@@ -365,16 +365,17 @@ int main(int argc, const char *argv[])
     protoss_openings.push_back("Carrier");
     protoss_openings.push_back("FastExpand");
     protoss_openings.push_back("Unknown");
+#endif
 
 
     std::vector<std::string> zerg_openings;
-    /*zerg_openings.push_back("fast_pool"); // 4-8 pools
-    zerg_openings.push_back("lings"); // early pool + no peons @ extractor
-    zerg_openings.push_back("fast_mutas"); // early extractor-lair-spire
-    zerg_openings.push_back("mass_hydras"); // expand-hydra den
-    zerg_openings.push_back("mutas_into_hydras"); // expand-lair-spire-hatch-hydra
-    zerg_openings.push_back("fast_lurkers"); // early gaz-lair-hydra den
-    zerg_openings.push_back("unknown");*/
+#ifdef MY_OPENINGS_LABELS
+    zerg_openings.push_back("speedlings");
+    zerg_openings.push_back("fast_mutas");
+    zerg_openings.push_back("mutas");
+    zerg_openings.push_back("lurkers");
+    zerg_openings.push_back("hydras");
+#else
     zerg_openings.push_back("TwoHatchMuta");
     zerg_openings.push_back("ThreeHatchMuta");
     zerg_openings.push_back("HydraRush");
@@ -382,6 +383,7 @@ int main(int argc, const char *argv[])
     zerg_openings.push_back("HydraMass");
     zerg_openings.push_back("Lurker");
     zerg_openings.push_back("Unknown");
+#endif
 
     std::vector<std::string> openings;
     int nbBuildings;
