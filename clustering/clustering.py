@@ -21,6 +21,8 @@ def interact():
     import code
     code.InteractiveConsole(locals=globals()).interact()
 
+unique_labeling = True
+
 def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=False, beta=200.0,\
         #distance=lambda x,y: np.linalg.norm(x-y),\
         distance=lambda x,y: math.sqrt(np.dot(x-y,(x-y).conj())),\
@@ -518,11 +520,12 @@ def annotate(data, *args):
             if game[labelind] == '':
                 game[labelind] == 'unknown'
             continue
-        bestlabelp = ''
-        bestproba = 0.0
-        probat = 0.0
-        bestlabelt = ''
-        mintime = 10000000.0
+        # "else", len(sp) >= 2
+        bestlabelp = '' # best label according to the proba of clustering
+        bestproba = 0.0 # best probability
+        bestlabelt = '' # best label according to the order of appearance
+        probat = 0.0    # probability of the label appearing the first
+        mintime = 10000000.0 # ;)
         maxdim = 1.0 * max([len(v[1]) for v in annotations['metadata'][\
                 annotations['games'].index(game)].itervalues()])
         npgame = np.array(game[:len(game)-1], np.float64)
@@ -539,11 +542,18 @@ def annotate(data, *args):
                 mintime = game[v[1][0]]
                 bestlabelt = k
                 probat = tmpproba
-        if bestlabelp == bestlabelt or (probat/bestproba) > (0.50**maxdim):
-            game[labelind] = bestlabelt # if probat is only at 1% of bestproba
+        if unique_labeling:
+            ### Picks the best label or put unknown
+            ### label <- first appearing if most probable or not far (1%)
+            if bestlabelp == bestlabelt or (probat/bestproba) > (0.99**maxdim):
+                game[labelind] = bestlabelt # if probat is only at 1% of bestproba
+            else:
+                print 'unknown: ', game
+                game[labelind] = 'unknown'
+            ### /Picks the best label 
         else:
-            print 'unknown: ', game
-            game[labelind] = 'unknown'
+            ### Filter out the less probable and compose openings (early/late)
+            print 'non unique labeling not implemented'
     return annotations
 
 def write_arff(template, annotations,fn):
@@ -601,11 +611,11 @@ if __name__ == "__main__":
         # Main openings:
         # - 2 gateways aggression (proxy or not)
         # - fast DT
-        # - FE into
+        # - FE into (no "FE" opening)
         #   * +1 speed (legs) zealot push
         #   * templar tech: bisu build (sair/templar) or sair/DT
         #   * sair/reaver TODO
-        # - gate/core/gate goons (nony)
+        # - gate/core/gate/gate goons (nony)
         # - reaver drop 
         # - cannon rush [Disabled: can only scout it]
 
@@ -622,6 +632,7 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         two_gates = r_em(two_gates_data[1], nbclusters=2, plot=plotR)
         two_gates['features'] = features_two_gates
+        two_gates['timing'] = 'early'
 
         ### Fast DT
         features_fast_dt = [template.index("ProtossDarkTemplar")]
@@ -636,20 +647,22 @@ if __name__ == "__main__":
                     nbiter=nbiterations, monotony=True, normalize=True)
         fast_dt = r_em(fast_dt_data[1], nbclusters=2, plot=plotR)
         fast_dt['features'] = features_fast_dt
+        fast_dt['timing'] = 'late'
 
+        ### [Disabled: too much covering of other builds + no info on threats]
         ### Fast Expand
-        features_fast_exp = [template.index("ProtossFirstExpansion")]
-        if kmeans:
-            fast_exp_data_int = filter_out_undef(data.take(\
-                    features_fast_exp, 1), typ=np.int64)
-            fast_exp_km = k_means(fast_exp_data_int[1], nbiter=nbiterations,\
-                    distance = lambda x,y: abs(x-y))
-        fast_exp_data = filter_out_undef(data.take(features_fast_exp, 1))
-        if EM:
-            fast_exp_em = expectation_maximization(fast_exp_data[1],\
-                    nbiter=nbiterations, monotony=True, normalize=True)
-        fast_exp = r_em(fast_exp_data[1], nbclusters=2, plot=plotR)
-        fast_exp['features'] = features_fast_exp
+#        features_fast_exp = [template.index("ProtossFirstExpansion")]
+#        if kmeans:
+#            fast_exp_data_int = filter_out_undef(data.take(\
+#                    features_fast_exp, 1), typ=np.int64)
+#            fast_exp_km = k_means(fast_exp_data_int[1], nbiter=nbiterations,\
+#                    distance = lambda x,y: abs(x-y))
+#        fast_exp_data = filter_out_undef(data.take(features_fast_exp, 1))
+#        if EM:
+#            fast_exp_em = expectation_maximization(fast_exp_data[1],\
+#                    nbiter=nbiterations, monotony=True, normalize=True)
+#        fast_exp = r_em(fast_exp_data[1], nbclusters=2, plot=plotR)
+#        fast_exp['features'] = features_fast_exp
 
         ### +1 SpeedZeal
         features_speedzeal = [template.index("ProtossGroundWeapons1"),\
@@ -664,21 +677,38 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         speedzeal = r_em(speedzeal_data[1], nbclusters=2, plot=plotR)
         speedzeal['features'] = features_speedzeal
+        speedzeal['timing'] = 'early'
 
+        ### [Disabled: will be infered by composition of corsair + DT]
         ### Bisu build
-        features_bisu = [template.index("ProtossFirstExpansion"),\
-                    template.index("ProtossCorsair"),\
-                    template.index("ProtossDarkTemplar")]
+#        features_bisu = [template.index("ProtossFirstExpansion"),\
+#                    template.index("ProtossCorsair"),\
+#                    template.index("ProtossDarkTemplar")]
+#        if kmeans:
+#            bisu_data_int = filter_out_undef(data.take(\
+#                    features_bisu, 1), typ=np.int64)
+#            bisu_km = k_means(bisu_data_int[1], nbiter=nbiterations)
+#        bisu_data = filter_out_undef(data.take(features_bisu, 1))
+#        if EM:
+#            bisu_em = expectation_maximization(bisu_data[1],\
+#                    nbiter=nbiterations, normalize=True, monotony=True)
+#        bisu = r_em(bisu_data[1], nbclusters=2, plot=plotR)
+#        bisu['features'] = features_bisu
+
+        ### Fast templars
+        features_templar = [template.index("ProtossStorm"),\
+                    template.index("ProtossTemplar")]
         if kmeans:
-            bisu_data_int = filter_out_undef(data.take(\
-                    features_bisu, 1), typ=np.int64)
-            bisu_km = k_means(bisu_data_int[1], nbiter=nbiterations)
-        bisu_data = filter_out_undef(data.take(features_bisu, 1))
+            templar_data_int = filter_out_undef(data.take(\
+                    features_templar, 1), typ=np.int64)
+            templar_km = k_means(templar_data_int[1], nbiter=nbiterations)
+        templar_data = filter_out_undef(data.take(features_templar, 1))
         if EM:
-            bisu_em = expectation_maximization(bisu_data[1],\
+            templar_em = expectation_maximization(templar_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        bisu = r_em(bisu_data[1], nbclusters=2, plot=plotR)
-        bisu['features'] = features_bisu
+        templar = r_em(templar_data[1], nbclusters=2, plot=plotR)
+        templar['features'] = features_templar
+        templar['timing'] = 'late'
 
         ### Corsair opening
         features_corsair = [template.index("ProtossCorsair")]
@@ -692,10 +722,11 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         corsair = r_em(corsair_data[1], nbclusters=2, plot=plotR)
         corsair['features'] = features_corsair
+        corsair['timing'] = 'early'
 
-        ### Nony opening
+        ### Nony opening aka fast goons range
         features_nony = [template.index("ProtossRange"),\
-                    template.index("ProtossSecondGatway"),\
+                    template.index("ProtossThirdGatway"),\
                     template.index("ProtossGoon")]
         if kmeans:
             nony_data_int = filter_out_undef(data.take(\
@@ -707,7 +738,7 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         nony = r_em(nony_data[1], nbclusters=2, plot=plotR)
         nony['features'] = features_nony
-
+        nony['timing'] = 'early'
 
         ### Reaver Drop
         features_reaver_drop = [template.index("ProtossReavor"),\
@@ -722,6 +753,7 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         reaver_drop = r_em(reaver_drop_data[1], nbclusters=2, plot=plotR)
         reaver_drop['features'] = features_reaver_drop
+        reaver_drop['timing'] = 'late'
 
         ### [Disabled] Cannon Rush
 #        if kmeans:
@@ -739,9 +771,10 @@ if __name__ == "__main__":
 
         two_gates['name'] = "two_gates"
         fast_dt['name'] = "fast_dt"
-        fast_exp['name'] = "fast_exp" # TODO (not satisfied)
+        #fast_exp['name'] = "fast_exp" # TODO (not satisfied)
+        templar['name'] = "templar"
         speedzeal['name'] = "speedzeal"
-        bisu['name'] = "bisu"
+        #bisu['name'] = "bisu"
         corsair['name'] = "corsair"
         nony['name'] = "nony"
         reaver_drop['name'] = "reaver_drop"
@@ -750,12 +783,14 @@ if __name__ == "__main__":
             plot(two_gates, two_gates_data[1])
             print fast_dt
             plot(fast_dt, fast_dt_data[1])
-            print fast_exp
-            plot(fast_exp, fast_exp_data[1])
+            #print fast_exp
+            #plot(fast_exp, fast_exp_data[1])
+            print templar
+            plot(templar, templar_data[1])
             print speedzeal
             plot(speedzeal, speedzeal_data[1])
-            print bisu
-            plot(bisu, bisu_data[1])
+            #print bisu
+            #plot(bisu, bisu_data[1])
             print corsair
             plot(corsair, corsair_data[1])
             print nony
@@ -766,10 +801,12 @@ if __name__ == "__main__":
             #plot(cannon_rush["clusters"],cannon_rush_data[1], "cannon rush",\
             #        cannon_rush["params"])
 
+                #(fast_exp_data, fast_exp), (speedzeal_data, speedzeal),\
+                #(bisu_data, bisu), (corsair_data, corsair),\
         write_arff(template, annotate(datalist,\
                 (two_gates_data, two_gates), (fast_dt_data, fast_dt),\
-                (fast_exp_data, fast_exp), (speedzeal_data, speedzeal),\
-                (bisu_data, bisu), (corsair_data, corsair),\
+                (templar_data, templar), (speedzeal_data, speedzeal),\
+                (corsair_data, corsair),\
                 (nony_data, nony), (reaver_drop_data, reaver_drop)),\
                 "my"+sys.argv[1])
 
@@ -803,6 +840,7 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         bio = r_em(bio_data[1], nbclusters=2, plot=plotR)
         bio['features'] = features_bio
+        bio['timing'] = 'early'
 
         ### 1/2 Rax FE
         features_rax_fe = [template.index("TerranExpansion"),\
@@ -813,6 +851,7 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         rax_fe = r_em(rax_fe_data[1], nbclusters=2, plot=plotR)
         rax_fe['features'] = features_rax_fe
+        rax_fe['timing'] = 'early'
 
         ### Siege Expand
         features_siege_exp = [template.index("TerranSiege"),\
@@ -823,7 +862,7 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         siege_exp = r_em(siege_exp_data[1], nbclusters=2, plot=plotR)
         siege_exp['features'] = features_siege_exp
-        siege_exp['features'] = features_siege_exp
+        siege_exp['timing'] = early
 
         ### 2 Facto
         features_two_facto = [template.index("TerranSecondFactory"),\
@@ -834,6 +873,7 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         two_facto = r_em(two_facto_data[1], nbclusters=2, plot=plotR)
         two_facto['features'] = features_two_facto
+        two_facto['timing'] = 'late'
 
         ### Vultures harass
         features_vultures = [template.index("TerranMines"),\
@@ -844,23 +884,26 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         vultures = r_em(vultures_data[1], nbclusters=2, plot=plotR)
         vultures['features'] = features_vultures
+        vultures['timing'] = 'late'
 
-        ### Fast Wraith
-        features_wraith = [template.index("TerranWraith"),\
-                template.index("TerranStarport")]
-        wraith_data = filter_out_undef(data.take(features_wraith, 1))
+        ### Fast air
+        #features_air = [template.index("TerranWraith"),\
+        #        template.index("TerranStarport")]
+        features_air = [template.index("TerranStarport")]
+        air_data = filter_out_undef(data.take(features_air, 1))
         if EM:
-            wraith_em = expectation_maximization(wraith_data[1],\
+            air_em = expectation_maximization(air_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        wraith = r_em(wraith_data[1], nbclusters=2, plot=plotR)
-        wraith['features'] = features_wraith
+        air = r_em(air_data[1], nbclusters=2, plot=plotR)
+        air['features'] = features_air
+        air['timing'] = 'late'
 
         bio['name'] = "bio"
         rax_fe['name'] = "rax_fe"
         siege_exp['name'] = "siege_exp"
         two_facto['name'] = "two_facto"
         vultures['name'] = "vultures"
-        wraith['name'] = "wraith"
+        air['name'] = "air"
         if plotM:
             #bbs['name'] = "bbs"
             #print bbs
@@ -875,13 +918,13 @@ if __name__ == "__main__":
             plot(two_facto, two_facto_data[1])
             print vultures
             plot(vultures, vultures_data[1])
-            print wraith
-            plot(wraith, wraith_data[1])
+            print air
+            plot(air, air_data[1])
 
         write_arff(template, annotate(datalist,\
                 (bio_data, bio), (rax_fe_data, rax_fe),\
                 (siege_exp_data, siege_exp), (two_facto_data, two_facto),\
-                (vultures_data, vultures), (wraith_data, wraith)),\
+                (vultures_data, vultures), (air_data, air)),\
                 "my"+sys.argv[1])
 
     if race == "Z":
@@ -916,6 +959,7 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         speedlings = r_em(speedlings_data[1], nbclusters=2, plot=plotR)
         speedlings['features'] = features_speedlings
+        speedlings['timing'] = 'early'
 
         ### [Disabled] Hatch first
 #        fast_exp_data = filter_out_undef(data.take([\
@@ -938,6 +982,7 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         fast_mutas = r_em(fast_mutas_data[1], nbclusters=2, plot=plotR)
         fast_mutas['features'] = features_fast_mutas
+        fast_mutas['timing'] = 'early'
 
         ### 3 Hatch mutas / Mass mutas
         features_mutas = [template.index("ZergThirdHatch"),\
@@ -948,6 +993,7 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         mutas = r_em(mutas_data[1], nbclusters=2, plot=plotR)
         mutas['features'] = features_mutas
+        mutas['timing'] = 'late'
 
         ### Fast Lurkers (Third hatch should be late)
         features_lurkers = [template.index("ZergLurker")]
@@ -957,6 +1003,7 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         lurkers = r_em(lurkers_data[1], nbclusters=2, plot=plotR)
         lurkers['features'] = features_lurkers
+        lurkers['timing'] = 'late'
 
         ### Mass hydras
         features_hydras = [template.index("ZergHydra"),\
@@ -969,6 +1016,7 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         hydras = r_em(hydras_data[1], nbclusters=2, plot=plotR)
         hydras['features'] = features_hydras
+        hydras['timing'] = 'early'
 
         speedlings['name'] = "speedlings"
         fast_mutas['name'] = "fast_mutas"
