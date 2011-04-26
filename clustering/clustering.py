@@ -535,13 +535,14 @@ def annotate(data, *args):
                 bestlabelp = k
                 bestproba = tmpproba
             # v[1][0] =  # DOC: the first feature is always the "most important"
-            if v[1][0] < mintime:
-                mintime = v[1][0]
+            if game[v[1][0]] < mintime:
+                mintime = game[v[1][0]]
                 bestlabelt = k
                 probat = tmpproba
-        if bestlabelp == bestlabelt or bestproba < (probat + 0.01**maxdim):
+        if bestlabelp == bestlabelt or (probat/bestproba) > (0.50**maxdim):
             game[labelind] = bestlabelt # if probat is only at 1% of bestproba
         else:
+            print 'unknown: ', game
             game[labelind] = 'unknown'
     return annotations
 
@@ -581,7 +582,7 @@ if __name__ == "__main__":
     nbiterations = 5 # TODO 100 when clustering for real
     kmeans = False
     EM = False
-    plotR = True
+    plotR = False
     plotM = False
 
     (template, datalist) = parse(open(sys.argv[1]))
