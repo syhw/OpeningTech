@@ -3,8 +3,10 @@ import sys, random
 
 if len(sys.argv) > 1:
     random.seed()
-    l= open("l"+sys.argv[1], 'w')
-    t= open("t"+sys.argv[1], 'w')
+    learnfile = "l"+sys.argv[1]
+    testfile = "t"+sys.argv[1]
+    l= open(learnfile, 'w')
+    t= open(testfile, 'w')
     for line in open(sys.argv[1]):
         if (random.random() < 0.1):
             t.write(line)
@@ -12,6 +14,7 @@ if len(sys.argv) > 1:
             l.write(line)
     l.close()
     t.close()
+    print "wrote: ", learnfile, testfile
     sys.exit(0)
 
 random.seed()
