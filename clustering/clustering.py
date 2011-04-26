@@ -6,6 +6,8 @@
 # Copyright 2011 Gabriel Synnaeve
 
 # TODO a usage documentation (gather "DOC")
+# First feature has a piority: the labels should correspond to some BO 
+# attaining the first feature first.
 
 import sys, random, copy, math
 try:
@@ -104,7 +106,7 @@ def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=False, beta=200.0,\
             for c in range(nbclusters):
                 if medoids:
                     if soft:
-                        print "Not implemented"
+                        print "ERROR: Soft medoids not implemented"
                         sys.exit(-1)
                     else:
                         tmpmin = sys.maxint
@@ -145,7 +147,7 @@ def r_em(t, nbclusters=0, plot=False):
         from rpy2.robjects import r
         import rpy2.robjects.numpy2ri # auto-translates numpy array to R ones
     except:
-        print "You can't use 'r_em()' without rpy2 and the R library mclust"
+        print "ERROR: You can't use 'r_em()' without rpy2 and R+library mclust"
         sys.exit(-1)
     nbobs = t.shape[0]
     nbfeatures = t.shape[1]
@@ -467,6 +469,46 @@ def plot(clusterst, data, title='', gaussians=[], separate_plots=False):
     pl.show()
 
 def annotate(data, *args):
+    def determine_cluster_ind():
+        """ 
+        The labeling cluster should be the one with globally smaller means
+        __and__ the one with the smaller time to accomplish its first feature
+        """
+        ### /!\ shitty heuristic to determine which cluster is the one labeled
+        cind1 = -1
+        cind2 = -1
+        minnorm = 10000000000000000000000000000.0 # ;)
+        minff = 10000000000000000000000000000.0 # ;)
+        if clusters.has_key('params'):
+            params = clusters['params']
+        elif clusters.has_key('centroids'):
+            params = clusters['centroids']
+        for i in range(len(params)):
+            if clusters.has_key('params'):
+                tmpnorm = np.linalg.norm(params[i]['mu']) # global cluster i means
+                tmpff = params[i]['mu'][0] # mean time to have first feature
+            elif clusters.has_key('centroids'):
+                tmpnorm = np.linalg.norm(params[i]) # global cluster i means
+                tmpff = params[i][0] # mean time to have first feature
+            if tmpnorm < minnorm:
+                minnorm = tmpnorm
+                cind1 = i
+            if tmpff < minff:
+                minff = tmpff
+                cind2 = i
+        if cind1 == cind2:
+            return cind1
+        else:
+            print "ERROR: Problem determining labeling cluster:",
+            print clusters['name']
+            print "with feature:", clusters['features'][0]
+            print "min norm:", minnorm
+            print "min first feature:", minff
+            sys.exit(-1)
+        # clusters['clusters'][cind] is the list of the games labeled
+        # clusters['name'] in data[1], their indices in data is in data[0]
+        ### /!\ /shitty heuristic
+
     annotations = {}
     annotations['openings'] = []
     annotations['games'] = copy.deepcopy(data)
@@ -476,32 +518,14 @@ def annotate(data, *args):
     for game in annotations['games']:
         game[labelind] = ''
         annotations['metadata'].append({})
-    # Determine which are the labels of brought by "clusters"
+    # Determine which are the labels brought by "clusters"
     for (data, clusters) in args:
         # data[0] are the true indices in data of data[1] (filtered data)
         # clusters['name'] / clusters['clusters'] / clusters['params']
+        if clusters['timing'] == 'early':
+            continue
         annotations['openings'].append(clusters['name'])
-
-        ### /!\ shitty heuristic to determine which cluster is the one labeled
-        # the labeling cluster should be the one with globally smaller means
-        cind = -1
-        minnorm = 100000000000000000000000000000000000000000000.0 # ;)
-        if clusters.has_key('params'):
-            params = clusters['params']
-        elif clusters.has_key('centroids'):
-            params = clusters['centroids']
-        for i in range(len(params)):
-            if clusters.has_key('params'):
-                tmpnorm = np.linalg.norm(params[i]['mu'])
-            elif clusters.has_key('centroids'):
-                tmpnorm = np.linalg.norm(params[i])
-            if tmpnorm < minnorm:
-                minnorm = tmpnorm
-                cind = i
-        # clusters['clusters'][cind] is the list of the games labeled
-        # clusters['name'] in data[1], their indices in data is in data[0]
-        ### /!\ /shitty heuristic
-        
+        cind = determine_cluster_ind()
         # Add each label to each game
         for g in clusters['clusters'][cind]:
             annotations['games'][data[0][g]][labelind] += clusters['name']+' '
@@ -511,7 +535,7 @@ def annotate(data, *args):
             elif clusters.has_key('centroids'):
                 annotations['metadata'][data[0][g]][clusters['name']] = \
                         (clusters['centroids'], clusters['features'], cind)
-    # we can return here and print the full labels of replays
+    # We could return here and print the full labels of replays
     # Make a selection of one label/strategy/opening per replay
     for game in annotations['games']:
         game[labelind].rstrip(' ')
@@ -544,16 +568,18 @@ def annotate(data, *args):
                 probat = tmpproba
         if unique_labeling:
             ### Picks the best label or put unknown
-            ### label <- first appearing if most probable or not far (1%)
-            if bestlabelp == bestlabelt or (probat/bestproba) > (0.99**maxdim):
-                game[labelind] = bestlabelt # if probat is only at 1% of bestproba
+            ### label <- first appearing if most probable or not far (10%)
+            if bestlabelp == bestlabelt or (probat/bestproba) > (0.9**maxdim):
+                game[labelind] = bestlabelt # if probat is only at 10% of bestproba
             else:
+                print "MARK: bestlabelt, bestlabelp:", bestlabelt, bestlabelp
                 print 'unknown: ', game
                 game[labelind] = 'unknown'
             ### /Picks the best label 
         else:
             ### Filter out the less probable and compose openings (early/late)
-            print 'non unique labeling not implemented'
+            print 'ERROR: Non unique labeling not implemented'
+            sys.exit(-1)
     return annotations
 
 def write_arff(template, annotations,fn):
@@ -665,8 +691,8 @@ if __name__ == "__main__":
 #        fast_exp['features'] = features_fast_exp
 
         ### +1 SpeedZeal
-        features_speedzeal = [template.index("ProtossGroundWeapons1"),\
-                    template.index("ProtossLegs")]
+        features_speedzeal = [template.index("ProtossLegs"),\
+                template.index("ProtossGroundWeapons1")]
         if kmeans:
             speedzeal_data_int = filter_out_undef(data.take(\
                     features_speedzeal, 1), typ=np.int64)
@@ -696,8 +722,8 @@ if __name__ == "__main__":
 #        bisu['features'] = features_bisu
 
         ### Fast templars
-        features_templar = [template.index("ProtossStorm"),\
-                    template.index("ProtossTemplar")]
+        features_templar = [template.index("ProtossTemplar"),template.index("ProtossStorm"),\
+                    ]
         if kmeans:
             templar_data_int = filter_out_undef(data.take(\
                     features_templar, 1), typ=np.int64)
@@ -725,9 +751,8 @@ if __name__ == "__main__":
         corsair['timing'] = 'early'
 
         ### Nony opening aka fast goons range
-        features_nony = [template.index("ProtossRange"),\
-                    template.index("ProtossThirdGatway"),\
-                    template.index("ProtossGoon")]
+        features_nony = [template.index("ProtossGoon"),\
+                template.index("ProtossRange")]
         if kmeans:
             nony_data_int = filter_out_undef(data.take(\
                     features_nony, 1), typ=np.int64)
@@ -842,7 +867,7 @@ if __name__ == "__main__":
         bio['features'] = features_bio
         bio['timing'] = 'early'
 
-        ### 1/2 Rax FE
+        ### Rax FE
         features_rax_fe = [template.index("TerranExpansion"),\
                 template.index("TerranBarracks")]
         rax_fe_data = filter_out_undef(data.take(features_rax_fe , 1))
@@ -862,11 +887,11 @@ if __name__ == "__main__":
                     nbiter=nbiterations, normalize=True, monotony=True)
         siege_exp = r_em(siege_exp_data[1], nbclusters=2, plot=plotR)
         siege_exp['features'] = features_siege_exp
-        siege_exp['timing'] = early
+        siege_exp['timing'] = 'early'
 
-        ### 2 Facto
-        features_two_facto = [template.index("TerranSecondFactory"),\
-                template.index("TerranTank")]
+        ### 2 Facto (the fast 2nd facto play)
+        features_two_facto = [template.index("TerranSecondFactory")]
+                #template.index("TerranSiege")]
         two_facto_data = filter_out_undef(data.take(features_two_facto, 1))
         if EM:
             two_facto_em = expectation_maximization(two_facto_data[1],\
@@ -1005,7 +1030,7 @@ if __name__ == "__main__":
         lurkers['features'] = features_lurkers
         lurkers['timing'] = 'late'
 
-        ### Mass hydras
+        ### Hydras
         features_hydras = [template.index("ZergHydra"),\
                 template.index("ZergHydraSpeed"),\
                 template.index("ZergHydraRange")]
