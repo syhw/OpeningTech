@@ -760,7 +760,7 @@ int main(int argc, const char *argv[])
 #endif
 
         // we assume we see the buildings as soon as they get constructed
-        for (map<int, Building>::const_iterator it 
+        for (multimap<int, Building>::const_iterator it 
                 = tmpBuildings.begin(); 
                 it != tmpBuildings.end(); ++it)
         {

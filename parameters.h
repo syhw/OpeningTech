@@ -5,7 +5,7 @@
 #define DIRAC_ON_LAST_OPENING
 
 //#define LEARN_TIME_LIMIT 1080 // 18 minutes, TODO change
-#define LEARN_TIME_LIMIT 840 // 14 minutes
+#define LEARN_TIME_LIMIT 900 // 15 minutes
 //#define LEARN_TIME_LIMIT 600 // 10 minutes
 //#define GENERATE_X_VALUES
 #define DEBUG_OUTPUT 1
