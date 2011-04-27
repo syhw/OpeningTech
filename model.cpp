@@ -307,7 +307,7 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
     /**********************************************************************
       VARIABLES SPECIFICATION
      **********************************************************************/
-    X = plSymbol("X", plIntegerType(0, vector_X.size()));
+    X = plSymbol("X", plIntegerType(0, vector_X.size()-1));
     lambda = plSymbol("lambda", PL_BINARY_TYPE);
     // what has been observed
     for (unsigned int i = 0; i < nbBuildings; i++)
