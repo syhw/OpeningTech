@@ -77,7 +77,7 @@ benchs: model mymodel
 		./mymodel l$$name t$$name | grep ">>> Positive classif" >> benchs.txt\
 		&& echo "\n" >> benchs.txt; done
 
-.PHONY: model tests
+.PHONY: model mymodel tests
 
 clean:
 	rm -rf ./-* ./:* ./[* prefix option illegal mktemp: c++-header *~ \

@@ -561,7 +561,7 @@ def annotate(data, *args):
             if tmpproba > bestproba:
                 bestlabelp = k
                 bestproba = tmpproba
-            # v[1][0] =  # DOC: the first feature is always the "most important"
+            # v[1][0] =  # DOC: the 1st feature is always the "most important"
             if game[v[1][0]] < mintime:
                 mintime = game[v[1][0]]
                 bestlabelt = k
@@ -570,7 +570,7 @@ def annotate(data, *args):
             ### Picks the best label or put unknown
             ### label <- first appearing if most probable or not far (10%)
             if bestlabelp == bestlabelt or (probat/bestproba) > (0.9**maxdim):
-                game[labelind] = bestlabelt # if probat is only at 10% of bestproba
+                game[labelind] = bestlabelt # if probat is at 10% of bestproba
             else:
                 print "MARK: bestlabelt, bestlabelp:", bestlabelt, bestlabelp
                 print 'unknown: ', game
