@@ -8,6 +8,7 @@
 # TODO a usage documentation (gather "DOC")
 # First feature has a piority: the labels should correspond to some BO 
 # attaining the first feature first.
+# TODO opening clustering/labeling per match-up (and not race!), 9 cases
 
 import sys, random, copy, math
 try:
@@ -24,6 +25,7 @@ def interact():
     code.InteractiveConsole(locals=globals()).interact()
 
 unique_labeling = True
+prio_timing = 'late' # 'early'
 
 def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=False, beta=200.0,\
         #distance=lambda x,y: np.linalg.norm(x-y),\
@@ -142,7 +144,7 @@ def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=False, beta=200.0,\
             result['clusters'] = clusters
     return result
 
-def r_em(t, nbclusters=0, plot=False):
+def r_em(t, nbclusters=0, plot=False, name=""):
     try:
         from rpy2.robjects import r
         import rpy2.robjects.numpy2ri # auto-translates numpy array to R ones
@@ -158,8 +160,12 @@ def r_em(t, nbclusters=0, plot=False):
     else:
         model = r.Mclust(t)
     if plot:
+        print "=============================="
+        print "plotting: ", name
+        print model
         r.quartz("plot")
         r.plot(model, t)
+        print "=============================="
     #for e in model:
     #    print e
     params = []
@@ -570,11 +576,11 @@ def annotate(data, *args):
             ### label <- first appearing if most probable or not far (10%)
             if bestlabelp == bestlabelt or (probat/bestproba) > (0.9**maxdim):
                 game[labelind] = bestlabelt # if probat is at 10% of bestproba
-            elif openings_timings[bestlabelt] == 'early' and\
-                    openings_timings[bestlabelp] != 'early':
+            elif openings_timings[bestlabelt] == prio_timing and\
+                    openings_timings[bestlabelp] != prio_timing:
                 game[labelind] = bestlabelt
-            elif openings_timings[bestlabelp] == 'early' and\
-                    openings_timings[bestlabelt] != 'early':
+            elif openings_timings[bestlabelp] == prio_timing and\
+                    openings_timings[bestlabelt] != prio_timing:
                 game[labelind] = bestlabelp
             else:
                 print "MARK: bestlabelt, bestlabelp:", bestlabelt, bestlabelp
@@ -653,7 +659,8 @@ if __name__ == "__main__":
 
         ### 2 gates rush opening
         features_two_gates = [template.index("ProtossSecondGatway"),\
-                template.index("ProtossGateway")]
+                template.index("ProtossGateway"),\
+                template.index("ProtossZealot")]
         if kmeans:
             two_gates_data_int = filter_out_undef(data.take(\
                     features_two_gates, 1), typ=np.int64)
@@ -662,7 +669,7 @@ if __name__ == "__main__":
         if EM:
             two_gates_em = expectation_maximization(two_gates_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        two_gates = r_em(two_gates_data[1], nbclusters=2, plot=plotR)
+        two_gates = r_em(two_gates_data[1], nbclusters=2, plot=plotR, name="two_gates")
         two_gates['features'] = features_two_gates
         two_gates['timing'] = 'early'
 
@@ -677,7 +684,7 @@ if __name__ == "__main__":
         if EM:
             fast_dt_em = expectation_maximization(fast_dt_data[1],\
                     nbiter=nbiterations, monotony=True, normalize=True)
-        fast_dt = r_em(fast_dt_data[1], nbclusters=2, plot=plotR)
+        fast_dt = r_em(fast_dt_data[1], nbclusters=2, plot=plotR, name="fast_dt")
         fast_dt['features'] = features_fast_dt
         fast_dt['timing'] = 'late'
 
@@ -693,7 +700,7 @@ if __name__ == "__main__":
 #        if EM:
 #            fast_exp_em = expectation_maximization(fast_exp_data[1],\
 #                    nbiter=nbiterations, monotony=True, normalize=True)
-#        fast_exp = r_em(fast_exp_data[1], nbclusters=2, plot=plotR)
+#        fast_exp = r_em(fast_exp_data[1], nbclusters=2, plot=plotR, name="fast_exp")
 #        fast_exp['features'] = features_fast_exp
 
         ### +1 SpeedZeal
@@ -707,7 +714,7 @@ if __name__ == "__main__":
         if EM:
             speedzeal_em = expectation_maximization(speedzeal_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        speedzeal = r_em(speedzeal_data[1], nbclusters=2, plot=plotR)
+        speedzeal = r_em(speedzeal_data[1], nbclusters=2, plot=plotR, name="speedzeal")
         speedzeal['features'] = features_speedzeal
         speedzeal['timing'] = 'early'
 
@@ -724,7 +731,7 @@ if __name__ == "__main__":
 #        if EM:
 #            bisu_em = expectation_maximization(bisu_data[1],\
 #                    nbiter=nbiterations, normalize=True, monotony=True)
-#        bisu = r_em(bisu_data[1], nbclusters=2, plot=plotR)
+#        bisu = r_em(bisu_data[1], nbclusters=2, plot=plotR, name="bisu")
 #        bisu['features'] = features_bisu
 
         ### Fast templars
@@ -739,7 +746,7 @@ if __name__ == "__main__":
         if EM:
             templar_em = expectation_maximization(templar_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        templar = r_em(templar_data[1], nbclusters=2, plot=plotR)
+        templar = r_em(templar_data[1], nbclusters=2, plot=plotR, name="templar")
         templar['features'] = features_templar
         templar['timing'] = 'late'
 
@@ -753,7 +760,7 @@ if __name__ == "__main__":
         if EM:
             corsair_em = expectation_maximization(corsair_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        corsair = r_em(corsair_data[1], nbclusters=2, plot=plotR)
+        corsair = r_em(corsair_data[1], nbclusters=2, plot=plotR, name="corsair")
         corsair['features'] = features_corsair
         corsair['timing'] = 'early'
 
@@ -768,7 +775,7 @@ if __name__ == "__main__":
         if EM:
             nony_em = expectation_maximization(nony_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        nony = r_em(nony_data[1], nbclusters=2, plot=plotR)
+        nony = r_em(nony_data[1], nbclusters=2, plot=plotR, name="nony")
         nony['features'] = features_nony
         nony['timing'] = 'early'
 
@@ -783,7 +790,7 @@ if __name__ == "__main__":
         if EM:
             reaver_drop_em = expectation_maximization(reaver_drop_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        reaver_drop = r_em(reaver_drop_data[1], nbclusters=2, plot=plotR)
+        reaver_drop = r_em(reaver_drop_data[1], nbclusters=2, plot=plotR, name="reaver_drop")
         reaver_drop['features'] = features_reaver_drop
         reaver_drop['timing'] = 'late'
 
@@ -799,7 +806,7 @@ if __name__ == "__main__":
 #        if EM:
 #            cannon_rush_em = expectation_maximization(cannon_rush_data[1],\
 #                    nbiter=nbiterations, normalize=True, monotony=True)
-#        cannon_rush = r_em(cannon_rush_data[1], nbclusters=2, plot=plotR)
+#        cannon_rush = r_em(cannon_rush_data[1], nbclusters=2, plot=plotR, name="cannon_rush")
 
         two_gates['name'] = "two_gates"
         fast_dt['name'] = "fast_dt"
@@ -860,7 +867,7 @@ if __name__ == "__main__":
 #        if EM:
 #            bbs_em = expectation_maximization(bbs_data[1],\
 #                    nbiter=nbiterations, normalize=True, monotony=True)
-#        bbs = r_em(bbs_data[1], nbclusters=2, plot=plotR)
+#        bbs = r_em(bbs_data[1], nbclusters=2, plot=plotR, name="bbs")
 
         ### Bio push
         features_bio = [template.index("TerranThirdBarracks"),\
@@ -870,7 +877,7 @@ if __name__ == "__main__":
         if EM:
             bio_em = expectation_maximization(bio_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        bio = r_em(bio_data[1], nbclusters=2, plot=plotR)
+        bio = r_em(bio_data[1], nbclusters=2, plot=plotR, name="bio")
         bio['features'] = features_bio
         bio['timing'] = 'early'
 
@@ -881,20 +888,20 @@ if __name__ == "__main__":
         if EM:
             rax_fe_em = expectation_maximization(rax_fe_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        rax_fe = r_em(rax_fe_data[1], nbclusters=2, plot=plotR)
+        rax_fe = r_em(rax_fe_data[1], nbclusters=2, plot=plotR, name="rax_fe")
         rax_fe['features'] = features_rax_fe
         rax_fe['timing'] = 'early'
 
-        ### Siege Expand
-        features_siege_exp = [template.index("TerranSiege"),\
-                template.index("TerranExpansion")]
-        siege_exp_data = filter_out_undef(data.take(features_siege_exp, 1))
-        if EM:
-            siege_exp_em = expectation_maximization(siege_exp_data[1],\
-                    nbiter=nbiterations, normalize=True, monotony=True)
-        siege_exp = r_em(siege_exp_data[1], nbclusters=2, plot=plotR)
-        siege_exp['features'] = features_siege_exp
-        siege_exp['timing'] = 'early'
+        ### Siege Expand # TODO
+#        features_siege_exp = [template.index("TerranSiege"),\
+#                template.index("TerranExpansion")]
+#        siege_exp_data = filter_out_undef(data.take(features_siege_exp, 1))
+#        if EM:
+#            siege_exp_em = expectation_maximization(siege_exp_data[1],\
+#                    nbiter=nbiterations, normalize=True, monotony=True)
+#        siege_exp = r_em(siege_exp_data[1], nbclusters=2, plot=plotR, name="siege_exp")
+#        siege_exp['features'] = features_siege_exp
+#        siege_exp['timing'] = 'early'
 
         ### 2 Facto (the fast 2nd facto play)
         features_two_facto = [template.index("TerranSecondFactory")]
@@ -903,7 +910,7 @@ if __name__ == "__main__":
         if EM:
             two_facto_em = expectation_maximization(two_facto_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        two_facto = r_em(two_facto_data[1], nbclusters=2, plot=plotR)
+        two_facto = r_em(two_facto_data[1], nbclusters=2, plot=plotR, name="two_facto")
         two_facto['features'] = features_two_facto
         two_facto['timing'] = 'late'
 
@@ -914,28 +921,38 @@ if __name__ == "__main__":
         if EM:
             vultures_em = expectation_maximization(vultures_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        vultures = r_em(vultures_data[1], nbclusters=2, plot=plotR)
+        vultures = r_em(vultures_data[1], nbclusters=2, plot=plotR, name="vultures")
         vultures['features'] = features_vultures
         vultures['timing'] = 'late'
 
-        ### Fast air
-        #features_air = [template.index("TerranWraith"),\
-        #        template.index("TerranStarport")]
-        features_air = [template.index("TerranStarport")]
-        air_data = filter_out_undef(data.take(features_air, 1))
+        ### Fast air ==> misses the TerranSecondStarport feature
+#        features_air = [template.index("TerranWraith"),\
+#                template.index("TerranStarport")]
+#        air_data = filter_out_undef(data.take(features_air, 1))
+#        if EM:
+#            air_em = expectation_maximization(air_data[1],\
+#                    nbiter=nbiterations, normalize=True, monotony=True)
+#        air = r_em(air_data[1], nbclusters=2, plot=plotR, name="air")
+#        air['features'] = features_air
+#        air['timing'] = 'late'
+
+        ### Fast Drop
+        features_drop = [template.index("TerranDropship")]
+        drop_data = filter_out_undef(data.take(features_drop, 1))
         if EM:
-            air_em = expectation_maximization(air_data[1],\
+            drop_em = expectation_maximization(drop_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        air = r_em(air_data[1], nbclusters=2, plot=plotR)
-        air['features'] = features_air
-        air['timing'] = 'late'
+        drop = r_em(drop_data[1], nbclusters=2, plot=plotR, name="drop")
+        drop['features'] = features_drop
+        drop['timing'] = 'late'
 
         bio['name'] = "bio"
         rax_fe['name'] = "rax_fe"
-        siege_exp['name'] = "siege_exp"
+#        siege_exp['name'] = "siege_exp"
         two_facto['name'] = "two_facto"
         vultures['name'] = "vultures"
-        air['name'] = "air"
+#        air['name'] = "air"
+        drop['name'] = "drop"
         if plotM:
             #bbs['name'] = "bbs"
             #print bbs
@@ -944,20 +961,25 @@ if __name__ == "__main__":
             plot(bio, bio_data[1])
             print rax_fe
             plot(rax_fe, rax_fe_data[1])
-            print siege_exp
-            plot(siege_exp, siege_exp_data[1])
+#            print siege_exp
+#            plot(siege_exp, siege_exp_data[1])
             print two_facto
             plot(two_facto, two_facto_data[1])
             print vultures
             plot(vultures, vultures_data[1])
-            print air
-            plot(air, air_data[1])
+#            print air
+#            plot(air, air_data[1])
+            print drop
+            plot(drop, drop_data[1])
 
+                #(siege_exp_data, siege_exp), (two_facto_data, two_facto),\
         write_arff(template, annotate(datalist,\
                 (bio_data, bio), (rax_fe_data, rax_fe),\
-                (siege_exp_data, siege_exp), (two_facto_data, two_facto),\
-                (vultures_data, vultures), (air_data, air)),\
+                (two_facto_data, two_facto),\
+                (vultures_data, vultures),\
+                (drop_data, drop)),\
                 "my"+sys.argv[1])
+                #(air_data, air),\
 
     if race == "Z":
         # Main openings:
@@ -980,16 +1002,17 @@ if __name__ == "__main__":
 #            glings_rush_em = expectation_maximization(glings_rush_data[1],\
 #                    nbiter=nbiterations, normalize=True, monotony=True)
 #        glings_rush_km = k_means(glings_rush_data_int[1], nbiter=nbiterations)
-#        glings_rush = r_em(glings_rush_data[1], nbclusters=2, plot=plotR)
+#        glings_rush = r_em(glings_rush_data[1], nbclusters=2, plot=plotR, name="glings_rush")
 
         ### Speedlings rush
         features_speedlings = [template.index("ZergZerglingSpeed"),\
-                template.index("ZergPool")]
+                template.index("ZergPool"),\
+                template.index("ZergZergling")]
         speedlings_data = filter_out_undef(data.take(features_speedlings, 1))
         if EM:
             speedlings_em = expectation_maximization(speedlings_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        speedlings = r_em(speedlings_data[1], nbclusters=2, plot=plotR)
+        speedlings = r_em(speedlings_data[1], nbclusters=2, plot=plotR, name="speedlings")
         speedlings['features'] = features_speedlings
         speedlings['timing'] = 'early'
 
@@ -1000,10 +1023,11 @@ if __name__ == "__main__":
 #        if EM:
 #            fast_exp_em = expectation_maximization(fast_exp_data[1],\
 #                    nbiter=nbiterations, normalize=True, monotony=True)
-#        fast_exp = r_em(fast_exp_data[1], nbclusters=2, plot=plotR)
+#        fast_exp = r_em(fast_exp_data[1], nbclusters=2, plot=plotR, name="fast_exp")
 
         ### Fast mutas
-        features_fast_mutas = [template.index("ZergMutalisk")]
+        features_fast_mutas = [template.index("ZergMutalisk"),\
+                template.index("ZergGas")] # TODO
         fast_mutas_data = filter_out_undef(data.take(features_fast_mutas, 1))
         if kmeans:
             fast_mutas_data_int = filter_out_undef(data.take([\
@@ -1012,7 +1036,7 @@ if __name__ == "__main__":
         if EM:
             fast_mutas_em = expectation_maximization(fast_mutas_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        fast_mutas = r_em(fast_mutas_data[1], nbclusters=2, plot=plotR)
+        fast_mutas = r_em(fast_mutas_data[1], nbclusters=2, plot=plotR, name="fast_mutas")
         fast_mutas['features'] = features_fast_mutas
         fast_mutas['timing'] = 'early'
 
@@ -1023,7 +1047,7 @@ if __name__ == "__main__":
         if EM:
             mutas_em = expectation_maximization(mutas_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        mutas = r_em(mutas_data[1], nbclusters=2, plot=plotR)
+        mutas = r_em(mutas_data[1], nbclusters=2, plot=plotR, name="mutas")
         mutas['features'] = features_mutas
         mutas['timing'] = 'late'
 
@@ -1033,7 +1057,7 @@ if __name__ == "__main__":
         if EM:
             lurkers_em = expectation_maximization(lurkers_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        lurkers = r_em(lurkers_data[1], nbclusters=2, plot=plotR)
+        lurkers = r_em(lurkers_data[1], nbclusters=2, plot=plotR, name="lurkers")
         lurkers['features'] = features_lurkers
         lurkers['timing'] = 'late'
 
@@ -1046,7 +1070,7 @@ if __name__ == "__main__":
         if EM:
             hydras_em = expectation_maximization(hydras_data[1],\
                     nbiter=nbiterations, normalize=True, monotony=True)
-        hydras = r_em(hydras_data[1], nbclusters=2, plot=plotR)
+        hydras = r_em(hydras_data[1], nbclusters=2, plot=plotR, name="hydras")
         hydras['features'] = features_hydras
         hydras['timing'] = 'early'
 
