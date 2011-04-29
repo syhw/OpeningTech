@@ -523,8 +523,6 @@ def annotate(data, *args):
     for (data, clusters) in args:
         # data[0] are the true indices in data of data[1] (filtered data)
         # clusters['name'] / clusters['clusters'] / clusters['params']
-        #if clusters['timing'] == 'early':
-        #    continue
         annotations['openings'].append((clusters['name'], clusters['timing']))
         openings_timings[clusters['name']] = clusters['timing']
         cind = determine_cluster_ind()
