@@ -609,10 +609,11 @@ int main(int argc, const char *argv[])
 #ifdef MY_OPENINGS_LABELS
     terran_openings.push_back("bio");
     terran_openings.push_back("rax_fe");
-    terran_openings.push_back("siege_exp");
+//    terran_openings.push_back("siege_exp");
     terran_openings.push_back("two_facto");
     terran_openings.push_back("vultures");
-    terran_openings.push_back("air");
+//    terran_openings.push_back("air");
+    terran_openings.push_back("drop");
     terran_openings.push_back("unknown");
 #else
     terran_openings.push_back("Bio");
