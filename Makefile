@@ -67,6 +67,9 @@ test_getBuildings: tests
 
 runtests: test_x_values test_functional_dirac test_lambda test_getOpeningVal test_getBuildings
 
+fullbenchs: model mymodel
+	echo "TODO"
+
 benchs: model mymodel
 	echo "Benchmarks with Ben Weber labels:\n" > benchs.txt
 	for name in [TPZ]v[TPZ].txt; do echo "$${name%.*}: " >> benchs.txt &&\
@@ -76,6 +79,10 @@ benchs: model mymodel
 	for name in [TPZ]v[TPZ]x.txt; do echo "$${name%.*}: " >> benchs.txt &&\
 		./mymodel l$$name t$$name | grep ">>> Positive classif" >> benchs.txt\
 		&& echo "\n" >> benchs.txt; done
+
+noisebenchs: 
+	for ((i=1; i<7; i++)); do \
+		./noisy.sh $$i >> benchs.txt; done
 
 .PHONY: model mymodel tests
 
@@ -90,5 +97,6 @@ clean:
 		terran_possible_tech_trees.txt \
 		zerg_possible_tech_trees.txt \
 	 	model \
+		t*n*.txt \
 		x_values
 
