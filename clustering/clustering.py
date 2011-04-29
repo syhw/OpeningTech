@@ -33,7 +33,7 @@ def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=False, beta=200.0,\
     Each row of t is an observation, each column is a feature 
     'nbclusters' is the number of seeds and so of clusters/centroids 
     'nbiter' is the number of iterations
-    'medoids' tells is we use the medoids or centroids method
+    'medoids' tells if we use the medoids or centroids method
     'distance' is the function to use for comparing observations
 
     Overview of the algorithm ("hard k-means"):
@@ -502,17 +502,18 @@ def annotate(data, *args):
             print "ERROR: Problem determining labeling cluster:",
             print clusters['name']
             print "with feature:", clusters['features'][0]
-            print "min norm:", minnorm
-            print "min first feature:", minff
+            print "min norm:", minnorm, " indice: ", cind1
+            print "min first feature:", minff, " indice: ", cind2
             sys.exit(-1)
         # clusters['clusters'][cind] is the list of the games labeled
         # clusters['name'] in data[1], their indices in data is in data[0]
         ### /!\ /shitty heuristic
 
     annotations = {}
-    annotations['openings'] = []
+    annotations['openings'] = [] # (opening_name, timing)
     annotations['games'] = copy.deepcopy(data)
     annotations['metadata'] = []
+    openings_timings = {}
     labelind = len(data[0]) - 1
     # Remove the precedents labels/strategies/openings
     for game in annotations['games']:
@@ -522,9 +523,10 @@ def annotate(data, *args):
     for (data, clusters) in args:
         # data[0] are the true indices in data of data[1] (filtered data)
         # clusters['name'] / clusters['clusters'] / clusters['params']
-        if clusters['timing'] == 'early':
-            continue
-        annotations['openings'].append(clusters['name'])
+        #if clusters['timing'] == 'early':
+        #    continue
+        annotations['openings'].append((clusters['name'], clusters['timing']))
+        openings_timings[clusters['name']] = clusters['timing']
         cind = determine_cluster_ind()
         # Add each label to each game
         for g in clusters['clusters'][cind]:
@@ -541,8 +543,7 @@ def annotate(data, *args):
         game[labelind].rstrip(' ')
         sp = game[labelind].split(' ')
         if len(sp) <= 1:
-            if game[labelind] == '':
-                game[labelind] == 'unknown'
+            game[labelind] == 'unknown'
             continue
         # "else", len(sp) >= 2
         bestlabelp = '' # best label according to the proba of clustering
@@ -571,6 +572,12 @@ def annotate(data, *args):
             ### label <- first appearing if most probable or not far (10%)
             if bestlabelp == bestlabelt or (probat/bestproba) > (0.9**maxdim):
                 game[labelind] = bestlabelt # if probat is at 10% of bestproba
+            elif openings_timings[bestlabelt] == 'early' and\
+                    openings_timings[bestlabelp] != 'early':
+                game[labelind] = bestlabelt
+            elif openings_timings[bestlabelp] == 'early' and\
+                    openings_timings[bestlabelt] != 'early':
+                game[labelind] = bestlabelp
             else:
                 print "MARK: bestlabelt, bestlabelp:", bestlabelt, bestlabelp
                 print 'unknown: ', game
@@ -578,8 +585,9 @@ def annotate(data, *args):
             ### /Picks the best label 
         else:
             ### Filter out the less probable and compose openings (early/late)
-            print 'ERROR: Non unique labeling not implemented'
-            sys.exit(-1)
+            pass
+            #print 'ERROR: Non unique labeling not implemented'
+            #sys.exit(-1)
     return annotations
 
 def write_arff(template, annotations,fn):
@@ -592,7 +600,7 @@ def write_arff(template, annotations,fn):
             f.write('@attribute '+attr+' numeric\n')
         else:
             f.write('@attribute '+attr+' {'+\
-                    ','.join(annotations['openings'])+'}\n')
+                    ','.join(annotations['openings'][0])+'}\n')
     f.write('\n@data\n')
     for game in annotations['games']:
         #print ','.join([str(i) for i in game])
@@ -722,7 +730,8 @@ if __name__ == "__main__":
 #        bisu['features'] = features_bisu
 
         ### Fast templars
-        features_templar = [template.index("ProtossTemplar"),template.index("ProtossStorm"),\
+        features_templar = [template.index("ProtossStorm"),\
+                    template.index("ProtossTemplar")
                     ]
         if kmeans:
             templar_data_int = filter_out_undef(data.take(\
