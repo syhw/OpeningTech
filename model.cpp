@@ -483,12 +483,12 @@ void OpeningPredictor::init_game()
     evidence[lambda] = 1; // we want coherence ;)
     evidence[observed[0]] = 1; // the first Nexus/CC/Hatch exists
 #if PLOT > 0
+    tmpProbV.clear();
 #ifdef DIRAC_ON_LAST_OPENING
     P_LastOpening.tabulate(tmpProbV);
 #else 
     P_Opening.tabulate(tmpProbV);
 #endif
-    T_P_Opening_v.reset();
     T_P_Opening_v.push_back(tmpProbV);
 #endif
 }
@@ -741,13 +741,10 @@ int main(int argc, const char *argv[])
         if (tmpOpening == "")
             continue;
         multimap<int, Building> tmpBuildings;
-        getBuildings(input, tmpBuildings, LEARN_TIME_LIMIT - 50); // TODO:
-                                        // change completely arbitrary 50
+        getBuildings(input, tmpBuildings, LEARN_TIME_LIMIT);
         tmpBuildings.erase(0); // key == 0 i.e. buildings not constructed
         if (tmpBuildings.empty())
             continue;
-
-        op.init_game();
 
 #if DEBUG_OUTPUT >= 1
         cout << "******** end replay number: " 
@@ -760,6 +757,8 @@ int main(int argc, const char *argv[])
 #ifdef BENCH
         ++noreplay;
 #endif
+
+        op.init_game();
 
         // we assume we see the buildings as soon as they get constructed
         for (multimap<int, Building>::const_iterator it 
