@@ -488,6 +488,7 @@ void OpeningPredictor::init_game()
 #else 
     P_Opening.tabulate(tmpProbV);
 #endif
+    T_P_Opening_v.reset();
     T_P_Opening_v.push_back(tmpProbV);
 #endif
 }
@@ -565,7 +566,7 @@ int OpeningPredictor::quit_game(const string& tmpOpening, int noreplay)
         ++positive_classif_finale;
     if (toTest[Opening] == max(cumulative_prob)[Opening])
         ++cpositive_classif_finale;
-    if (times_label_predicted >= 2)
+    if (times_label_predicted >= 2) // TODO change
         ++positive_classif_online;
     std::stringstream tmpfn;
 #endif

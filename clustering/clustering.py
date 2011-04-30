@@ -25,7 +25,7 @@ def interact():
     code.InteractiveConsole(locals=globals()).interact()
 
 unique_labeling = True
-prio_timing = 'late' # 'early'
+prio_timing = 'early' # 'late'
 
 def k_means(t, nbclusters=2, nbiter=3, medoids=False, soft=False, beta=200.0,\
         #distance=lambda x,y: np.linalg.norm(x-y),\
