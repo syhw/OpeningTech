@@ -56,7 +56,7 @@
 @attribute ProtossAirArmor1 numeric
 @attribute ProtossAirWeapons2 numeric
 @attribute ProtossAirArmor2 numeric
-@attribute midBuild {two_gates,early}
+@attribute midBuild {two_gates,fast_dt,templar,speedzeal,corsair,nony,reaver_drop}
 
 @data
 1260,3100,3330,25115,22740,-1,-1,-1,1955,2555,6570,10280,6185,2945,8065,7400,9305,15035,13225,-1,-1,-1,-1,-1,23120,25460,27370,28660,29475,-1,30150,-1,-1,15315,-1,-1,-1,-1,-1,-1,16710,17300,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,two_gates

@@ -51,7 +51,7 @@
 @attribute TerranBattlecruiser numeric
 @attribute TerranAirAttack numeric
 @attribute TerranAirArmor numeric
-@attribute midBuild {bio,early}
+@attribute midBuild {bio,rax_fe,two_facto,vultures,drop}
 
 @data
 1470,2080,33865,13605,15160,15315,16270,2745,5530,10120,4090,5850,42260,36230,4020,17345,5375,3280,8010,4455,9390,14410,30190,6420,7845,-1,-1,-1,-1,10380,-1,-1,-1,-1,-1,-1,-1,-1,7905,9845,-1,-1,12010,-1,9265,10570,-1,-1,-1,-1,-1,unknown

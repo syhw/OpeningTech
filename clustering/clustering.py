@@ -516,7 +516,7 @@ def annotate(data, *args):
         ### /!\ /shitty heuristic
 
     annotations = {}
-    annotations['openings'] = [] # (opening_name, timing)
+    annotations['openings'] = []
     annotations['games'] = copy.deepcopy(data)
     annotations['metadata'] = []
     openings_timings = {}
@@ -529,7 +529,7 @@ def annotate(data, *args):
     for (data, clusters) in args:
         # data[0] are the true indices in data of data[1] (filtered data)
         # clusters['name'] / clusters['clusters'] / clusters['params']
-        annotations['openings'].append((clusters['name'], clusters['timing']))
+        annotations['openings'].append(clusters['name'])
         openings_timings[clusters['name']] = clusters['timing']
         cind = determine_cluster_ind()
         # Add each label to each game
@@ -546,7 +546,7 @@ def annotate(data, *args):
     for game in annotations['games']:
         game[labelind].rstrip(' ')
         sp = game[labelind].split(' ')
-        if len(sp) <= 1:
+        if len(sp) == 1 and sp[0] == '':
             game[labelind] == 'unknown'
             continue
         # "else", len(sp) >= 2
@@ -583,8 +583,8 @@ def annotate(data, *args):
                     openings_timings[bestlabelt] != prio_timing:
                 game[labelind] = bestlabelp
             else:
-                print "MARK: bestlabelt, bestlabelp:", bestlabelt, bestlabelp
-                print 'unknown: ', game
+                #print "MARK: bestlabelt, bestlabelp:", bestlabelt, bestlabelp
+                #print 'unknown: ', game
                 game[labelind] = 'unknown'
             ### /Picks the best label 
         else:
@@ -604,7 +604,7 @@ def write_arff(template, annotations,fn):
             f.write('@attribute '+attr+' numeric\n')
         else:
             f.write('@attribute '+attr+' {'+\
-                    ','.join(annotations['openings'][0])+'}\n')
+                    ','.join(annotations['openings'])+'}\n')
     f.write('\n@data\n')
     for game in annotations['games']:
         #print ','.join([str(i) for i in game])

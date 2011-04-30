@@ -48,7 +48,7 @@
 @attribute ZergCreep numeric
 @attribute ZergSunken numeric
 @attribute ZergSpore numeric
-@attribute midBuild {speedlings,early}
+@attribute midBuild {speedlings,fast_mutas,mutas,lurkers,hydras}
 
 @data
 3015,1215,4285,12365,28250,-1,6330,13190,2390,6025,17550,18605,27000,28730,7410,8685,10020,8245,-1,14330,15900,-1,-1,-1,-1,20945,-1,25785,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,12630,25835,13350,17260,-1,17430,21360,4335,5325,-1,unknown
