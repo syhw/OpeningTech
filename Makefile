@@ -72,11 +72,11 @@ fullbenchs: model mymodel
 
 benchs: model mymodel
 	echo "Benchmarks with Ben Weber labels:\n" > benchs.txt
-	for name in [TPZ]v[TPZ].txt; do echo "$${name%.*}: " >> benchs.txt &&\
+	for name in [TPZ]v[TPZ].txt; do echo "$${name%.*}" >> benchs.txt &&\
 		./model l$$name t$$name | grep ">>> Positive classif" >> benchs.txt\
 		&& echo "\n" >> benchs.txt; done
 	echo "Benchmarks with my labels:\n" >> benchs.txt
-	for name in [TPZ]v[TPZ]x.txt; do echo "$${name%.*}: " >> benchs.txt &&\
+	for name in [TPZ]v[TPZ]x.txt; do echo "$${name%.*}" >> benchs.txt &&\
 		./mymodel l$$name t$$name | grep ">>> Positive classif" >> benchs.txt\
 		&& echo "\n" >> benchs.txt; done
 
