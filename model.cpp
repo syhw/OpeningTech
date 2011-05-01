@@ -330,8 +330,15 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
       PARAMETRIC FORMS SPECIFICATION
      **********************************************************************/
     // Specification of P(Opening)
+#ifdef WITH_OPENINGS_PRIOR
+    vector<double> tmp = prior_openings(learningFileName[1],
+            learningFileName[3]);
+    for (vector<double>::const_iterator i = tmp.begin(); i != tmp.end(); ++i)
+        tableOpening.push_back(*i);
+#else
     for (unsigned int i = 0; i < openings.size(); i++) 
         tableOpening.push_back(1.0);
+#endif
 #ifdef DIRAC_ON_LAST_OPENING
     P_LastOpening = plMutableDistribution(
             plProbTable(LastOpening, tableOpening, false));
@@ -708,7 +715,6 @@ int main(int argc, const char *argv[])
     zerg_openings.push_back("Lurker");
     zerg_openings.push_back("Unknown");
 #endif
-
     std::vector<std::string> openings;
 
     if (argv[1] != NULL &&
@@ -833,4 +839,103 @@ int main(int argc, const char *argv[])
     getchar();
 #endif
     return 0;
+}
+
+std::vector<double> OpeningPredictor::prior_openings(char them, char us)
+{
+    std::vector<double> r;
+    if (them == 'P')
+    {
+        if (us == 'P') 
+        {
+            r.push_back(332);
+            r.push_back(7);
+            r.push_back(3);
+            r.push_back(5);
+            r.push_back(3);
+            r.push_back(55);
+            r.push_back(13);
+            r.push_back(62);
+        }
+        else if (us == 'T')
+        {
+            r.push_back(252);
+            r.push_back(87);
+            r.push_back(17);
+            r.push_back(100);
+            r.push_back(4);
+            r.push_back(449);
+            r.push_back(86);
+            r.push_back(35);
+        }
+        else if (us == 'Z')
+        {
+            r.push_back(304);
+            r.push_back(20);
+            r.push_back(22);
+            r.push_back(98);
+            r.push_back(190);
+            r.push_back(114);
+            r.push_back(19);
+            r.push_back(99);
+        }
+    }
+    else if (them == 'T')
+    {
+        if (us == 'P') 
+        {
+            r.push_back(62);
+            r.push_back(438);
+            r.push_back(240);
+            r.push_back(122);
+            r.push_back(52);
+            r.push_back(93);
+        }
+        else if (us == 'T')
+        {
+            r.push_back(25);
+            r.push_back(377);
+            r.push_back(127);
+            r.push_back(3);
+            r.push_back(10);
+            r.push_back(34);
+        }
+        else if (us == 'Z')
+        {
+            r.push_back(197);
+            r.push_back(392);
+            r.push_back(116);
+            r.push_back(3);
+            r.push_back(121);
+            r.push_back(43);
+        }
+    }
+    else if (them == 'Z')
+    {
+        if (us == 'P') 
+        {
+            r.push_back(109);
+            r.push_back(253);
+            r.push_back(181);
+            r.push_back(329);
+            r.push_back(16);
+        }
+        else if (us == 'T')
+        {
+            r.push_back(199);
+            r.push_back(391);
+            r.push_back(286);
+            r.push_back(206);
+            r.push_back(11);
+        }
+        else if (us == 'Z')
+        {
+            r.push_back(508);
+            r.push_back(559);
+            r.push_back(5);
+            r.push_back(17);
+            r.push_back(1);
+        }
+    }
+    return r;
 }

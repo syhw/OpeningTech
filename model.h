@@ -79,6 +79,8 @@ class OpeningPredictor
     std::vector<plProbValue> tmpProbV;
 #endif
 
+    std::vector<double> prior_openings(char them, char us);
+
     public:
         plDistribution T_P_Opening;
         OpeningPredictor(const std::vector<std::string>& op,

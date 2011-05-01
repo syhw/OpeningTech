@@ -25,5 +25,6 @@
 #define BENCH
 
 //#define MY_OPENINGS_LABELS
+//#define WITH_OPENINGS_PRIOR
 
 #endif
