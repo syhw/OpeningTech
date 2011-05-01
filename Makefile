@@ -81,7 +81,7 @@ benchs: model mymodel
 		&& echo "\n" >> benchs.txt; done
 
 noisebenchs: 
-	for ((i=1; i<7; i++)); do \
+	for ((i=1; i<16; i++)); do \
 		./noisy.sh $$i >> benchs.txt; done
 
 .PHONY: model mymodel tests

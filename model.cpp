@@ -164,6 +164,9 @@ void learn_T_and_X(ifstream& inputstream,
             plCndLearnObject<plLearnHistogram>& xLearner,
             plSymbol& Opening, plSymbol& X, plSymbol& Time)
 {
+#ifdef BENCH
+    clock_t start = clock();
+#endif
     string input;
     plValues vals_timeLearner(timeLearner.get_variables());
     plValues vals_xLearner(xLearner.get_variables());
@@ -297,6 +300,11 @@ void learn_T_and_X(ifstream& inputstream,
     cout << "*** Number of points (total), I counted: " << nbpts << endl;
     cout << "*** Number of different pairs (X, Opening): " 
         << count_X_Op_examples.size() << endl;
+#endif
+#ifdef BENCH
+    clock_t end = clock();
+    cout << "TIME: learning took: "
+       << (double)(end - start) / CLOCKS_PER_SEC << " sec" << endl;
 #endif
 }
 
@@ -456,6 +464,7 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
 #ifdef BENCH
     positive_classif_finale = 0;
     positive_classif_online = 0;
+    positive_classif_online_after = 0;
     cpositive_classif_finale = 0;
     for (vector<string>::const_iterator it = openings.begin();
             it != openings.end(); ++it)
@@ -475,6 +484,7 @@ void OpeningPredictor::init_game()
 {
 #ifdef BENCH
     times_label_predicted = 0;
+    times_label_predicted_after = 0;
 #endif
     evidence = plValues(knownConj);
     // we assume we didn't see any buildings
@@ -496,6 +506,9 @@ void OpeningPredictor::init_game()
 int OpeningPredictor::instantiate_and_compile(int time,
         const Building& building, const string& tmpOpening)
 {
+#ifdef BENCH
+    clock_t start = clock();
+#endif
     evidence[observed[building.getEnumValue()]] = 1;
     evidence[Time] = time;
 
@@ -544,6 +557,17 @@ int OpeningPredictor::instantiate_and_compile(int time,
     if (T_P_Opening.best()[Opening] == toTest[Opening])
         //&& T_P_Opening[toTest[Opening]] > 0.5)
         ++times_label_predicted ;
+    if (time > 180 && T_P_Opening.best()[Opening] == toTest[Opening])
+        ++times_label_predicted_after;
+#endif
+#ifdef BENCH
+    clock_t end = clock();
+    double duration = (double)(end - start) / CLOCKS_PER_SEC;
+    time_taken_prediction.push_back(duration);
+#if DEBUG_OUTPUT > 2
+    cout << "TIME: instantiate+compile took: "
+       << duration << " sec" << endl;
+#endif
 #endif
     return 0;
 }
@@ -568,9 +592,11 @@ int OpeningPredictor::quit_game(const string& tmpOpening, int noreplay)
         ++cpositive_classif_finale;
     if (times_label_predicted >= 2) // TODO change
         ++positive_classif_online;
-    std::stringstream tmpfn;
+    if (times_label_predicted_after >= 1)
+        ++positive_classif_online_after;
 #endif
 #if PLOT > 0
+    std::stringstream tmpfn;
 #ifdef DIRAC_ON_LAST_OPENING
     tmpfn << "OpeningsRep" << noreplay << ".gnuplot";
 #else
@@ -589,6 +615,10 @@ int OpeningPredictor::quit_game(const string& tmpOpening, int noreplay)
 void OpeningPredictor::results(int noreplay)
 {
 #ifdef BENCH
+    cout << ">>> Positive classif online after 3 minutes: " 
+        << positive_classif_online_after
+        << " on " << noreplay << " replays, ratio: "
+        << static_cast<double>(positive_classif_online_after)/noreplay << endl;
     cout << ">>> Positive classif online: " << positive_classif_online
         << " on " << noreplay << " replays, ratio: "
         << static_cast<double>(positive_classif_online)/noreplay << endl;
@@ -598,6 +628,20 @@ void OpeningPredictor::results(int noreplay)
     cout << ">>> Cumulative positive classif: " << cpositive_classif_finale
         << " on " << noreplay << " replays, ratio: "
         << static_cast<double>(cpositive_classif_finale)/noreplay << endl;
+
+    double mean_time_taken = 0.0;
+    double stddev_time_taken = 0.0;
+    for (vector<double>::const_iterator it = time_taken_prediction.begin();
+            it != time_taken_prediction.end(); ++it)
+        mean_time_taken += *it;
+    mean_time_taken /= time_taken_prediction.size();
+    for (vector<double>::const_iterator it = time_taken_prediction.begin();
+            it != time_taken_prediction.end(); ++it)
+        stddev_time_taken += (*it - mean_time_taken)*(*it - mean_time_taken);
+    stddev_time_taken /= time_taken_prediction.size();
+    stddev_time_taken = sqrt(stddev_time_taken);
+    cout << "TIME: prediction mean: " << mean_time_taken << ", stddev: "
+        << stddev_time_taken << endl;
 #endif
 }
 
@@ -649,7 +693,7 @@ int main(int argc, const char *argv[])
 
     std::vector<std::string> zerg_openings;
 #ifdef MY_OPENINGS_LABELS
-    zerg_openings.push_back("speedlings");
+    //zerg_openings.push_back("speedlings");
     zerg_openings.push_back("fast_mutas");
     zerg_openings.push_back("mutas");
     zerg_openings.push_back("lurkers");

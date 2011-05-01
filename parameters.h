@@ -16,7 +16,7 @@
  * PLOT = 3 => adds plot P(Time|X,Opening)
  */
 //#define PLOT_ONLY
-//#define PLOT 1
+#define PLOT 1
 
 #if DEBUG_OUTPUT > 0
 #define ERROR_CHECKS

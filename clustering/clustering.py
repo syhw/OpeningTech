@@ -1097,8 +1097,9 @@ if __name__ == "__main__":
             print hydras
             plot(hydras, hydras_data[1])
 
+                #(speedlings_data, speedlings), (fast_mutas_data, fast_mutas),\
         write_arff(template, annotate(datalist,\
-                (speedlings_data, speedlings), (fast_mutas_data, fast_mutas),\
+                (fast_mutas_data, fast_mutas),\
                 (mutas_data, mutas), (lurkers_data, lurkers),\
                 (hydras_data, hydras)), "my"+sys.argv[1])
         

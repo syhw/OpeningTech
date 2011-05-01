@@ -45,6 +45,8 @@ void getBuildings(std::string str,
         std::string::size_type loc = str.find_first_not_of(' ');
         std::string::size_type begin = str.find_first_of(' ', loc);
         std::string::size_type end = str.find_first_of(';', begin);
+        if (end == std::string::npos)
+            end = str.find_first_of('\n', begin);
         ///std::cout << str.substr(begin+1, end-begin-1) << " ::: "
         ///    << "|" << str.substr(loc, begin-loc) << "|"
         ///    << " [Begin: " << begin << "]"

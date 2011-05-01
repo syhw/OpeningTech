@@ -64,9 +64,12 @@ class OpeningPredictor
 #ifdef BENCH
     unsigned int positive_classif_finale;
     unsigned int positive_classif_online;
+    unsigned int positive_classif_online_after;
     unsigned int cpositive_classif_finale;
     std::map<plValues, plProbValue> cumulative_prob;
     unsigned int times_label_predicted;
+    unsigned int times_label_predicted_after;
+    std::vector<double> time_taken_prediction;
 #endif
 
     // Game wise computations
