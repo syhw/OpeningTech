@@ -157,6 +157,8 @@ def r_em(t, nbclusters=0, plot=False, name=""):
     r.library("mclust")
     if nbclusters:
         model = r.Mclust(t, G=nbclusters)
+        if name == 'templar':
+            model = r.Mclust(t, G=nbclusters, modelName="VEV")
     else:
         model = r.Mclust(t)
     if plot:
@@ -165,6 +167,7 @@ def r_em(t, nbclusters=0, plot=False, name=""):
         print model
         r.quartz("plot")
         r.plot(model, t)
+        print raw_input("type any key to pass")
         print "=============================="
     #for e in model:
     #    print e
