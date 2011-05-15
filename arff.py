@@ -1,88 +1,116 @@
-﻿import sys
+﻿#!/opt/local/bin/python
+import sys
 
-# pyt arff.py all.lmr
-generate_attributes = True
+"""
+Copyright 2011 Gabriel Synnaeve
+License: Python Software Foundation License (PSFL, BSD-like, GPL compatible)
+http://docs.python.org/license.html
+"""
 
-#new_rep = re.compile('^\[.*')
-#action = re.compile('^\d.*')
+# pyt arff.py all.lmr [--generate-attributes]
+def usage():
+    print "Usage is:"
+    print "pyt arff.py FILE.lmr [--generate-attributes]"
+
+if len(sys.argv) < 2:
+    usage()
+
+generate_attributes = False
+if sys.argv[2] == '--generate-attributes':
+    generate_attributes = True
+
 f = open(sys.argv[1], 'r')
 pvp = open(sys.argv[1].split('.')[0]+'pvp.arff', 'w')
 pvt = open(sys.argv[1].split('.')[0]+'pvt.arff', 'w')
 pvz = open(sys.argv[1].split('.')[0]+'pvz.arff', 'w')
-tvp = open(sys.argv[1].split('.')[0]+'tvp.arff', 'w')
+#tvp = open(sys.argv[1].split('.')[0]+'tvp.arff', 'w')
 tvt = open(sys.argv[1].split('.')[0]+'tvt.arff', 'w')
 tvz = open(sys.argv[1].split('.')[0]+'tvz.arff', 'w')
-zvp = open(sys.argv[1].split('.')[0]+'zvp.arff', 'w')
-zvt = open(sys.argv[1].split('.')[0]+'zvt.arff', 'w')
+#zvp = open(sys.argv[1].split('.')[0]+'zvp.arff', 'w')
+#zvt = open(sys.argv[1].split('.')[0]+'zvt.arff', 'w')
 zvz = open(sys.argv[1].split('.')[0]+'zvz.arff', 'w')
 
 s = set()
 
-mu = ''
 rep = ''
-p1 = {}
-p2 = {} 
+p = [{}, {}]
 nbp = 0
 skip = False
 
+def extract_attribute(t):
+    """
+    Extract the building/unit/upgrade name and append the Race_ in front
+    Works with a closure on p (players list of dict)
+    """
+    ret = t[len(t)-1]
+    if 'player' in ret: # prune/filter player quit/disconnect
+        return ''
+    ret = ret.replace(' ', '_')
+    if '(' in ret:
+        ret = ret.split('(')[1].replace(')', '')
+    ### Because upgrades sometimes are Protoss_Air_...
+    if not 'Protoss_' in ret\
+            and not 'Terran_' in ret \
+            and not 'Zerg_' in ret:
+        tr = p[int(t[2])]['race']
+        if tr == 'P':
+            ret = 'Protoss_' + ret
+        elif tr == 'T':
+            ret = 'Terran_' + ret
+        elif tr == 'Z':
+            ret = 'Zerg_' + ret
+    return ret
+
 for line in f:
-    #if re.match(new_rep, line):
     if line[0] == '[': # new replay name, write the old
-        #if mu != '':
-        #mu = ''
         #rep = ''
-        p1 = {}
-        p2 = {}
+        p = [{}, {}]
         nbp = 0
     if line[0] in '0123456789':
         if nbp > 2:
-            pass # SKIP 
+            pass # SKIP (we are only interested in duel / 1vs1) 
         else:
-            pass # TODO
-        if generate_attributes:
-            tmp = line.rstrip(' \n\r').split(',')
-            tmpp = tmp[1]
-            tmp = tmp[len(tmp)-1]
-            if 'player' in tmp:
+            if generate_attributes:
+                tmp = line.rstrip(' \n\r').split(',')
+                tmp = extract_attribute(tmp)
+                if tmp != '' and tmp not in s:
+                    s.add(tmp)
                 continue
-            tmp = tmp.replace(' ', '_')
-            if '(' in tmp:
-                tmp = tmp.split('(')[1].replace(')', '')
-            if not 'Protoss' in tmp\
-                    and (not 'Terran' in tmp or 'Infested' in tmp)\
-                    and (not 'Zerg' in tmp or 'Zergling' in tmp):
-                tmpr = ''
-                if p1['name'] == tmpp:
-                    tmpr = p1['race']
-                elif p2['name'] == tmpp:
-                    tmpr = p2['race']
-                if tmpr == 'P':
-                    tmp = 'Protoss_' + tmp
-                elif tmpr == 'T':
-                    tmp = 'Terran_' + tmp
-                elif tmpr == 'Z':
-                    tmp = 'Zerg_' + tmp
-            if tmp != '' and tmp not in s:
-                s.add(tmp)
+            line = line.rstrip(' \n').split(',')
+            if 'player quit' in line[len(line) - 1]:
+                p[int(line[2])]['winner'] = 0
+                p[1 - int(line[2])]['winner'] = 1
+            else:
+                pass
+
     if line[0] == '_': # header
         if "Human" in line:
             nbp += 1
             tmp = line.strip('_').rstrip(' \n').split(',')
-            if ('name' in p1 and p1['name'] != ''):
-                p2['name'] = tmp[0]
-                p2['race'] = tmp[2]
+            if ('name' in p[0] and p[0]['name'] != ''):
+                p[1]['name'] = tmp[0]
+                p[1]['race'] = tmp[2]
             else:
-                p1['name'] = tmp[0]
-                p1['race'] = tmp[2]
+                p[0]['name'] = tmp[0]
+                p[0]['race'] = tmp[2]
 
 if generate_attributes:
     attr = open('attributes.txt', 'w')
+    terran = []
+    zerg = []
     for at in s:
-        if 'Protoss' in at:
-            attr.write(at+'\n')
+        if 'Terran_' in at:
+            terran.append(at)
     for at in s:
-        if 'Terran' in at:
-            attr.write(at+'\n')
+        if 'Zerg_' in at:
+            zerg.append(at)
     for at in s:
-        if 'Zerg' in at:
-            attr.write(at+'\n')
+        # for mind control
+        if 'Protoss_' in at\
+                and at.replace('Protoss_', 'Terran_') not in terran\
+                and at.replace('Protoss_', 'Zerg_') not in zerg:
+            attr.write(at + '\n')
+    for at in terran:
+        attr.write(at + '\n')
+    for at in zerg:
+        attr.write(at + '\n')
