@@ -4,8 +4,8 @@
 #include <vector>
 #include <set>
 #include <algorithm>
-#include "enums_name_tables.h"
 #include "x_values.h"
+#include "enums_name_tables.h"
 #include "replays.h"
 #include "parameters.h"
 #include <boost/random/linear_congruential.hpp>
@@ -59,6 +59,9 @@ class OpeningPredictor
     plCndDistribution Cnd_P_Time_knowing_X_Op;
 #endif
 #endif
+#ifdef TECH_TREES
+    plCndDistribution Cnd_P_X_knowing_obs;
+#endif
     plCndDistribution Cnd_P_Opening_knowing_rest;
 
 #ifdef BENCH
@@ -76,12 +79,18 @@ class OpeningPredictor
     plValues evidence;
 #if PLOT > 0
     std::vector<std::vector<plProbValue> > T_P_Opening_v;
+#ifdef TECH_TREES
+    std::vector<std::vector<plProbValue> > T_P_X_v;
+#endif
     std::vector<plProbValue> tmpProbV;
 #endif
 
     std::vector<double> prior_openings(char them, char us);
 
     public:
+#ifdef TECH_TREES
+        plDistribution T_P_X;
+#endif
         plDistribution T_P_Opening;
         OpeningPredictor(const std::vector<std::string>& op,
                 const char* learningFileName);

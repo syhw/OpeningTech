@@ -1,10 +1,10 @@
 #ifndef X_VALUES
 #define X_VALUES
+#include "parameters.h"
 #include <set>
 #include <vector>
 #include <algorithm>
 #include "enums_name_tables.h"
-#include "parameters.h"
 
 /// Copyright Gabriel Synnaeve 2011
 /// This code is under 3-clauses (new) BSD License
@@ -173,37 +173,37 @@ std::vector<std::set<Zerg_Buildings> > get_zerg_X_values()
 
 std::string pruneOpeningVal(std::string& input);
 
-void getBuildings(std::string str, 
-        std::multimap<int, Building>& b,
-        unsigned int cutoffseconds);
-
-std::vector<std::set<int> > get_X_values(std::ifstream& fin)
+struct tech_trees
 {
-    std::vector<std::set<int> > ret_vector;
-    std::set<std::set<int> > ret_set; // unordered_set
-    std::string line;
-    while (getline(fin, line))
+    std::vector<std::set<int> > vector_X; // build tree (BT) as sets
+    tech_trees(std::ifstream& fin)
     {
-        pruneOpeningVal(line);
-        std::multimap<int, Building> buildings;
-        getBuildings(line, buildings, 0); // 0 for cutoffseconds
-        buildings.erase(0); // key == 0 i.e. buildings not constructed
-        std::set<int> tmpSet;
-        tmpSet.insert(0); // first Nexus/CC/Hatch exists
-        for (std::multimap<int, Building>::const_iterator it
-                = buildings.begin();
-                it != buildings.end(); ++it)
+        std::set<std::set<int> > ret_set; // unordered_set
+        std::string line;
+        while (getline(fin, line))
         {
-            if (it->first > LEARN_TIME_LIMIT)
-                break;
-            tmpSet.insert(it->second.getEnumValue());
-            ret_set.insert(tmpSet);
+            pruneOpeningVal(line);
+            std::multimap<int, Building> buildings;
+            getBuildings(line, buildings, 0); // 0 for cutoffseconds
+            buildings.erase(0); // key == 0 i.e. buildings not constructed
+            std::set<int> tmpSet;
+            tmpSet.insert(0); // first Nexus/CC/Hatch exists
+            for (std::multimap<int, Building>::const_iterator it
+                    = buildings.begin();
+                    it != buildings.end(); ++it)
+            {
+                if (it->first > LEARN_TIME_LIMIT)
+                    break;
+                tmpSet.insert(it->second.getEnumValue());
+                ret_set.insert(tmpSet);
+            }
         }
+        vector_X.reserve(ret_set.size());
+        std::copy(ret_set.begin(), ret_set.end(),
+                std::back_inserter(vector_X));
     }
-    ret_vector.reserve(ret_set.size());
-    std::copy(ret_set.begin(), ret_set.end(), std::back_inserter(ret_vector));
-    return ret_vector;
-}
+    tech_trees() {}
+};
 
 #endif
 

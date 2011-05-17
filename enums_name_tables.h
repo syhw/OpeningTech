@@ -12,7 +12,7 @@
     X(Terran_Ghost,  (const char*) "Terran_Ghost") \
     X(Terran_Vulture,  (const char*) "Terran_Vulture") \
     X(Terran_Goliath,  (const char*) "Terran_Goliath") \
-    X(Terran_Siege_Tank_Tank_Mode,  (const char*) "Terran_Siege_Tank_Tank_Mode") \
+    X(Terran_Siege,  (const char*) "Terran_Siege_Tank") \
     X(Terran_SCV,  (const char*) "Terran_SCV") \
     X(Terran_Wraith,  (const char*) "Terran_Wraith") \
     X(Terran_Science_Vessel,  (const char*) "Terran_Science_Vessel") \
@@ -315,5 +315,137 @@ inline std::ostream& operator <<(std::ostream& os, const Building& b)
         os << "ERROR: _enumValue too big: " << b._enumValue;
     return os;
 }
+
+struct tree_node
+{
+    int value;
+    std::map<int, tree_node*> children;
+    void append(int v)
+    {
+        children.insert(std::make_pair<int, tree_node*>(v, new tree_node(v)));
+    }
+    void append(tree_node* tn)
+    {
+        children.insert(std::make_pair<int, tree_node*>(tn->value, tn));
+    }
+    tree_node(int v): value(v) {}
+    tree_node(const char* p) : value(Protoss_Nexus) // root
+    {
+        if (p[0] == 'P')
+        {
+            this->append(Protoss_Nexus);
+            this->append(Protoss_Expansion);
+            this->append(Protoss_Pylon);
+            this->append(Protoss_Pylon2);
+            this->append(Protoss_Assimilator);
+            this->append(Protoss_Gateway);
+            this->append(Protoss_Gateway2);
+            this->append(Protoss_Forge);
+            children[Protoss_Forge]->append(Protoss_Photon_Cannon);
+            children[Protoss_Gateway]->append(Protoss_Shield_Battery);
+            children[Protoss_Gateway]->append(Protoss_Cybernetics_Core);
+            children[Protoss_Gateway]->children[Protoss_Cybernetics_Core]->
+                append(Protoss_Stargate);
+            children[Protoss_Gateway]->children[Protoss_Cybernetics_Core]->
+                append(Protoss_Citadel_of_Adun);
+            children[Protoss_Gateway]->children[Protoss_Cybernetics_Core]->
+                append(Protoss_Robotics_Facility);
+            children[Protoss_Gateway]->children[Protoss_Cybernetics_Core]->
+                children[Protoss_Robotics_Facility]->
+                append(Protoss_Robotics_Support_Bay);
+            children[Protoss_Gateway]->children[Protoss_Cybernetics_Core]->
+                children[Protoss_Robotics_Facility]->append(Protoss_Observatory);
+            children[Protoss_Gateway]->children[Protoss_Cybernetics_Core]->
+                children[Protoss_Citadel_of_Adun]->
+                append(Protoss_Templar_Archives);
+            children[Protoss_Gateway]->children[Protoss_Cybernetics_Core]->
+                children[Protoss_Stargate]->append(Protoss_Fleet_Beacon);
+            tree_node* tribunal = new tree_node(Protoss_Arbiter_Tribunal);
+            children[Protoss_Gateway]->children[Protoss_Cybernetics_Core]->
+                children[Protoss_Citadel_of_Adun]->
+                children[Protoss_Templar_Archives]->append(tribunal);
+            children[Protoss_Gateway]->children[Protoss_Cybernetics_Core]->
+                children[Protoss_Stargate]->append(tribunal);
+        }
+        else if (p[0] == 'T')
+        {
+            this->append(Terran_Command_Center);
+            this->append(Terran_Expansion);
+            this->append(Terran_Comsat_Station);
+            this->append(Terran_Nuclear_Silo);
+            this->append(Terran_Supply_Depot);
+            this->append(Terran_Refinery);
+            this->append(Terran_Barracks);
+            this->append(Terran_Barracks2);
+            this->append(Terran_Engineering_Bay);
+            children[Terran_Engineering_Bay]->append(Terran_Missile_Turret);
+            children[Terran_Barracks]->append(Terran_Academy);
+            children[Terran_Barracks]->append(Terran_Factory);
+            children[Terran_Barracks]->append(Terran_Bunker);
+            children[Terran_Barracks]->children[Terran_Factory]->
+                append(Terran_Starport);
+            children[Terran_Barracks]->children[Terran_Factory]->
+                append(Terran_Armory);
+            children[Terran_Barracks]->children[Terran_Factory]->
+                append(Terran_Machine_Shop);
+            children[Terran_Barracks]->children[Terran_Factory]->
+                children[Terran_Starport]->append(Terran_Control_Tower);
+            children[Terran_Barracks]->children[Terran_Factory]->
+                children[Terran_Starport]->append(Terran_Science_Facility);
+            children[Terran_Barracks]->children[Terran_Factory]->
+            children[Terran_Starport]->children[Terran_Science_Facility]->
+                append(Terran_Covert_Ops);
+            children[Terran_Barracks]->children[Terran_Factory]->
+            children[Terran_Starport]->children[Terran_Science_Facility]->
+                append(Terran_Physics_Lab);
+        }
+        else if (p[0] == 'Z')
+        {
+            this->append(Zerg_Hatchery);
+            this->append(Zerg_Expansion);
+            this->append(Zerg_Expansion2);
+            this->append(Zerg_Evolution_Chamber);
+            this->append(Zerg_Infested_Command_Center);
+            this->append(Zerg_Spawning_Pool);
+            this->append(Zerg_Creep_Colony);
+            this->append(Zerg_Extractor);
+            this->append(Zerg_Building_Overlord);
+            children[Zerg_Evolution_Chamber]->append(Zerg_Spore_Colony);
+            children[Zerg_Spawning_Pool]->append(Zerg_Sunken_Colony);
+            children[Zerg_Spawning_Pool]->append(Zerg_Hydralisk_Den);
+            children[Zerg_Hatchery]->append(Zerg_Lair);
+            children[Zerg_Spawning_Pool]->append(children[Zerg_Hatchery]->
+                    children[Zerg_Lair]);
+            children[Zerg_Hatchery]->children[Zerg_Lair]->
+                append(Zerg_Spire);
+            children[Zerg_Hatchery]->children[Zerg_Lair]->
+                append(Zerg_Queens_Nest);
+            children[Zerg_Hatchery]->children[Zerg_Lair]->append(Zerg_Hive);
+            children[Zerg_Hatchery]->children[Zerg_Lair]->
+                children[Zerg_Queens_Nest]->append(children[Zerg_Hatchery]->
+                        children[Zerg_Lair]->children[Zerg_Hive]);
+            children[Zerg_Hatchery]->children[Zerg_Lair]->children[Zerg_Hive]
+                ->append(Zerg_Nydus_Canal);
+            children[Zerg_Hatchery]->children[Zerg_Lair]->children[Zerg_Hive]
+                ->append(Zerg_Defiler_Mound);
+            tree_node* gspire = new tree_node(Zerg_Greater_Spire);
+            children[Zerg_Hatchery]->children[Zerg_Lair]->children[Zerg_Hive]
+                ->append(gspire);
+            children[Zerg_Hatchery]->children[Zerg_Lair]->children[Zerg_Spire]
+                ->append(gspire);
+            children[Zerg_Hatchery]->children[Zerg_Lair]->children[Zerg_Hive]
+                ->append(Zerg_Ultralisk_Cavern);
+        }
+    }
+    ~tree_node()
+    {
+        for (std::map<int, tree_node*>::iterator it = children.begin();
+                it != children.end(); ++it)
+        {
+            if (it->second != NULL)
+                delete it->second;
+        }
+    }
+};
 
 #endif

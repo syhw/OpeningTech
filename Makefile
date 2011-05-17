@@ -6,6 +6,12 @@ PROBT_LIB=/Users/gabrielsynnaeve/these/code/probt/lib
 model: model.cpp
 	g++ -ggdb -arch i386 -I$(PROBT_INCLUDE) model.cpp -L$(PROBT_LIB) -lpl -o model
 
+techtrees: techtrees.cpp
+	g++ -ggdb -arch i386 -DTECH_TREES -I$(PROBT_INCLUDE) techtrees.cpp -L$(PROBT_LIB) -lpl -o techtrees
+
+tt: model.cpp
+	g++ -ggdb -arch i386 -DTECH_TREES -I$(PROBT_INCLUDE) model.cpp -L$(PROBT_LIB) -lpl -o tt
+
 tests: test_x_values.cpp test_functional_dirac.cpp test_lambda.cpp test_getOpeningVal.cpp test_getBuildings.cpp
 	g++ -ggdb test_x_values.cpp -o test_x_values
 	g++ -arch i386 -I$(PROBT_INCLUDE) test_functional_dirac.cpp \
@@ -17,7 +23,7 @@ tests: test_x_values.cpp test_functional_dirac.cpp test_lambda.cpp test_getOpeni
 	g++ -ggdb test_getOpeningVal.cpp -o test_getOpeningVal
 	g++ -ggdb test_getBuildings.cpp -o test_getBuildings
 
-all: tests model
+all: tests model techtrees
 	make run
 	[ -x /usr/bin/say ] && say "Battlecruiser operational!"
 
@@ -84,7 +90,7 @@ noisebenchs:
 	for ((i=1; i<16; i++)); do \
 		./noisy.sh $$i >> benchs.txt; done
 
-.PHONY: model mymodel tests
+.PHONY: model mymodel tests techtrees tt
 
 clean:
 	rm -rf ./-* ./:* ./[* prefix option illegal mktemp: c++-header *~ \
@@ -96,7 +102,7 @@ clean:
 		protoss_possible_tech_trees.txt \
 		terran_possible_tech_trees.txt \
 		zerg_possible_tech_trees.txt \
-	 	model \
+	 	model tt techtrees\
 		t*n*.txt \
 		x_values
 

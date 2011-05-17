@@ -9,9 +9,30 @@ using namespace std;
 /// POSSIBLE: put a std::set instead of std::vector for vector_X
 /// TODO: replace set by unordered_set (TR1 or boost) in a lot of places
 
-std::vector<std::set<int> > vector_X;
+tech_trees tt;
 int nbBuildings;
 const char** buildings_name;
+
+template <class T>
+std::vector<std::vector<T> > transpose(const std::vector<std::vector<T> >& t)
+{
+    std::vector<std::vector<T> > ret;
+    for (typename std::vector<std::vector<T> >::const_iterator it = t.begin();
+            it != t.end(); ++it)
+    {
+        for (typename std::vector<T>::const_iterator jt = it->begin();
+                jt != it->end(); ++jt)
+        {
+            typename std::vector<T> ttmp;
+            ttmp.reserve(it->size());
+            ret.push_back(ttmp);
+        }
+    }
+    for (unsigned int i = 0; i < ret.size(); ++i)
+        for (unsigned int j = 0; j < ret[i].size(); ++j)
+            ret[i][j] = t[j][i];
+    return ret;
+}
 
 #ifdef BENCH
 /**
@@ -78,6 +99,74 @@ void gnuplot_vector_probas(const vector<vector<plProbValue> >& tab,
     }
     file.close();
 }
+#ifdef TECH_TREES
+void gnuplot_vector_probas_tt(const vector<vector<plProbValue> >& tab, 
+        const string& filename)
+{
+    vector<unsigned int> to_count;
+    vector<bool> to_c;
+    vector<vector<plProbValue> >::const_iterator iit = tab.begin();
+    for (vector<plProbValue>::const_iterator jt = iit->begin();
+            jt != iit->end(); ++jt)
+        to_c.push_back(false);
+    ++iit;
+    for (; iit != tab.end(); ++iit)
+    {
+        unsigned int i = 0;
+        for (vector<plProbValue>::const_iterator jt = iit->begin();
+                jt != iit->end(); ++jt)
+        {
+            if (*jt > 0.01)
+                to_c[i] = true;
+            ++i;
+        }
+    }
+    for (unsigned int i =0; i < to_c.size(); ++i)
+    {
+        if (to_c[i])
+            to_count.push_back(i);
+    }
+    ofstream file;
+    // gnuplot file
+    file.open(filename.c_str(), ios::out);
+    file << "set xlabel \"BuildingNumber\"" << endl;
+    file << "set ylabel \"P(Opening)\"" << endl;
+    file << "set title \"" << filename << "\"" << endl;
+    file << "set style data linespoints" << endl;
+    string cpfn = filename;
+    cpfn.append(".data");
+    file << "plot ";
+        file << "\"" << cpfn << "\" using 1:" << 2 << " title " 
+            << "\"" << to_count[0];
+    for (unsigned int i = 1; i < to_count.size(); ++i)
+    {
+        file << "\", \"" << cpfn << "\" using 1:" << i+2 << " title " 
+            << "\"" << to_count[i];
+    }
+    file << endl;
+    file << "pause -1 \"hit a button to continue\"" << endl;
+    file.close();
+
+    // data file
+    file.open(cpfn.c_str(), ios::out);
+    unsigned int i = 0;
+    for (vector<vector<plProbValue> >::const_iterator it = tab.begin();
+            it != tab.end(); ++it)
+    {
+        file << i++ << " ";
+        unsigned int j = 0;
+        for (vector<plProbValue>::const_iterator jt = it->begin();
+                jt != it->end(); ++jt)
+        {
+            if (to_c[j])
+                file << *jt << " ";
+            ++j;
+        }
+        file << endl;
+    }
+    file.close();
+}
+#endif
 #endif
 
 /**
@@ -115,7 +204,7 @@ void test_same_opening(plValues& op, const plValues& last_op)
  */
 void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
 {
-    set<int> setX = vector_X[X_Obs_conj[0]];
+    set<int> setX = tt.vector_X[X_Obs_conj[0]];
     set<int> setObs;
     set<int> intersect;
     //for (plValues::const_iterator it = X_Obs_conj.begin(); ...)
@@ -201,7 +290,7 @@ void learn_T_and_X(ifstream& inputstream,
 #if DEBUG_OUTPUT > 1
                 std::cout << "Opening: " << tmpOpening << std::endl;
 #endif
-                int tmp_ind = get_X_indice(tmpSet, vector_X);
+                int tmp_ind = get_X_indice(tmpSet, tt.vector_X);
                 vals_timeLearner[X] = tmp_ind;
                 vals_xLearner[X] = tmp_ind;
 #if DEBUG_OUTPUT > 1
@@ -265,8 +354,8 @@ void learn_T_and_X(ifstream& inputstream,
         {
             cout << "PROBLEM: We never encountered X: ";
             for (typename set<int>::const_iterator ibn
-                    = vector_X[it->first].begin();
-                    ibn != vector_X[it->first].end(); ++ibn)
+                    = tt.vector_X[it->first].begin();
+                    ibn != tt.vector_X[it->first].end(); ++ibn)
             {
                 Building tmpBuilding(static_cast<T>(*ibn));
                 cout << tmpBuilding << ", ";
@@ -277,8 +366,8 @@ void learn_T_and_X(ifstream& inputstream,
         {
             cout << "(POSSIBLE)PROBLEM: We encountered X only one time: ";
             for (typename set<int>::const_iterator ibn
-                    = vector_X[it->first].begin();
-                    ibn != vector_X[it->first].end(); ++ibn)
+                    = tt.vector_X[it->first].begin();
+                    ibn != tt.vector_X[it->first].end(); ++ibn)
             {
                 Building tmpBuilding(static_cast<T>(*ibn));
                 cout << tmpBuilding << ", ";
@@ -315,7 +404,7 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
     /**********************************************************************
       VARIABLES SPECIFICATION
      **********************************************************************/
-    X = plSymbol("X", plIntegerType(0, vector_X.size()-1));
+    X = plSymbol("X", plIntegerType(0, tt.vector_X.size()-1));
     lambda = plSymbol("lambda", PL_BINARY_TYPE);
     // what has been observed
     for (unsigned int i = 0; i < nbBuildings; i++)
@@ -352,7 +441,7 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
     // Specification of P(X | Opening) (possible tech trees)
     xLearner = plCndLearnObject<plLearnHistogram>(X, Opening);
     std::vector<plProbValue> tableX;
-    for (unsigned int i = 0; i < vector_X.size(); i++) 
+    for (unsigned int i = 0; i < tt.vector_X.size(); i++) 
         tableX.push_back(1.0);
     P_X = plProbTable(X, tableX, false);
 
@@ -388,7 +477,7 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
                 Opening, X, Time);
 #if DEBUG_OUTPUT > 2
     cout << "*** Number of possible pairs (X, Opening): "
-        << vector_X.size()*openings.size();
+        << tt.vector_X.size()*openings.size();
     cout << timeLearner.get_computable_object() << endl;
 #endif
 
@@ -441,7 +530,7 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
         T_P_Time_X.plot(tmp.str().c_str());
 
 #if PLOT > 2
-        for (unsigned int j = 0; j < vector_X.size(); ++j)
+        for (unsigned int j = 0; j < tt.vector_X.size(); ++j)
         {
             plValues evidence2(Opening^X);
             evidence2[Opening] = i;
@@ -463,8 +552,15 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
 #endif
 #endif // endif of PLOT > 1
 
+#ifdef TECH_TREES
+    jd.ask(Cnd_P_X_knowing_obs, X, knownConj);
+#endif
     jd.ask(Cnd_P_Opening_knowing_rest, Opening, knownConj);
+
 #if DEBUG_OUTPUT > 0
+#ifdef TECH_TREES
+    cout << Cnd_P_X_knowing_obs << endl;
+#endif
     cout << Cnd_P_Opening_knowing_rest << endl;
 #endif
 
@@ -507,6 +603,11 @@ void OpeningPredictor::init_game()
     P_Opening.tabulate(tmpProbV);
 #endif
     T_P_Opening_v.push_back(tmpProbV);
+#ifdef TECH_TREES
+    tmpProbV.clear();
+    P_X.tabulate(tmpProbV);
+    T_P_X_v.push_back(tmpProbV);
+#endif
 #endif
 }
 
@@ -523,30 +624,49 @@ int OpeningPredictor::instantiate_and_compile(int time,
     cout << "====== evidence ======" << endl;
     cout << evidence << endl;
 #endif
+
+#ifdef TECH_TREES
+    plDistribution PP_X;
+    Cnd_P_X_knowing_obs.instantiate(PP_X, evidence);
+#endif
     plDistribution PP_Opening;
     Cnd_P_Opening_knowing_rest.instantiate(PP_Opening, evidence);
+
 #if DEBUG_OUTPUT > 1
     cout << "====== P(Opening | rest).instantiate ======" << endl;
     cout << Cnd_P_Opening_knowing_rest << endl;
     cout << PP_Opening.get_left_variables() << endl;
     cout << PP_Opening.get_right_variables() << endl;
 #endif
+#ifdef TECH_TREES
+    PP_X.compile(T_P_X);
+#endif
     PP_Opening.compile(T_P_Opening);
 #if DEBUG_OUTPUT >= 1
+#ifdef TECH_TREES
+    cout << "====== P(X | evidence), building: "
+        << building << " ======" << endl;
+    cout << T_P_X << endl << endl;
+#endif
     cout << "====== P(Opening | evidence), building: "
         << building << " ======" << endl;
     cout << T_P_Opening << endl;
 #endif
 #ifdef BENCH
+    vector<pair<plValues, plProbValue> > outvals;
     if (T_P_Opening.is_null())
         return -1;
-    vector<pair<plValues, plProbValue> > outvals;
     T_P_Opening.sorted_tabulate(outvals);
 #if PLOT > 0
     vector<plValues> dummy;
     tmpProbV.clear();
     T_P_Opening.tabulate(dummy, tmpProbV);
     T_P_Opening_v.push_back(tmpProbV);
+#ifdef TECH_TREES
+    tmpProbV.clear();
+    T_P_X.tabulate(dummy, tmpProbV);
+    T_P_X_v.push_back(tmpProbV);
+#endif
 #endif
     for (vector<pair<plValues, plProbValue> >::const_iterator 
             jt = outvals.begin(); jt != outvals.end(); ++jt)
@@ -611,6 +731,12 @@ int OpeningPredictor::quit_game(const string& tmpOpening, int noreplay)
 #endif
     gnuplot_vector_probas(T_P_Opening_v, openings, tmpfn.str());
     T_P_Opening_v.clear();
+#ifdef TECH_TREES
+    std::stringstream tmpfn2;
+    tmpfn2 << "TechTreeRep" << noreplay << ".gnuplot";
+    gnuplot_vector_probas_tt(T_P_X_v, tmpfn2.str());
+    T_P_X_v.clear();
+#endif
 #endif
 #ifdef DIRAC_ON_LAST_OPENING
     P_LastOpening.mutate(static_cast<plDistribution>(
@@ -737,16 +863,16 @@ int main(int argc, const char *argv[])
         if (argv[1][1] == 'P')
         {
             ifstream fin(extract_X_from.str().c_str()); // could be argv[1]
-            vector_X = get_X_values(fin); /// Enemy race
+            tt = tech_trees(fin); /// Enemy race
             openings = protoss_openings;
             nbBuildings = NB_PROTOSS_BUILDINGS;
             buildings_name = protoss_buildings_name;
-            cout << "X size: " << vector_X.size() << endl;
+            cout << "X size: " << tt.vector_X.size() << endl;
         }
         else if (argv[1][1] == 'T')
         {
             ifstream fin(extract_X_from.str().c_str()); // could be argv[1]
-            vector_X = get_X_values(fin); /// Enemy race
+            tt = tech_trees(fin); /// Enemy race
             openings = terran_openings;
             nbBuildings = NB_TERRAN_BUILDINGS;
             buildings_name = terran_buildings_name;
@@ -754,7 +880,7 @@ int main(int argc, const char *argv[])
         else if (argv[1][1] == 'Z')
         {
             ifstream fin(extract_X_from.str().c_str()); // could be argv[1]
-            vector_X = get_X_values(fin); /// Enemy race
+            tt = tech_trees(fin); /// Enemy race
             openings = zerg_openings;
             nbBuildings = NB_ZERG_BUILDINGS;
             buildings_name = zerg_buildings_name;
