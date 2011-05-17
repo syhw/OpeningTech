@@ -588,6 +588,18 @@ void OpeningPredictor::init_game()
 #ifdef BENCH
     times_label_predicted = 0;
     times_label_predicted_after = 0;
+#ifdef TECH_TREES
+    current_x.clear();
+    current_x.insert(0);
+    tmeanc_set_distance_X = 0;
+    tbestc_set_distance_X = 0;
+    tmeanc_tree_distance_X = 0;
+    tbestc_tree_distance_X = 0;
+    tbestp_set_distance_X = 0;
+    tmeanp_set_distance_X = 0;
+    tbestp_tree_distance_X = 0;
+    tmeanp_tree_distance_X = 0;
+#endif
 #endif
     evidence = plValues(knownConj);
     // we assume we didn't see any buildings
@@ -616,8 +628,12 @@ int OpeningPredictor::instantiate_and_compile(int time,
 {
 #ifdef BENCH
     clock_t start = clock();
+#ifdef TECH_TREES
+    current_x.insert(building.getEnumValue());
+#endif
 #endif
     evidence[observed[building.getEnumValue()]] = 1;
+    ++nbinferences;
     evidence[Time] = time;
 
 #if DEBUG_OUTPUT > 1
@@ -658,13 +674,14 @@ int OpeningPredictor::instantiate_and_compile(int time,
         return -1;
     T_P_Opening.sorted_tabulate(outvals);
 #if PLOT > 0
-    vector<plValues> dummy;
+    vector<plValues> values_v;
     tmpProbV.clear();
-    T_P_Opening.tabulate(dummy, tmpProbV);
+    T_P_Opening.tabulate(values_v, tmpProbV);
     T_P_Opening_v.push_back(tmpProbV);
 #ifdef TECH_TREES
     tmpProbV.clear();
-    T_P_X.tabulate(dummy, tmpProbV);
+    values_v.clear();
+    T_P_X.tabulate(values_v, tmpProbV);
     T_P_X_v.push_back(tmpProbV);
 #endif
 #endif
@@ -683,9 +700,19 @@ int OpeningPredictor::instantiate_and_compile(int time,
     toTest[Opening] = tmpOpening;
     if (T_P_Opening.best()[Opening] == toTest[Opening])
         //&& T_P_Opening[toTest[Opening]] > 0.5)
-        ++times_label_predicted ;
+        ++times_label_predicted;
     if (time > 180 && T_P_Opening.best()[Opening] == toTest[Opening])
         ++times_label_predicted_after;
+#ifdef TECH_TREES
+    plValues toTestX(X);
+    int tmp = get_X_indice(current_x, tt.vector_X);
+    toTestX[X] = tmp;
+    //if (T_P_X.best()[X] == toTestX[X])
+    tbestc_set_distance_X += tt.set_distances_X[T_P_X.best()[X]][tmp];
+    for (unsigned int i = 0; i < tmpProbV.size(); ++i)
+        tmeanc_set_distance_X += tt.set_distances_X[values_v[i][X]][tmp] 
+            * tmpProbV[i];
+#endif
 #endif
 #ifdef BENCH
     clock_t end = clock();
@@ -702,6 +729,7 @@ int OpeningPredictor::instantiate_and_compile(int time,
 int OpeningPredictor::quit_game(const string& tmpOpening, int noreplay)
 {
 #ifdef BENCH
+#if DEBUG >= 1
     for (map<plValues, plProbValue>::const_iterator 
             jt = cumulative_prob.begin(); jt != cumulative_prob.end(); ++jt)
     {
@@ -709,6 +737,7 @@ int OpeningPredictor::quit_game(const string& tmpOpening, int noreplay)
         jt->first.Output(cout);
         cout << " => sum on probs: " << jt->second << endl;
     }
+#endif
     plValues toTest(Opening);
     toTest[Opening] = tmpOpening;
     if (T_P_Opening.is_null())
@@ -721,6 +750,10 @@ int OpeningPredictor::quit_game(const string& tmpOpening, int noreplay)
         ++positive_classif_online;
     if (times_label_predicted_after >= 1)
         ++positive_classif_online_after;
+#ifdef TECH_TREES
+    meanc_set_distance_X.push_back(tmeanc_set_distance_X);
+    bestc_set_distance_X.push_back(tbestc_set_distance_X);
+#endif
 #endif
 #if PLOT > 0
     std::stringstream tmpfn;
@@ -775,6 +808,36 @@ void OpeningPredictor::results(int noreplay)
     stddev_time_taken = sqrt(stddev_time_taken);
     cout << "TIME: prediction mean: " << mean_time_taken << ", stddev: "
         << stddev_time_taken << endl;
+#ifdef TECH_TREES
+    double mean = 0.0;
+    double stddev = 0.0;
+    for (std::vector<double>::const_iterator it = meanc_set_distance_X.begin();
+            it != meanc_set_distance_X.end(); ++it)
+        mean += *it;
+    for (std::vector<double>::const_iterator it = meanc_set_distance_X.begin();
+            it != meanc_set_distance_X.end(); ++it)
+        stddev += (*it - mean)*(*it - mean);
+
+    cout << endl << ">>> Mean of mean set distance X: " << mean
+        << " stddev/sigma: " << sqrt(stddev) << endl;
+
+    mean = 0.0;
+    stddev = 0.0;
+    for (std::vector<unsigned int>::const_iterator it = bestc_set_distance_X.begin();
+            it != bestc_set_distance_X.end(); ++it)
+        mean += *it;
+    for (std::vector<unsigned int>::const_iterator it = bestc_set_distance_X.begin();
+            it != bestc_set_distance_X.end(); ++it)
+        stddev += (*it - mean)*(*it - mean);
+
+    cout << endl << ">>> Mean of best set distance X: " << mean
+        << " stddev/sigma: " << sqrt(stddev) << endl;
+#endif
+
+    cout << endl << ">>> Number of replays: " << noreplay << endl
+        << "Number of inferences: " << nbinferences << endl
+        << "Mean inference/replay: " << (double)nbinferences/(double)noreplay
+        << endl;
 #endif
 }
 

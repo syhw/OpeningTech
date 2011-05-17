@@ -176,8 +176,12 @@ std::string pruneOpeningVal(std::string& input);
 struct tech_trees
 {
     std::vector<std::set<int> > vector_X; // build tree (BT) as sets
+#ifdef TECH_TREES
+    std::vector<std::vector<int> > set_distances_X; // distances between BT
+#endif
     tech_trees(std::ifstream& fin)
     {
+        // Fill vector_X
         std::set<std::set<int> > ret_set; // unordered_set
         std::string line;
         while (getline(fin, line))
@@ -201,6 +205,37 @@ struct tech_trees
         vector_X.reserve(ret_set.size());
         std::copy(ret_set.begin(), ret_set.end(),
                 std::back_inserter(vector_X));
+#ifdef TECH_TREES
+        // Fill set_distances_X
+        for (unsigned int i = 0; i < vector_X.size(); ++i)
+        {
+            std::vector<int> tmp;
+            for (unsigned int j = 0; j < vector_X.size(); ++j) // size/2+1
+            {
+                tmp.push_back(set_distance(i, j));
+            }
+            set_distances_X.push_back(tmp);
+        }
+#endif
+    }
+    int set_distance(unsigned int i, unsigned int j)
+    {
+        std::vector<int> symdiff;
+        //std::set_symmetric_difference(vector_X[i].begin(), vector_X[i].end(),
+        //        vector_X[j].begin(), vector_X[j].end(), symdiff.begin());
+        for (std::set<int>::const_iterator it = vector_X[i].begin();
+                it != vector_X[i].end(); ++it)
+        {
+            if (!vector_X[j].count(*it))
+                symdiff.push_back(*it);
+        }
+        for (std::set<int>::const_iterator jt = vector_X[j].begin();
+                jt != vector_X[j].end(); ++jt)
+        {
+            if (!vector_X[i].count(*jt))
+                symdiff.push_back(*jt);
+        }
+        return symdiff.size();
     }
     tech_trees() {}
 };

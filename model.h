@@ -70,6 +70,26 @@ class OpeningPredictor
     unsigned int positive_classif_online_after;
     unsigned int cpositive_classif_finale;
     std::map<plValues, plProbValue> cumulative_prob;
+#ifdef TECH_TREES
+    std::set<int> current_x;
+    double tmeanc_set_distance_X; // current
+    unsigned int tbestc_set_distance_X; // current
+    double tmeanc_tree_distance_X; // current
+    unsigned int tbestc_tree_distance_X; // current
+    double tmeanp_set_distance_X; // prediction
+    unsigned int tbestp_set_distance_X; // prediction
+    double tmeanp_tree_distance_X; // prediction
+    unsigned int tbestp_tree_distance_X; // prediction
+
+    std::vector<double> meanc_set_distance_X;
+    std::vector<unsigned int> bestc_set_distance_X;
+    std::vector<double> meanc_tree_distance_X;
+    std::vector<unsigned int> bestc_tree_distance_X;
+    std::vector<double> meanp_set_distance_X;
+    std::vector<unsigned int> bestp_set_distance_X;
+    std::vector<double> meanp_tree_distance_X;
+    std::vector<unsigned int> bestp_tree_distance_X;
+#endif
     unsigned int times_label_predicted;
     unsigned int times_label_predicted_after;
     std::vector<double> time_taken_prediction;
@@ -77,6 +97,7 @@ class OpeningPredictor
 
     // Game wise computations
     plValues evidence;
+    int nbinferences;
 #if PLOT > 0
     std::vector<std::vector<plProbValue> > T_P_Opening_v;
 #ifdef TECH_TREES

@@ -291,8 +291,8 @@ TechTreePredictor::TechTreePredictor(const vector<string>& op,
     /**********************************************************************
       VARIABLES SPECIFICATION
      **********************************************************************/
-    X = plSymbol("X", plIntegerType(0, tt.vector_X.size()-1));
-    LastX = plSymbol("LastX", plIntegerType(0, tt.vector_X.size()-1));
+    X1 = plSymbol("X1", plIntegerType(0, tt.vector_X.size()-1));
+    X2 = plSymbol("X2", plIntegerType(0, tt.vector_X.size()-1));
     lambda = plSymbol("lambda", PL_BINARY_TYPE);
     // what has been observed
     for (unsigned int i = 0; i < nbBuildings; i++)
@@ -302,13 +302,12 @@ TechTreePredictor::TechTreePredictor(const vector<string>& op,
     /**********************************************************************
       PARAMETRIC FORMS SPECIFICATION
      **********************************************************************/
-    // P_X and P_LastX
+    // P_Xes
     std::vector<plProbValue> tableX;
     for (unsigned int i = 0; i < tt.vector_X.size(); i++) 
         tableX.push_back(1.0);
-    P_LastX = plMutableDistribution(plProbTable(LastX, tableX, false));
-    same_x = plExternalFunction(X, LastX, test_same_X);
-    P_X = plFunctionalDirac(X, LastX, same_x);
+    P_X1 = plProbTable(X1, tableX, false);
+    P_X2 = plProbTable(X2, tableX, false);
 
     // Specification of P(O_1..NB_<RACE>_BUILDINGS)
     plProbValue tmp_table[] = {0.5, 0.5};
@@ -327,8 +326,8 @@ TechTreePredictor::TechTreePredictor(const vector<string>& op,
             test_X_possible);
     P_lambda = plFunctionalDirac(lambda, X_Obs_conj ,coherence);
 
-    // Specification of P(T | X, Opening)
-    timeLearner = plCndLearnObject<plLearnBellShape>(Time, X^Opening);
+    // Specification of P(T | X1, X2)
+    timeLearner = plCndLearnObject<plLearnBellShape>(Time, X);
     cout << ">>>> Learning from: " << learningFileName << endl;
     ifstream inputstream(learningFileName);
     if (learningFileName[1] == 'P')
