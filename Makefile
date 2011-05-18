@@ -90,6 +90,12 @@ noisebenchs:
 	for ((i=1; i<16; i++)); do \
 		./noisy.sh $$i >> benchs.txt; done
 
+ttbenchs: tt
+	echo "Launching benchmarks:\n" > ttbenchs.txt
+	for name in [TPZ]v[TPZ].txt; do echo "$${name%.*}" >> ttbenchs.txt &&\
+		./tt l$$name t$$name | grep ">>>" >> ttbenchs.txt\
+		&& echo "\n" >> ttbenchs.txt; done
+
 .PHONY: model mymodel tests techtrees tt
 
 clean:

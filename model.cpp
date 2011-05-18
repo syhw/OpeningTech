@@ -1,4 +1,10 @@
 #include "model.h"
+#define SIGNAL_NOISE_RATIO 1.0
+#define FIXED_ERROR_RATE 1
+#define FIXED_ERROR_RATE2 2
+#define FIXED_ERROR_RATE3 3
+
+// TODO add tree_distance to existing set_distances
 
 /// Copyright Gabriel Synnaeve 2011
 /// This code is under 3-clauses (new) BSD License
@@ -12,6 +18,31 @@ using namespace std;
 tech_trees tt;
 int nbBuildings;
 const char** buildings_name;
+typedef boost::minstd_rand base_generator_type;
+boost::uniform_real<> uni_dist(0,1);
+base_generator_type generator(42u);
+boost::variate_generator<base_generator_type&, boost::uniform_real<> > uniform01(generator, uni_dist);
+
+double fmean(const vector<double>& v)
+{
+    double m = 0.0;
+    for (vector<double>::const_iterator it = v.begin();
+            it != v.end(); ++it)
+        m += *it;
+    m /= v.size();
+    return m;
+}
+
+double fstddev(const vector<double>& v, double m)
+{
+    double s = 0.0;
+    for (vector<double>::const_iterator it = v.begin();
+            it != v.end(); ++it)
+        s += (*it - m)*(*it - m);
+    s /= v.size();
+    s = sqrt(s);
+    return s;
+}
 
 template <class T>
 std::vector<std::vector<T> > transpose(const std::vector<std::vector<T> >& t)
@@ -126,6 +157,8 @@ void gnuplot_vector_probas_tt(const vector<vector<plProbValue> >& tab,
         if (to_c[i])
             to_count.push_back(i);
     }
+    if (to_count.empty())
+        return;
     ofstream file;
     // gnuplot file
     file.open(filename.c_str(), ios::out);
@@ -591,14 +624,17 @@ void OpeningPredictor::init_game()
 #ifdef TECH_TREES
     current_x.clear();
     current_x.insert(0);
-    tmeanc_set_distance_X = 0;
-    tbestc_set_distance_X = 0;
-    tmeanc_tree_distance_X = 0;
-    tbestc_tree_distance_X = 0;
-    tbestp_set_distance_X = 0;
-    tmeanp_set_distance_X = 0;
-    tbestp_tree_distance_X = 0;
-    tmeanp_tree_distance_X = 0;
+    save_nbinferences = nbinferences;
+    tmeanc_set_distance_X = 0.0;
+    tbestc_set_distance_X = 0.0;
+    tmeanc_tree_distance_X = 0.0;
+    tbestc_tree_distance_X = 0.0;
+    tbestp_set_distance_X = 0.0;
+    tmeanp_set_distance_X = 0.0;
+    tbestp_tree_distance_X = 0.0;
+    tmeanp_tree_distance_X = 0.0;
+    tprediction_best_set_X = 0.0;
+    tprediction_mean_set_X = 0.0;
 #endif
 #endif
     evidence = plValues(knownConj);
@@ -619,6 +655,7 @@ void OpeningPredictor::init_game()
     tmpProbV.clear();
     P_X.tabulate(tmpProbV);
     T_P_X_v.push_back(tmpProbV);
+    old_T_P_X.clear();
 #endif
 #endif
 }
@@ -632,8 +669,10 @@ int OpeningPredictor::instantiate_and_compile(int time,
     current_x.insert(building.getEnumValue());
 #endif
 #endif
-    evidence[observed[building.getEnumValue()]] = 1;
+    if (uniform01() > SIGNAL_NOISE_RATIO)
+        return -1;
     ++nbinferences;
+    evidence[observed[building.getEnumValue()]] = 1;
     evidence[Time] = time;
 
 #if DEBUG_OUTPUT > 1
@@ -683,6 +722,7 @@ int OpeningPredictor::instantiate_and_compile(int time,
     values_v.clear();
     T_P_X.tabulate(values_v, tmpProbV);
     T_P_X_v.push_back(tmpProbV);
+    old_T_P_X.push_back(T_P_X);
 #endif
 #endif
     for (vector<pair<plValues, plProbValue> >::const_iterator 
@@ -707,7 +747,6 @@ int OpeningPredictor::instantiate_and_compile(int time,
     plValues toTestX(X);
     int tmp = get_X_indice(current_x, tt.vector_X);
     toTestX[X] = tmp;
-    //if (T_P_X.best()[X] == toTestX[X])
     tbestc_set_distance_X += tt.set_distances_X[T_P_X.best()[X]][tmp];
     for (unsigned int i = 0; i < tmpProbV.size(); ++i)
         tmeanc_set_distance_X += tt.set_distances_X[values_v[i][X]][tmp] 
@@ -751,8 +790,109 @@ int OpeningPredictor::quit_game(const string& tmpOpening, int noreplay)
     if (times_label_predicted_after >= 1)
         ++positive_classif_online_after;
 #ifdef TECH_TREES
-    meanc_set_distance_X.push_back(tmeanc_set_distance_X);
-    bestc_set_distance_X.push_back(tbestc_set_distance_X);
+    if (current_x.size() > 3) 
+    {
+        int tmp = get_X_indice(current_x, tt.vector_X);
+        plValues toTestXOld(X);
+        toTestXOld[X] = tmp;
+        int mindist = 10000000; // lol
+        int minind = 1000000;
+        for (unsigned int i = 0; i < old_T_P_X.size(); ++i)
+        {
+            int tmpdist = tt.set_distances_X[old_T_P_X[i].best()[X]][tmp];
+            if (tmpdist < FIXED_ERROR_RATE)
+            {
+                tprediction_best_set_X = current_x.size() - (i + current_x.size() - (nbinferences - save_nbinferences));
+                break;
+            }
+        }
+        for (unsigned int i = 0; i < old_T_P_X.size(); ++i)
+        {
+            int tmpdist = tt.set_distances_X[old_T_P_X[i].best()[X]][tmp];
+            if (tmpdist < FIXED_ERROR_RATE2)
+            {
+                tprediction_best_set_X2 = current_x.size() - (i + current_x.size() - (nbinferences - save_nbinferences));
+                break;
+            }
+        }
+        for (unsigned int i = 0; i < old_T_P_X.size(); ++i)
+        {
+            int tmpdist = tt.set_distances_X[old_T_P_X[i].best()[X]][tmp];
+            if (tmpdist < FIXED_ERROR_RATE3)
+            {
+                tprediction_best_set_X3 = current_x.size() - (i + current_x.size() - (nbinferences - save_nbinferences));
+                break;
+            }
+        }
+        for (unsigned int i = 0; i < old_T_P_X.size(); ++i)
+        {
+            tmpProbV.clear();
+            vector<plValues> tmpValues;
+            old_T_P_X[i].tabulate(tmpValues, tmpProbV);
+            int tmpdist = 0;
+            for (unsigned int j = 0; j < tmpValues.size(); ++j)
+                tmpdist += tt.set_distances_X[tmpValues[j][X]][tmp] 
+                    * tmpProbV[j];
+            if (tmpdist < FIXED_ERROR_RATE)
+            {
+                tprediction_mean_set_X = current_x.size() - (i + current_x.size() - (nbinferences - save_nbinferences));
+                break;
+            }
+        }
+        for (unsigned int i = 0; i < old_T_P_X.size(); ++i)
+        {
+            tmpProbV.clear();
+            vector<plValues> tmpValues;
+            old_T_P_X[i].tabulate(tmpValues, tmpProbV);
+            int tmpdist = 0;
+            for (unsigned int j = 0; j < tmpValues.size(); ++j)
+                tmpdist += tt.set_distances_X[tmpValues[j][X]][tmp] 
+                    * tmpProbV[j];
+            if (tmpdist < FIXED_ERROR_RATE2)
+            {
+                tprediction_mean_set_X2 = current_x.size() - (i + current_x.size() - (nbinferences - save_nbinferences));
+                break;
+            }
+        }
+        for (unsigned int i = 0; i < old_T_P_X.size(); ++i)
+        {
+            tmpProbV.clear();
+            vector<plValues> tmpValues;
+            old_T_P_X[i].tabulate(tmpValues, tmpProbV);
+            int tmpdist = 0;
+            for (unsigned int j = 0; j < tmpValues.size(); ++j)
+                tmpdist += tt.set_distances_X[tmpValues[j][X]][tmp] 
+                    * tmpProbV[j];
+            if (tmpdist < FIXED_ERROR_RATE3)
+            {
+                tprediction_mean_set_X3 = current_x.size() - (i + current_x.size() - (nbinferences - save_nbinferences));
+                break;
+            }
+        }
+        prediction_best_set_X.push_back(tprediction_best_set_X);
+        prediction_mean_set_X.push_back(tprediction_mean_set_X);
+        prediction_best_set_X2.push_back(tprediction_best_set_X2);
+        prediction_mean_set_X2.push_back(tprediction_mean_set_X2);
+        prediction_best_set_X3.push_back(tprediction_best_set_X3);
+        prediction_mean_set_X3.push_back(tprediction_mean_set_X3);
+    }
+    double tmpmeanc;
+    double tmpbestc;
+    if (nbinferences != save_nbinferences)
+    {
+        tmpmeanc = tmeanc_set_distance_X
+            / (nbinferences - save_nbinferences);
+        tmpbestc = tbestc_set_distance_X
+            / (nbinferences - save_nbinferences);
+
+        meanc_set_distance_X.push_back(tmpmeanc);
+        bestc_set_distance_X.push_back(tmpbestc);
+    }
+//    else
+//    {
+//        tmpmeanc = 0.0;
+//        tmpbestc = 0.0;
+//    }
 #endif
 #endif
 #if PLOT > 0
@@ -795,43 +935,47 @@ void OpeningPredictor::results(int noreplay)
         << " on " << noreplay << " replays, ratio: "
         << static_cast<double>(cpositive_classif_finale)/noreplay << endl;
 
-    double mean_time_taken = 0.0;
-    double stddev_time_taken = 0.0;
-    for (vector<double>::const_iterator it = time_taken_prediction.begin();
-            it != time_taken_prediction.end(); ++it)
-        mean_time_taken += *it;
-    mean_time_taken /= time_taken_prediction.size();
-    for (vector<double>::const_iterator it = time_taken_prediction.begin();
-            it != time_taken_prediction.end(); ++it)
-        stddev_time_taken += (*it - mean_time_taken)*(*it - mean_time_taken);
-    stddev_time_taken /= time_taken_prediction.size();
-    stddev_time_taken = sqrt(stddev_time_taken);
+    double mean_time_taken = fmean(time_taken_prediction);
+    double stddev_time_taken = fstddev(time_taken_prediction, mean_time_taken);
     cout << "TIME: prediction mean: " << mean_time_taken << ", stddev: "
         << stddev_time_taken << endl;
 #ifdef TECH_TREES
-    double mean = 0.0;
-    double stddev = 0.0;
-    for (std::vector<double>::const_iterator it = meanc_set_distance_X.begin();
-            it != meanc_set_distance_X.end(); ++it)
-        mean += *it;
-    for (std::vector<double>::const_iterator it = meanc_set_distance_X.begin();
-            it != meanc_set_distance_X.end(); ++it)
-        stddev += (*it - mean)*(*it - mean);
+    double mean = fmean(meanc_set_distance_X);
+    double stddev = fstddev(meanc_set_distance_X, mean);
+    //cout << endl << ">>> Mean of mean set-distance X: " << mean
+    //    << " stddev/sigma: " << sqrt(stddev) << endl;
+    cout << endl << ">>>>> " << mean;
 
-    cout << endl << ">>> Mean of mean set distance X: " << mean
-        << " stddev/sigma: " << sqrt(stddev) << endl;
+    mean = fmean(bestc_set_distance_X);
+    stddev = fstddev(bestc_set_distance_X, mean);
+    //cout << endl << ">>> Mean of best set-distance X: " << mean
+    //    << " stddev/sigma: " << sqrt(stddev) << endl;
+    cout << "," << mean;
 
-    mean = 0.0;
-    stddev = 0.0;
-    for (std::vector<unsigned int>::const_iterator it = bestc_set_distance_X.begin();
-            it != bestc_set_distance_X.end(); ++it)
-        mean += *it;
-    for (std::vector<unsigned int>::const_iterator it = bestc_set_distance_X.begin();
-            it != bestc_set_distance_X.end(); ++it)
-        stddev += (*it - mean)*(*it - mean);
+    mean = fmean(prediction_best_set_X);
+    stddev = fstddev(prediction_best_set_X, mean);
+    //cout << endl << ">>> Best of best set-distance predictive power (nb of observations ahead): " << mean
+    //    << " stddev/sigma: " << sqrt(stddev) << endl;
+    cout << "," << mean;
 
-    cout << endl << ">>> Mean of best set distance X: " << mean
-        << " stddev/sigma: " << sqrt(stddev) << endl;
+    mean = fmean(prediction_mean_set_X);
+    stddev = fstddev(prediction_mean_set_X, mean);
+    //cout << endl << ">>> Best of mean set-distance predictive power (nb of observations ahead): " << mean
+    //    << " stddev/sigma: " << sqrt(stddev) << endl;
+    cout << "," << mean;
+
+    mean = fmean(prediction_best_set_X2);
+    stddev = fstddev(prediction_best_set_X2, mean);
+    cout << "," << mean;
+    mean = fmean(prediction_mean_set_X2);
+    stddev = fstddev(prediction_mean_set_X2, mean);
+    cout << "," << mean;
+    mean = fmean(prediction_best_set_X3);
+    stddev = fstddev(prediction_best_set_X3, mean);
+    cout << "," << mean;
+    mean = fmean(prediction_mean_set_X3);
+    stddev = fstddev(prediction_mean_set_X3, mean);
+    cout << "," << mean;
 #endif
 
     cout << endl << ">>> Number of replays: " << noreplay << endl
@@ -1005,14 +1149,11 @@ int main(int argc, const char *argv[])
                 it != tmpBuildings.end(); ++it)
         {
 
-            if (!op.instantiate_and_compile(it->first, it->second,
-                        tmpOpening))
-                continue;
-
+            op.instantiate_and_compile(it->first, it->second,
+                    tmpOpening);
         }
 
-        if (!op.quit_game(tmpOpening, noreplay))
-            continue;
+        op.quit_game(tmpOpening, noreplay);
 
     }
     

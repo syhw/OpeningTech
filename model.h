@@ -71,24 +71,38 @@ class OpeningPredictor
     unsigned int cpositive_classif_finale;
     std::map<plValues, plProbValue> cumulative_prob;
 #ifdef TECH_TREES
+    std::vector<plDistribution> old_T_P_X;
     std::set<int> current_x;
+    int save_nbinferences;
     double tmeanc_set_distance_X; // current
-    unsigned int tbestc_set_distance_X; // current
+    double tbestc_set_distance_X; // current
     double tmeanc_tree_distance_X; // current
-    unsigned int tbestc_tree_distance_X; // current
+    double tbestc_tree_distance_X; // current
     double tmeanp_set_distance_X; // prediction
-    unsigned int tbestp_set_distance_X; // prediction
+    double tbestp_set_distance_X; // prediction
     double tmeanp_tree_distance_X; // prediction
-    unsigned int tbestp_tree_distance_X; // prediction
+    double tbestp_tree_distance_X; // prediction
+    double tprediction_best_set_X;
+    double tprediction_mean_set_X;
+    double tprediction_best_set_X2;
+    double tprediction_mean_set_X2;
+    double tprediction_best_set_X3;
+    double tprediction_mean_set_X3;
 
     std::vector<double> meanc_set_distance_X;
-    std::vector<unsigned int> bestc_set_distance_X;
+    std::vector<double> bestc_set_distance_X;
     std::vector<double> meanc_tree_distance_X;
-    std::vector<unsigned int> bestc_tree_distance_X;
+    std::vector<double> bestc_tree_distance_X;
     std::vector<double> meanp_set_distance_X;
-    std::vector<unsigned int> bestp_set_distance_X;
+    std::vector<double> bestp_set_distance_X;
     std::vector<double> meanp_tree_distance_X;
-    std::vector<unsigned int> bestp_tree_distance_X;
+    std::vector<double> bestp_tree_distance_X;
+    std::vector<double> prediction_best_set_X;
+    std::vector<double> prediction_mean_set_X;
+    std::vector<double> prediction_best_set_X2;
+    std::vector<double> prediction_mean_set_X2;
+    std::vector<double> prediction_best_set_X3;
+    std::vector<double> prediction_mean_set_X3;
 #endif
     unsigned int times_label_predicted;
     unsigned int times_label_predicted_after;
