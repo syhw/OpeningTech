@@ -1,8 +1,6 @@
 #include "model.h"
 #define SIGNAL_NOISE_RATIO 1.0
 #define FIXED_ERROR_RATE 1
-#define FIXED_ERROR_RATE2 2
-#define FIXED_ERROR_RATE3 3
 
 // TODO add tree_distance to existing set_distances
 
@@ -808,24 +806,6 @@ int OpeningPredictor::quit_game(const string& tmpOpening, int noreplay)
         }
         for (unsigned int i = 0; i < old_T_P_X.size(); ++i)
         {
-            int tmpdist = tt.set_distances_X[old_T_P_X[i].best()[X]][tmp];
-            if (tmpdist < FIXED_ERROR_RATE2)
-            {
-                tprediction_best_set_X2 = current_x.size() - (i + current_x.size() - (nbinferences - save_nbinferences));
-                break;
-            }
-        }
-        for (unsigned int i = 0; i < old_T_P_X.size(); ++i)
-        {
-            int tmpdist = tt.set_distances_X[old_T_P_X[i].best()[X]][tmp];
-            if (tmpdist < FIXED_ERROR_RATE3)
-            {
-                tprediction_best_set_X3 = current_x.size() - (i + current_x.size() - (nbinferences - save_nbinferences));
-                break;
-            }
-        }
-        for (unsigned int i = 0; i < old_T_P_X.size(); ++i)
-        {
             tmpProbV.clear();
             vector<plValues> tmpValues;
             old_T_P_X[i].tabulate(tmpValues, tmpProbV);
@@ -839,42 +819,8 @@ int OpeningPredictor::quit_game(const string& tmpOpening, int noreplay)
                 break;
             }
         }
-        for (unsigned int i = 0; i < old_T_P_X.size(); ++i)
-        {
-            tmpProbV.clear();
-            vector<plValues> tmpValues;
-            old_T_P_X[i].tabulate(tmpValues, tmpProbV);
-            int tmpdist = 0;
-            for (unsigned int j = 0; j < tmpValues.size(); ++j)
-                tmpdist += tt.set_distances_X[tmpValues[j][X]][tmp] 
-                    * tmpProbV[j];
-            if (tmpdist < FIXED_ERROR_RATE2)
-            {
-                tprediction_mean_set_X2 = current_x.size() - (i + current_x.size() - (nbinferences - save_nbinferences));
-                break;
-            }
-        }
-        for (unsigned int i = 0; i < old_T_P_X.size(); ++i)
-        {
-            tmpProbV.clear();
-            vector<plValues> tmpValues;
-            old_T_P_X[i].tabulate(tmpValues, tmpProbV);
-            int tmpdist = 0;
-            for (unsigned int j = 0; j < tmpValues.size(); ++j)
-                tmpdist += tt.set_distances_X[tmpValues[j][X]][tmp] 
-                    * tmpProbV[j];
-            if (tmpdist < FIXED_ERROR_RATE3)
-            {
-                tprediction_mean_set_X3 = current_x.size() - (i + current_x.size() - (nbinferences - save_nbinferences));
-                break;
-            }
-        }
         prediction_best_set_X.push_back(tprediction_best_set_X);
         prediction_mean_set_X.push_back(tprediction_mean_set_X);
-        prediction_best_set_X2.push_back(tprediction_best_set_X2);
-        prediction_mean_set_X2.push_back(tprediction_mean_set_X2);
-        prediction_best_set_X3.push_back(tprediction_best_set_X3);
-        prediction_mean_set_X3.push_back(tprediction_mean_set_X3);
     }
     double tmpmeanc;
     double tmpbestc;
@@ -942,40 +888,24 @@ void OpeningPredictor::results(int noreplay)
 #ifdef TECH_TREES
     double mean = fmean(meanc_set_distance_X);
     double stddev = fstddev(meanc_set_distance_X, mean);
-    //cout << endl << ">>> Mean of mean set-distance X: " << mean
-    //    << " stddev/sigma: " << sqrt(stddev) << endl;
-    cout << endl << ">>>>> " << mean;
+    cout << endl << ">>> Mean of mean set-distance X: " << mean
+        << " stddev/sigma: " << sqrt(stddev) << endl;
 
     mean = fmean(bestc_set_distance_X);
     stddev = fstddev(bestc_set_distance_X, mean);
-    //cout << endl << ">>> Mean of best set-distance X: " << mean
-    //    << " stddev/sigma: " << sqrt(stddev) << endl;
-    cout << "," << mean;
+    cout << endl << ">>> Mean of best set-distance X: " << mean
+        << " stddev/sigma: " << sqrt(stddev) << endl;
 
     mean = fmean(prediction_best_set_X);
     stddev = fstddev(prediction_best_set_X, mean);
-    //cout << endl << ">>> Best of best set-distance predictive power (nb of observations ahead): " << mean
-    //    << " stddev/sigma: " << sqrt(stddev) << endl;
-    cout << "," << mean;
+    cout << endl << ">>> Best of best set-distance predictive power (nb of observations ahead): " << mean
+        << " stddev/sigma: " << sqrt(stddev) << endl;
 
     mean = fmean(prediction_mean_set_X);
     stddev = fstddev(prediction_mean_set_X, mean);
-    //cout << endl << ">>> Best of mean set-distance predictive power (nb of observations ahead): " << mean
-    //    << " stddev/sigma: " << sqrt(stddev) << endl;
-    cout << "," << mean;
+    cout << endl << ">>> Best of mean set-distance predictive power (nb of observations ahead): " << mean
+        << " stddev/sigma: " << sqrt(stddev) << endl;
 
-    mean = fmean(prediction_best_set_X2);
-    stddev = fstddev(prediction_best_set_X2, mean);
-    cout << "," << mean;
-    mean = fmean(prediction_mean_set_X2);
-    stddev = fstddev(prediction_mean_set_X2, mean);
-    cout << "," << mean;
-    mean = fmean(prediction_best_set_X3);
-    stddev = fstddev(prediction_best_set_X3, mean);
-    cout << "," << mean;
-    mean = fmean(prediction_mean_set_X3);
-    stddev = fstddev(prediction_mean_set_X3, mean);
-    cout << "," << mean;
 #endif
 
     cout << endl << ">>> Number of replays: " << noreplay << endl

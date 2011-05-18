@@ -84,10 +84,6 @@ class OpeningPredictor
     double tbestp_tree_distance_X; // prediction
     double tprediction_best_set_X;
     double tprediction_mean_set_X;
-    double tprediction_best_set_X2;
-    double tprediction_mean_set_X2;
-    double tprediction_best_set_X3;
-    double tprediction_mean_set_X3;
 
     std::vector<double> meanc_set_distance_X;
     std::vector<double> bestc_set_distance_X;
@@ -99,10 +95,6 @@ class OpeningPredictor
     std::vector<double> bestp_tree_distance_X;
     std::vector<double> prediction_best_set_X;
     std::vector<double> prediction_mean_set_X;
-    std::vector<double> prediction_best_set_X2;
-    std::vector<double> prediction_mean_set_X2;
-    std::vector<double> prediction_best_set_X3;
-    std::vector<double> prediction_mean_set_X3;
 #endif
     unsigned int times_label_predicted;
     unsigned int times_label_predicted_after;
