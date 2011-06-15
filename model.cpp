@@ -2,7 +2,7 @@
 #define SIGNAL_NOISE_RATIO 1.0
 #define FIXED_ERROR_RATE 1
 
-#define TIME_MULTIPLICATOR 3
+#define TIME_MULTIPLICATOR 1
 //#define __SERIALIZE__
 #ifdef __SERIALIZE__
 #include <boost/archive/text_oarchive.hpp>
