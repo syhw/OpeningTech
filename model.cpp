@@ -2,6 +2,13 @@
 #define SIGNAL_NOISE_RATIO 1.0
 #define FIXED_ERROR_RATE 1
 
+#define TIME_MULTIPLICATOR 3
+//#define __SERIALIZE__
+#ifdef __SERIALIZE__
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#endif
+
 // TODO add tree_distance to existing set_distances
 
 /// Copyright Gabriel Synnaeve 2011
@@ -328,7 +335,7 @@ void learn_T_and_X(ifstream& inputstream,
                 std::cout << "X ind: " << tmp_ind
                     << std::endl;
 #endif
-                vals_timeLearner[Time] = it->first;
+                vals_timeLearner[Time] = TIME_MULTIPLICATOR*it->first;
 #if DEBUG_OUTPUT > 1
                 std::cout << "Time: " << it->first << std::endl;
 #endif
@@ -595,6 +602,25 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
     cout << Cnd_P_Opening_knowing_rest << endl;
 #endif
 
+#ifdef __SERIALIZE__
+    cout << ">>>>> SERIALIZATION <<<<<" << endl;                                
+    cout << Cnd_P_Opening_knowing_rest << endl;                                 
+    cout << "=========================" << endl;                                
+    vector<plProbValue> to_serialize;
+    ///*
+    plVariablesConjunction tmpConjPI;
+    tmpConjPI ^= Time;
+    tmpConjPI ^= lambda;
+    plValues tmpValPI(tmpConjPI);
+    tmpValPI[Time] = 100;
+    tmpValPI[lambda] = 1;
+    plCndDistribution tmpCndDistribPI;
+    Cnd_P_Opening_knowing_rest.partial_instantiate(tmpCndDistribPI, tmpConjPI, tmpValPI);
+    /* */
+    tmpCndDistribPI.tabulate(to_serialize);
+    cout << "=========================" << endl;                                
+#endif
+
 #ifdef BENCH
     positive_classif_finale = 0;
     positive_classif_online = 0;
@@ -661,6 +687,7 @@ void OpeningPredictor::init_game()
 int OpeningPredictor::instantiate_and_compile(int time,
         const Building& building, const string& tmpOpening)
 {
+    time = TIME_MULTIPLICATOR*time;
 #ifdef BENCH
     clock_t start = clock();
 #ifdef TECH_TREES
