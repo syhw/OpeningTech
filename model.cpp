@@ -3,8 +3,9 @@
 #define FIXED_ERROR_RATE 1
 
 #define TIME_MULTIPLICATOR 1
-//#define __SERIALIZE__
+#define __SERIALIZE__
 #ifdef __SERIALIZE__
+//http://www.boost.org/doc/libs/1_45_0/libs/serialization/doc/index.html
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 #endif
@@ -519,6 +520,20 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
     cout << timeLearner.get_computable_object() << endl;
 #endif
 
+///////////// TODO /////////////////
+    cout << timeLearner.get_computable_object() << endl;
+    vector<plProbValue> tabulated_P_Time_X_Op;
+    timeLearner.get_computable_object().tabulate(tabulated_P_Time_X_Op);
+    for (vector<plProbValue>::const_iterator it = tabulated_P_Time_X_Op.begin();
+            it != tabulated_P_Time_X_Op.end(); ++it)
+    {
+        cout << *it << " ";
+    }
+    cout << endl;
+    string tmp;
+    cin >> tmp;
+///////////// TODO /////////////////
+
     /**********************************************************************
       DECOMPOSITION
      **********************************************************************/
@@ -595,6 +610,13 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
 #endif
     jd.ask(Cnd_P_Opening_knowing_rest, Opening, knownConj);
 
+#ifdef __SERIALIZE__
+    plCndDistribution testCnd;
+    plVariablesConjunction testConj;
+    testConj = lambda^Time;
+    jd.ask(testCnd, Opening, testConj);
+#endif
+
 #if DEBUG_OUTPUT > 0
 #ifdef TECH_TREES
     cout << Cnd_P_X_knowing_obs << endl;
@@ -609,15 +631,20 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
     vector<plProbValue> to_serialize;
     ///*
     plVariablesConjunction tmpConjPI;
+    //tmpConjPI ^= Opening;
     tmpConjPI ^= Time;
     tmpConjPI ^= lambda;
     plValues tmpValPI(tmpConjPI);
+    //tmpValPI[Opening] = string("FastLegs");
     tmpValPI[Time] = 100;
     tmpValPI[lambda] = 1;
     plCndDistribution tmpCndDistribPI;
-    Cnd_P_Opening_knowing_rest.partial_instantiate(tmpCndDistribPI, tmpConjPI, tmpValPI);
+    plDistribution tmpDistribPI;
+    testCnd.instantiate(tmpDistribPI, tmpValPI);
+    plDistribution T_tmpDistribPI;
+    tmpDistribPI.compile(T_tmpDistribPI);
+    T_tmpDistribPI.tabulate(to_serialize);
     /* */
-    tmpCndDistribPI.tabulate(to_serialize);
     cout << "=========================" << endl;                                
 #endif
 
