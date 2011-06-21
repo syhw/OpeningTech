@@ -2,8 +2,9 @@
 #define SIGNAL_NOISE_RATIO 1.0
 #define FIXED_ERROR_RATE 1
 
+#define MIN_STD_DEV_X
 #define TIME_MULTIPLICATOR 1
-#define __SERIALIZE__
+//#define __SERIALIZE__
 #ifdef __SERIALIZE__
 //http://www.boost.org/doc/libs/1_45_0/libs/serialization/doc/index.html
 #include <boost/archive/text_oarchive.hpp>
@@ -299,8 +300,7 @@ void learn_T_and_X(ifstream& inputstream,
     plValues vals_timeLearner(timeLearner.get_variables());
     plValues vals_xLearner(xLearner.get_variables());
 #ifdef ERROR_CHECKS
-    map<int, int> count_X_examples;
-    map<int, plValues> one_value_per_X;
+    map<pair<int, string>, plValues> one_value_per_X_Op;
     map<pair<int, string>, int> count_X_Op_examples;
     int nbpts = 0; // count the number of added points (time, building)
 #endif
@@ -341,32 +341,21 @@ void learn_T_and_X(ifstream& inputstream,
                 std::cout << "Time: " << it->first << std::endl;
 #endif
 #ifdef ERROR_CHECKS
-                if (count_X_examples.count(tmp_ind))
+                pair<int, string> tmp_pair(tmp_ind, tmpOpening);
+                if (count_X_Op_examples.count(tmp_pair))
                 {
-                    count_X_examples[tmp_ind] = count_X_examples[tmp_ind] + 1;
-                }
-                else
-                {
-                    count_X_examples.insert(make_pair<int, int>(
-                                tmp_ind, 1));
-                    one_value_per_X.insert(make_pair<int, plValues>(
-                                tmp_ind, vals_timeLearner));
-                    /// TODO <1> init with bell shape this point as mean
-                    ///timeLearner = plLearnBellShape(vals_timeLearner,
-                    ///        it->first, 3.0, PL_ONE);
-                }
-
-                pair<int, string> tmpPair = make_pair<int, string>(tmp_ind, 
-                        tmpOpening);
-                if (count_X_Op_examples.count(tmpPair))
-                {
-                    count_X_Op_examples[tmpPair] = 
-                        count_X_Op_examples[tmpPair] + 1;
+                    count_X_Op_examples[tmp_pair] = 
+                        count_X_Op_examples[tmp_pair] + 1;
                 }
                 else
                 {
                     count_X_Op_examples.insert(make_pair<pair<int, string>, 
-                            int>(tmpPair, 1));
+                            int>(tmp_pair, 1));
+                    one_value_per_X_Op.insert(make_pair<pair<int, string>,
+                        plValues>(tmp_pair, vals_timeLearner));
+                    /// TODO <1> init with bell shape this point as mean
+                    ///timeLearner = plLearnBellShape(vals_timeLearner,
+                    ///        it->first, 3.0, PL_ONE);
                 }
 #endif
 
@@ -386,27 +375,29 @@ void learn_T_and_X(ifstream& inputstream,
     
 #ifdef ERROR_CHECKS
     /// Check for possible errors
-    for (map<int, int>::const_iterator it = count_X_examples.begin();
-            it != count_X_examples.end(); ++it)
+    for (map<pair<int, string>, int>::const_iterator it = count_X_Op_examples.begin();
+            it != count_X_Op_examples.end(); ++it)
     {
         if (it->second == 0)
         {
             cout << "PROBLEM: We never encountered X: ";
             for (typename set<int>::const_iterator ibn
-                    = tt.vector_X[it->first].begin();
-                    ibn != tt.vector_X[it->first].end(); ++ibn)
+                    = tt.vector_X[it->first.first].begin();
+                    ibn != tt.vector_X[it->first.first].end(); ++ibn)
             {
                 Building tmpBuilding(static_cast<T>(*ibn));
                 cout << tmpBuilding << ", ";
             }
             cout << endl;
         }
-        else if (it->second == 1)
+#ifdef MIN_STD_DEV_X
+        else if (it->second < 3)
         {
-            cout << "(POSSIBLE)PROBLEM: We encountered X only one time: ";
+            cout << "(POSSIBLE)PROBLEM: We encountered X " << it->first.first
+               << " + Op " << it->first.second << " less than three times: ";
             for (typename set<int>::const_iterator ibn
-                    = tt.vector_X[it->first].begin();
-                    ibn != tt.vector_X[it->first].end(); ++ibn)
+                    = tt.vector_X[it->first.first].begin();
+                    ibn != tt.vector_X[it->first.first].end(); ++ibn)
             {
                 Building tmpBuilding(static_cast<T>(*ibn));
                 cout << tmpBuilding << ", ";
@@ -414,16 +405,33 @@ void learn_T_and_X(ifstream& inputstream,
             cout << endl;
             /////////////////////////////////////////////////
             // put another (slightly different) value: change, c.f. TODO <1>
-            one_value_per_X[it->first][Time] = 
-                one_value_per_X[it->first][Time] + 10; /// totally arbitrary 10
-            timeLearner.add_point(one_value_per_X[it->first], 0.5);
-            one_value_per_X[it->first][Time] = 
-                one_value_per_X[it->first][Time] - 20; /// totally arbitrary -20
-            timeLearner.add_point(one_value_per_X[it->first], 0.5);
+            one_value_per_X_Op[it->first][Time] = 
+                one_value_per_X_Op[it->first][Time] + 10; /// totally arbitrary 10
+            timeLearner.add_point(one_value_per_X_Op[it->first]);
+            one_value_per_X_Op[it->first][Time] = 
+                one_value_per_X_Op[it->first][Time] - 20; /// totally arbitrary -20 (-10)
+            timeLearner.add_point(one_value_per_X_Op[it->first]);
             /////////////////////////////////////////////////
         }
+#endif
     }
 #endif
+
+    /*
+    plValues val(timeLearner.get_computable_object().get_right_variables());
+    do {
+        const plLearnBellShape* t = timeLearner.get_learnt_object_for_value(val);
+        cout << val << endl;
+        if (t)
+        {
+            cout << t->get_distribution() << endl;
+            t->get_distribution().tabulate(cout);
+        }
+        else
+            cout << "P(Time) = Uniform: " << 1.0/1080 << endl;
+    } while (val.next());
+    */
+
 #if DEBUG_OUTPUT > 2
     cout << "*** Number of points (total), I counted: " << nbpts << endl;
     cout << "*** Number of different pairs (X, Opening): " 
@@ -520,19 +528,32 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
     cout << timeLearner.get_computable_object() << endl;
 #endif
 
-///////////// TODO /////////////////
+#ifdef __SERIALIZE__
     cout << timeLearner.get_computable_object() << endl;
+    string tmp;
+    cin >> tmp;
     vector<plProbValue> tabulated_P_Time_X_Op;
     timeLearner.get_computable_object().tabulate(tabulated_P_Time_X_Op);
+    cout << "P(Time|X,Op):" << endl;
     for (vector<plProbValue>::const_iterator it = tabulated_P_Time_X_Op.begin();
             it != tabulated_P_Time_X_Op.end(); ++it)
     {
         cout << *it << " ";
     }
     cout << endl;
-    string tmp;
     cin >> tmp;
-///////////// TODO /////////////////
+    cout << xLearner.get_computable_object() << endl;
+    cin >> tmp;
+    vector<plProbValue> tabulated_P_X_Op;
+    xLearner.get_computable_object().tabulate(tabulated_P_X_Op);
+    cout << "P(X|Op):" << endl;
+    for (vector<plProbValue>::const_iterator it = tabulated_P_X_Op.begin();
+            it != tabulated_P_X_Op.end(); ++it)
+    {
+        cout << *it << " ";
+    }
+    cin >> tmp;
+#endif
 
     /**********************************************************************
       DECOMPOSITION
@@ -610,42 +631,11 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
 #endif
     jd.ask(Cnd_P_Opening_knowing_rest, Opening, knownConj);
 
-#ifdef __SERIALIZE__
-    plCndDistribution testCnd;
-    plVariablesConjunction testConj;
-    testConj = lambda^Time;
-    jd.ask(testCnd, Opening, testConj);
-#endif
-
 #if DEBUG_OUTPUT > 0
 #ifdef TECH_TREES
     cout << Cnd_P_X_knowing_obs << endl;
 #endif
     cout << Cnd_P_Opening_knowing_rest << endl;
-#endif
-
-#ifdef __SERIALIZE__
-    cout << ">>>>> SERIALIZATION <<<<<" << endl;                                
-    cout << Cnd_P_Opening_knowing_rest << endl;                                 
-    cout << "=========================" << endl;                                
-    vector<plProbValue> to_serialize;
-    ///*
-    plVariablesConjunction tmpConjPI;
-    //tmpConjPI ^= Opening;
-    tmpConjPI ^= Time;
-    tmpConjPI ^= lambda;
-    plValues tmpValPI(tmpConjPI);
-    //tmpValPI[Opening] = string("FastLegs");
-    tmpValPI[Time] = 100;
-    tmpValPI[lambda] = 1;
-    plCndDistribution tmpCndDistribPI;
-    plDistribution tmpDistribPI;
-    testCnd.instantiate(tmpDistribPI, tmpValPI);
-    plDistribution T_tmpDistribPI;
-    tmpDistribPI.compile(T_tmpDistribPI);
-    T_tmpDistribPI.tabulate(to_serialize);
-    /* */
-    cout << "=========================" << endl;                                
 #endif
 
 #ifdef BENCH
@@ -971,6 +961,8 @@ void OpeningPredictor::results(int noreplay)
 
 int main(int argc, const char *argv[])
 {
+    cout << sizeof(int) << endl;
+    cout << "SIZE OF plProbValue: " << sizeof(plProbValue) << endl;
     /**********************************************************************
       INITIALIZATION
      **********************************************************************/
