@@ -2,13 +2,14 @@
 #define SIGNAL_NOISE_RATIO 1.0
 #define FIXED_ERROR_RATE 1
 
-#define MIN_STD_DEV_X
+#define MIN_STD_DEV_BELL_SHAPES // add virtual points to bell shapes w/o enough
 #define TIME_MULTIPLICATOR 1
-//#define __SERIALIZE__
+#define __SERIALIZE__
 #ifdef __SERIALIZE__
 //http://www.boost.org/doc/libs/1_45_0/libs/serialization/doc/index.html
-#include <boost/archive/text_oarchive.hpp>
-#include <boost/archive/text_iarchive.hpp>
+#include "boost/archive/text_oarchive.hpp"
+#include "boost/archive/text_iarchive.hpp"
+#include "boost/serialization/vector.hpp"
 #endif
 
 // TODO add tree_distance to existing set_distances
@@ -21,6 +22,27 @@ using namespace std;
 /// POSSIBLE: use an iterator in values[] so that we directly
 /// POSSIBLE: put a std::set instead of std::vector for vector_X
 /// TODO: replace set by unordered_set (TR1 or boost) in a lot of places
+
+#ifdef __SERIALIZE__
+struct serialized_tables
+{
+    friend class boost::serialization::access;
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+        ar & tabulated_P_Time_X_Op;
+        ar & tabulated_P_X_Op;
+    }
+    vector<double> tabulated_P_Time_X_Op;
+    vector<double> tabulated_P_X_Op;
+    serialized_tables() {};
+    serialized_tables(const vector<double>& time_x,
+            const vector<double>& x)
+        : tabulated_P_Time_X_Op(time_x)
+        , tabulated_P_X_Op(x)
+    {}
+};
+#endif
 
 tech_trees tt;
 int nbBuildings;
@@ -390,7 +412,7 @@ void learn_T_and_X(ifstream& inputstream,
             }
             cout << endl;
         }
-#ifdef MIN_STD_DEV_X
+#ifdef MIN_STD_DEV_BELL_SHAPES
         else if (it->second < 3)
         {
             cout << "(POSSIBLE)PROBLEM: We encountered X " << it->first.first
@@ -416,21 +438,6 @@ void learn_T_and_X(ifstream& inputstream,
 #endif
     }
 #endif
-
-    /*
-    plValues val(timeLearner.get_computable_object().get_right_variables());
-    do {
-        const plLearnBellShape* t = timeLearner.get_learnt_object_for_value(val);
-        cout << val << endl;
-        if (t)
-        {
-            cout << t->get_distribution() << endl;
-            t->get_distribution().tabulate(cout);
-        }
-        else
-            cout << "P(Time) = Uniform: " << 1.0/1080 << endl;
-    } while (val.next());
-    */
 
 #if DEBUG_OUTPUT > 2
     cout << "*** Number of points (total), I counted: " << nbpts << endl;
@@ -529,30 +536,48 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
 #endif
 
 #ifdef __SERIALIZE__
-    cout << timeLearner.get_computable_object() << endl;
-    string tmp;
-    cin >> tmp;
-    vector<plProbValue> tabulated_P_Time_X_Op;
-    timeLearner.get_computable_object().tabulate(tabulated_P_Time_X_Op);
-    cout << "P(Time|X,Op):" << endl;
-    for (vector<plProbValue>::const_iterator it = tabulated_P_Time_X_Op.begin();
-            it != tabulated_P_Time_X_Op.end(); ++it)
+    /* // Verification of tabulate alignment / order
+    plValues val(timeLearner.get_computable_object().get_right_variables());
+    do {
+        const plLearnBellShape* t = timeLearner.get_learnt_object_for_value(val);
+        cout << val << endl;
+        if (t)
+        {
+            cout << t->get_distribution() << endl;
+            t->get_distribution().tabulate(cout);
+
+            for (unsigned int i = 0; i < LEARN_TIME_LIMIT; ++i)
+                cout << i+1 << " " << tabulated_P_Time_X_Op[val[X]*openings.size()*LEARN_TIME_LIMIT + val[Opening]*LEARN_TIME_LIMIT + i] << endl;
+        }
+        else
+            cout << "P(Time) = Uniform: 1/" << LEARN_TIME_LIMIT << " = " << 1.0/LEARN_TIME_LIMIT << endl;
+    } while (val.next());
+    /**/
+
+    vector<plProbValue> tmpTime_X;
+    timeLearner.get_computable_object().tabulate(tmpTime_X);
+    vector<plProbValue> tmpX;
+    xLearner.get_computable_object().tabulate(tmpX);
+    vector<double> tmp1;
+    tmp1.reserve(tmpTime_X.size());
+    for (vector<plProbValue>::const_iterator it = tmpTime_X.begin();
+            it != tmpTime_X.end(); ++it)
+        tmp1.push_back(*it);
+    vector<double> tmp2;
+    for (vector<plProbValue>::const_iterator it = tmpX.begin();
+            it != tmpX.end(); ++it)
+        tmp2.push_back(*it);
+    serialized_tables st(tmp1, tmp2);
+
+    string filename(learningFileName);
+    filename = filename.substr(0, filename.find('.'));
+    filename.append(".table");
+    std::ofstream ofs(filename.c_str());
     {
-        cout << *it << " ";
+        boost::archive::text_oarchive oa(ofs);
+        oa << st;
     }
-    cout << endl;
-    cin >> tmp;
-    cout << xLearner.get_computable_object() << endl;
-    cin >> tmp;
-    vector<plProbValue> tabulated_P_X_Op;
-    xLearner.get_computable_object().tabulate(tabulated_P_X_Op);
-    cout << "P(X|Op):" << endl;
-    for (vector<plProbValue>::const_iterator it = tabulated_P_X_Op.begin();
-            it != tabulated_P_X_Op.end(); ++it)
-    {
-        cout << *it << " ";
-    }
-    cin >> tmp;
+    cout << "Serialized learned tables as " << filename << endl;
 #endif
 
     /**********************************************************************
@@ -961,8 +986,6 @@ void OpeningPredictor::results(int noreplay)
 
 int main(int argc, const char *argv[])
 {
-    cout << sizeof(int) << endl;
-    cout << "SIZE OF plProbValue: " << sizeof(plProbValue) << endl;
     /**********************************************************************
       INITIALIZATION
      **********************************************************************/
@@ -1026,53 +1049,61 @@ int main(int argc, const char *argv[])
 #endif
     std::vector<std::string> openings;
 
-    if (argv[1] != NULL &&
-            (argv[1][1] == 'P' || argv[1][1] == 'T' || argv[1][1] == 'Z'))
+    if (argv[1] != NULL)
     {
-        string argv1 = string(argv[1]);
-        /// match up: Enemy vs Us
-        /// For instance ZvT will get Zerg buildings
-        stringstream extract_X_from;
-        if (argv[1][3] == 'P' || argv[1][3] == 'T' || argv[1][3] == 'Z')
+        char their_race = 'X';
+        char our_race = 'X';
+        if (argv[1][1] == 'P' || argv[1][1] == 'T' || argv[1][1] == 'Z')
         {
-            cout << "We are " << argv[1][3] 
-                << " against " << argv[1][1] << endl;
-            extract_X_from << argv[1][1] << "v" << argv[1][3] << ".txt";
+            their_race = argv[1][1];
+            if (argv[1][3] == 'P' || argv[1][3] == 'T' || argv[1][3] == 'Z')
+                our_race = argv[1][3];
         }
-        else
+        else if (argv[1][0] == 'P' || argv[1][0] == 'T' || argv[1][0] == 'Z')
         {
-            extract_X_from << "l" << argv[1][1] << "all.txt";
-        }
-        if (argv[1][1] == 'P')
-        {
-            ifstream fin(extract_X_from.str().c_str()); // could be argv[1]
-            tt = tech_trees(fin); /// Enemy race
-            openings = protoss_openings;
-            nbBuildings = NB_PROTOSS_BUILDINGS;
-            buildings_name = protoss_buildings_name;
-            cout << "X size: " << tt.vector_X.size() << endl;
-        }
-        else if (argv[1][1] == 'T')
-        {
-            ifstream fin(extract_X_from.str().c_str()); // could be argv[1]
-            tt = tech_trees(fin); /// Enemy race
-            openings = terran_openings;
-            nbBuildings = NB_TERRAN_BUILDINGS;
-            buildings_name = terran_buildings_name;
-        }
-        else if (argv[1][1] == 'Z')
-        {
-            ifstream fin(extract_X_from.str().c_str()); // could be argv[1]
-            tt = tech_trees(fin); /// Enemy race
-            openings = zerg_openings;
-            nbBuildings = NB_ZERG_BUILDINGS;
-            buildings_name = zerg_buildings_name;
+            their_race = argv[1][0];
+            if (argv[1][2] == 'P' || argv[1][2] == 'T' || argv[1][2] == 'Z')
+                our_race = argv[1][2];
         }
         else
         {
             cerr << "ERROR in the first argument" << endl;
             usage();
             return 1;
+        }
+        /// match up: Enemy vs Us
+        /// For instance ZvT will get Zerg buildings
+        stringstream extract_X_from;
+        if (our_race != 'X')
+        {
+            cout << "We are " << our_race
+                << " against " << their_race << endl;
+            extract_X_from << their_race << "v" << our_race << ".txt";
+        }
+        else
+        {
+            extract_X_from << "l" << their_race << "all.txt";
+        }
+        ifstream fin(extract_X_from.str().c_str());
+        tt = tech_trees(fin); /// Enemy race
+        cout << "X size: " << tt.vector_X.size() << endl;
+        if (their_race == 'P')
+        {
+            openings = protoss_openings;
+            nbBuildings = NB_PROTOSS_BUILDINGS;
+            buildings_name = protoss_buildings_name;
+        }
+        else if (their_race == 'T')
+        {
+            openings = terran_openings;
+            nbBuildings = NB_TERRAN_BUILDINGS;
+            buildings_name = terran_buildings_name;
+        }
+        else if (their_race == 'Z')
+        {
+            openings = zerg_openings;
+            nbBuildings = NB_ZERG_BUILDINGS;
+            buildings_name = zerg_buildings_name;
         }
     }
     else
@@ -1084,8 +1115,8 @@ int main(int argc, const char *argv[])
 
     OpeningPredictor op = OpeningPredictor(openings, argv[1]);
 
-    if (argc < 2)
-        return 1;
+    if (argc < 3)
+        return 0;
     ifstream inputfile_test(argv[2]);
     string input;
     cout << endl;

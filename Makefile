@@ -2,9 +2,14 @@
 
 PROBT_INCLUDE=/Users/gabrielsynnaeve/these/code/probt/include
 PROBT_LIB=/Users/gabrielsynnaeve/these/code/probt/lib
+BOOST_STAGE_LIB=/Users/gabrielsynnaeve/labs/boost_1_45_0/stage/lib
+BOOST_INCLUDE=/Users/gabrielsynnaeve/labs/boost_1_45_0
 
 model: model.cpp
-	g++ -ggdb -arch i386 -I$(PROBT_INCLUDE) model.cpp -L$(PROBT_LIB) -lpl -o model
+	g++ -ggdb -arch i386 -I$(PROBT_INCLUDE) model.cpp -L$(PROBT_LIB) -lpl -o model 
+
+model_with_serialization: model.cpp
+	g++ -ggdb -arch i386 -I$(BOOST_INCLUDE) -I$(PROBT_INCLUDE) model.cpp -L$(BOOST_STAGE_LIB) -L$(PROBT_LIB) -lpl -lboost_serialization-xgcc42-mt -o model 
 
 techtrees: techtrees.cpp
 	g++ -ggdb -arch i386 -DTECH_TREES -I$(PROBT_INCLUDE) techtrees.cpp -L$(PROBT_LIB) -lpl -o techtrees
@@ -29,6 +34,11 @@ all: tests model techtrees
 
 run:
 	DYLD_LIBRARY_PATH=$(PROBT_LIB):DYLD_LIBRARY_PATH ./model lPvP.txt tPvP.txt
+	echo $(PROBT_LIB)
+
+run_with_serializatioN:
+	DYLD_LIBRARY_PATH=$(BOOST_STAGE_LIB):$(PROBT_LIB):DYLD_LIBRARY_PATH ./model lPvP.txt tPvP.txt
+	echo $(BOOST_STAGE_LIB)
 	echo $(PROBT_LIB)
 
 debugrun:
