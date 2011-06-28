@@ -1,8 +1,8 @@
 # Opening/BuildTree prediction for StarCraft: Broodwar
 
 ### Dependency:  
-[ProBT](http://probayes.com/index.php?option=com_content&view=article&id=83&Itemid=88&lang=en)
-[Boost.serialization](http://www.boost.org/doc/libs/1_45_0/libs/serialization/doc/index.html) (optional, note: compiled with ./bjam --with-serialization --build-type=complete --layout=versioned toolset=darwin architecture=x86 address-model=32)
+[ProBT](http://probayes.com/index.php?option=com_content&view=article&id=83&Itemid=88&lang=en)  
+[Boost.serialization](http://www.boost.org/doc/libs/1_45_0/libs/serialization/doc/index.html) (optional, note: compiled with `./bjam --with-serialization --build-type=complete --layout=versioned toolset=darwin architecture=x86 address-model=32`)
 
 ### Input format:  
 One replay/game per line, lines such as  
