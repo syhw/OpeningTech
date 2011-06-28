@@ -23,7 +23,7 @@ See *model.pdf* or [CIG'11 publication](http://dl.dropbox.com/u/14035465/Opening
 
 1. (Optional, our labels) Clusterize from clustering/launch\_labeling.sh
 2. Transform (transmute) arff files into txt files with scripts/transmute.sh
-3. To perform evaluations, cut the txt files learn and test files with the scripts/cut\* scripts
+3. To perform evaluations, cut the txt files into learn and test files with the scripts/cut\* scripts
 4. Compile (make) and test either with make targets or `export (DY)LD_LIBRARY_PATH=<probt/lib(+boost/lib)> && ./model lXvX.txt tXvX.txt`
 
 
