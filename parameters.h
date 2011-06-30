@@ -9,7 +9,8 @@
 //#define LEARN_TIME_LIMIT 600 // 10 minutes
 //#define GENERATE_X_VALUES
 //#define DEBUG_OUTPUT 1
-//#define TECH_TREES
+#define TECH_TREES
+#define __SERIALIZE__
 /**
  * PLOT = 0 => no plotting
  * PLOT = 1 => plot P(Opening) over buildings seen for each replay
@@ -17,7 +18,7 @@
  * PLOT = 3 => adds plot P(Time|X,Opening)
  */
 //#define PLOT_ONLY
-//#define PLOT 1
+#define PLOT 1
 
 #if DEBUG_OUTPUT > 0
 #define ERROR_CHECKS

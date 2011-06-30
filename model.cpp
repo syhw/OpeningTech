@@ -4,12 +4,12 @@
 
 #define MIN_STD_DEV_BELL_SHAPES // add virtual points to bell shapes w/o enough
 #define TIME_MULTIPLICATOR 1
-#define __SERIALIZE__
 #ifdef __SERIALIZE__
 //http://www.boost.org/doc/libs/1_45_0/libs/serialization/doc/index.html
 #include "boost/archive/text_oarchive.hpp"
 #include "boost/archive/text_iarchive.hpp"
 #include "boost/serialization/vector.hpp"
+#include "boost/serialization/set.hpp"
 #endif
 
 // TODO add tree_distance to existing set_distances
@@ -32,14 +32,26 @@ struct serialized_tables
     {
         ar & tabulated_P_Time_X_Op;
         ar & tabulated_P_X_Op;
+        ar & openings;
+        ar & vector_X;
+        ar & distances_X;
     }
     vector<double> tabulated_P_Time_X_Op;
     vector<double> tabulated_P_X_Op;
+    vector<string> openings;
+    vector<set<int> > vector_X;
+    vector<vector<int> > distances_X;
     serialized_tables() {};
     serialized_tables(const vector<double>& time_x,
-            const vector<double>& x)
+            const vector<double>& x,
+            const vector<string>& op,
+            const vector<set<int> >& vx,
+            const vector<vector<int> >& dx)
         : tabulated_P_Time_X_Op(time_x)
         , tabulated_P_X_Op(x)
+        , openings(op)
+        , vector_X(vx)
+        , distances_X(dx)
     {}
 };
 #endif
@@ -415,7 +427,7 @@ void learn_T_and_X(ifstream& inputstream,
 #ifdef MIN_STD_DEV_BELL_SHAPES
         else if (it->second < 3)
         {
-            cout << "(POSSIBLE)PROBLEM: We encountered X " << it->first.first
+            cout << "We encountered X " << it->first.first
                << " + Op " << it->first.second << " less than three times: ";
             for (typename set<int>::const_iterator ibn
                     = tt.vector_X[it->first.first].begin();
@@ -567,7 +579,7 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
     for (vector<plProbValue>::const_iterator it = tmpX.begin();
             it != tmpX.end(); ++it)
         tmp2.push_back(*it);
-    serialized_tables st(tmp1, tmp2);
+    serialized_tables st(tmp1, tmp2, op, tt.vector_X, tt.set_distances_X);
 
     string filename(learningFileName);
     filename = filename.substr(0, filename.find('.'));
