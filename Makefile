@@ -36,7 +36,7 @@ run:
 	DYLD_LIBRARY_PATH=$(PROBT_LIB):DYLD_LIBRARY_PATH ./model lPvP.txt tPvP.txt
 	echo $(PROBT_LIB)
 
-run_with_serializatioN:
+run_with_serialization:
 	DYLD_LIBRARY_PATH=$(BOOST_STAGE_LIB):$(PROBT_LIB):DYLD_LIBRARY_PATH ./model lPvP.txt tPvP.txt
 	echo $(BOOST_STAGE_LIB)
 	echo $(PROBT_LIB)
