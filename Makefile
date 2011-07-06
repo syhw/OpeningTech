@@ -48,6 +48,9 @@ debugrun:
 mymodel: model.cpp
 	g++ -ggdb -arch i386 -DMY_OPENINGS_LABELS -I$(PROBT_INCLUDE) model.cpp -L$(PROBT_LIB) -lpl -o mymodel
 
+mymodel_with_serialization: model.cpp
+	g++ -ggdb -arch i386 -DMY_OPENINGS_LABELS -I$(BOOST_INCLUDE) -I$(PROBT_INCLUDE) model.cpp -L$(BOOST_STAGE_LIB) -L$(PROBT_LIB) -lpl -lboost_serialization-xgcc42-mt -o mymodel 
+
 test_x_values: tests
 	./test_x_values
 

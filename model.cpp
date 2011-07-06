@@ -36,14 +36,14 @@ struct serialized_tables
         ar & vector_X;
         ar & distances_X;
     }
-    vector<double> tabulated_P_Time_X_Op;
-    vector<double> tabulated_P_X_Op;
+    vector<long double> tabulated_P_Time_X_Op;
+    vector<long double> tabulated_P_X_Op;
     vector<string> openings;
     vector<set<int> > vector_X;
     vector<vector<int> > distances_X;
     serialized_tables() {};
-    serialized_tables(const vector<double>& time_x,
-            const vector<double>& x,
+    serialized_tables(const vector<long double>& time_x,
+            const vector<long double>& x,
             const vector<string>& op,
             const vector<set<int> >& vx,
             const vector<vector<int> >& dx)
@@ -467,6 +467,9 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
         const char* learningFileName)
 : openings(op)
 {
+    int shift = 0;
+    if (learningFileName[0] == 'l')
+        shift = 1;
     /**********************************************************************
       VARIABLES SPECIFICATION
      **********************************************************************/
@@ -486,8 +489,8 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
      **********************************************************************/
     // Specification of P(Opening)
 #ifdef WITH_OPENINGS_PRIOR
-    vector<double> tmp = prior_openings(learningFileName[1],
-            learningFileName[3]);
+    vector<double> tmp = prior_openings(learningFileName[0 + shift],
+            learningFileName[2 + shift]);
     for (vector<double>::const_iterator i = tmp.begin(); i != tmp.end(); ++i)
         tableOpening.push_back(*i);
 #else
@@ -532,13 +535,13 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
     timeLearner = plCndLearnObject<plLearnBellShape>(Time, X^Opening);
     cout << ">>>> Learning from: " << learningFileName << endl;
     ifstream inputstream(learningFileName);
-    if (learningFileName[1] == 'P')
+    if (learningFileName[0 + shift] == 'P')
         learn_T_and_X<Protoss_Buildings>(inputstream, timeLearner, xLearner,
                 Opening, X, Time);
-    else if (learningFileName[1] == 'T')
+    else if (learningFileName[0 + shift] == 'T')
         learn_T_and_X<Terran_Buildings>(inputstream, timeLearner, xLearner,
                 Opening, X, Time);
-    else if (learningFileName[1] == 'Z')
+    else if (learningFileName[0 + shift] == 'Z')
         learn_T_and_X<Zerg_Buildings>(inputstream, timeLearner, xLearner,
                 Opening, X, Time);
 #if DEBUG_OUTPUT > 2
@@ -570,12 +573,12 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
     timeLearner.get_computable_object().tabulate(tmpTime_X);
     vector<plProbValue> tmpX;
     xLearner.get_computable_object().tabulate(tmpX);
-    vector<double> tmp1;
+    vector<long double> tmp1;
     tmp1.reserve(tmpTime_X.size());
     for (vector<plProbValue>::const_iterator it = tmpTime_X.begin();
             it != tmpTime_X.end(); ++it)
         tmp1.push_back(*it);
-    vector<double> tmp2;
+    vector<long double> tmp2;
     for (vector<plProbValue>::const_iterator it = tmpX.begin();
             it != tmpX.end(); ++it)
         tmp2.push_back(*it);
