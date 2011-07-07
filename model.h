@@ -48,6 +48,9 @@ class OpeningPredictor
     plExternalFunction coherence;
     plFunctionalDirac P_lambda;
     plCndLearnObject<plLearnBellShape> timeLearner;
+#ifdef __MIN_STD_DEV_BELL_SHAPES__
+    plDistributionMap time_knowing_x_op;
+#endif
     /// Decomposition
     plVariablesConjunction knownConj;
     plJointDistribution jd;

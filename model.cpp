@@ -2,7 +2,8 @@
 #define SIGNAL_NOISE_RATIO 1.0
 #define FIXED_ERROR_RATE 1
 
-#define MIN_STD_DEV_BELL_SHAPES // add virtual points to bell shapes w/o enough
+#define MIN_POINTS_BELL_SHAPES // add virtual points to bell shapes w/o enough
+#define MIN_STD_DEV 30
 #define TIME_MULTIPLICATOR 1
 #ifdef __SERIALIZE__
 //http://www.boost.org/doc/libs/1_45_0/libs/serialization/doc/index.html
@@ -424,7 +425,7 @@ void learn_T_and_X(ifstream& inputstream,
             }
             cout << endl;
         }
-#ifdef MIN_STD_DEV_BELL_SHAPES
+#ifdef MIN_POINTS_BELL_SHAPES
         else if (it->second < 3)
         {
             cout << "We encountered X " << it->first.first
@@ -550,6 +551,29 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
     cout << timeLearner.get_computable_object() << endl;
 #endif
 
+#ifdef __MIN_STD_DEV_BELL_SHAPES__
+    time_knowing_x_op = plDistributionMap(timeLearner.get_computable_object().get_left_variables(), timeLearner.get_computable_object().get_right_variables());
+    time_knowing_x_op.push_default(plUniform(Time));
+    plValues val(timeLearner.get_computable_object().get_right_variables());
+    do {
+        const plLearnBellShape* t = timeLearner.get_learnt_object_for_value(val);
+        if (t)
+        {
+            if (t->get_sigma() < MIN_STD_DEV)
+            {
+                cout << "--> min stddev" << endl;
+                time_knowing_x_op.push(plBellShape(Time, t->get_mu(), MIN_STD_DEV), val);
+            }
+            else
+            {
+                cout << "--> bell shape" << endl;
+                time_knowing_x_op.push(plBellShape(Time, t->get_mu(), t->get_sigma()), val);
+            }
+        }
+        else
+            cout << "-> uniform (default)" << endl;
+    } while (val.next());
+#endif
 #ifdef __SERIALIZE__
     /* // Verification of tabulate alignment / order
     plValues val(timeLearner.get_computable_object().get_right_variables());
@@ -570,7 +594,11 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
     /**/
 
     vector<plProbValue> tmpTime_X;
+#ifdef __MIN_STD_DEV_BELL_SHAPES__
+    time_knowing_x_op.tabulate(tmpTime_X);
+#else
     timeLearner.get_computable_object().tabulate(tmpTime_X);
+#endif
     vector<plProbValue> tmpX;
     xLearner.get_computable_object().tabulate(tmpX);
     vector<long double> tmp1;
@@ -609,7 +637,11 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
 #else
                 P_X*P_Opening*listObs*P_lambda
 #endif
+#ifdef __MIN_STD_DEV_BELL_SHAPES__
+                *time_knowing_x_op); // <=> P_Time
+#else
                 *timeLearner.get_computable_object()); // <=> P_Time);
+#endif
     jd.draw_graph("jd.fig");
 #if DEBUG_OUTPUT > 0
     cout << "Joint distribution built." << endl;

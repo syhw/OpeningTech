@@ -11,6 +11,7 @@
 //#define DEBUG_OUTPUT 1
 #define TECH_TREES
 #define __SERIALIZE__
+#define __MIN_STD_DEV_BELL_SHAPES__
 /**
  * PLOT = 0 => no plotting
  * PLOT = 1 => plot P(Opening) over buildings seen for each replay
