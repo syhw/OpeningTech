@@ -148,6 +148,7 @@ def r_em(t, nbclusters=0, plot=False, name=""):
     try:
         from rpy2.robjects import r
         import rpy2.robjects.numpy2ri # auto-translates numpy array to R ones
+        rpy2.robjects.numpy2ri.activate()
     except:
         print "ERROR: You can't use 'r_em()' without rpy2 and R+library mclust"
         sys.exit(-1)
@@ -365,26 +366,44 @@ def expectation_maximization(t, nbclusters=2, nbiter=3, normalize=False,\
                     for c in range(nbclusters)]
     return result
 
-def parse(arff):
+def parse(data_file, form='arff'):
     template = []
     t = []
     data = False
-    for line in arff:
-        if data:
+    if form == 'arff':
+        # arff header @relation, @attribute(s), @data 
+        # -> [time_per_attr, ...] list
+        for line in data_file:
+            if data:
+                tmp = []
+                for elem in line.split(','):
+                    if elem[0] in "0123456789":
+                        # Convert to int, and 24 frames per second:
+                        # we don't need such a high resolution
+                        tmp.append(int(elem))#/24) 
+                    else:
+                        tmp.append(elem.rstrip('\r\n'))
+                t.append(tmp)
+            elif '@attribute' in line:
+                template.append(line.split(' ')[1])
+            elif '@data' in line:
+                data = True
+        return (template, t)
+    elif form == 'txt':
+        # [attribute_name time; ...] list
+        for line in data_file:
+            l = line.rstrip('\r\n').split(' ')
+            if len(template) == 0:
+                template.extend([l[2*i] for i in range(len(l)/2)])
             tmp = []
-            for elem in line.split(','):
-                if elem[0] in "0123456789":
-                    # Convert to int, and 24 frames per second:
-                    # we don't need such a high resolution
-                    tmp.append(int(elem))#/24) 
-                else:
-                    tmp.append(elem.rstrip('\n'))
+            #tmp.extend([l[2*i + 1] for i in range(len(l)/2)])
+            l = line.rstrip('\r\n').replace('; ',';').split(';')
+            for elem in l:
+                if len(elem.split(' ')) > 1:
+                    tmp.append(int(elem.split(' ')[1]))
             t.append(tmp)
-        elif '@attribute' in line:
-            template.append(line.split(' ')[1])
-        elif '@data' in line:
-            data = True
-    return (template, t)
+        return (template, t)
+
 
 def filter_out_undef(tab, typ=np.float64):
     def not_undef(t):
@@ -633,12 +652,25 @@ if __name__ == "__main__":
     nbiterations = 5 # TODO 100 when clustering for real
     kmeans = False
     EM = False
-    plotR = False
+    plotR = True
     plotM = False
 
-    (template, datalist) = parse(open(sys.argv[1]))
+    ### q'n'd
+    formating = 'UNKNOWN'
+    if (sys.argv[1][-4:] == 'arff'):
+        formating = 'arff'
+    elif (sys.argv[1][-3:] == 'txt'):
+        formating = 'txt'
+    else:
+        print "unknown input format/extension"
+        sys.exit(-1)
+    (template, datalist) = parse(open(sys.argv[1]), formating)
+
     # build data without the "label"/opening/strategy column
-    data = np.ndarray([len(datalist), len(datalist[0]) - 1], np.float64)
+    if formating == 'arff':
+        data = np.ndarray([len(datalist), len(datalist[0]) - 1], np.float64)
+    elif formating == 'txt':
+        data = np.ndarray([len(datalist), len(datalist[0])], np.float64)
     data /= 24
     # transform the kind & dynamic python list into a static numpy.ndarray
     for i in range(len(datalist)):
@@ -661,9 +693,15 @@ if __name__ == "__main__":
         # - cannon rush [Disabled: can only scout it]
 
         ### 2 gates rush opening
-        features_two_gates = [template.index("ProtossSecondGatway"),\
-                template.index("ProtossGateway"),\
-                template.index("ProtossZealot")]
+        features_two_gates = []
+        if formating == 'arff':
+            features_two_gates = [template.index("ProtossSecondGatway"),\
+                    template.index("ProtossGateway"),\
+                    template.index("ProtossZealot")]
+        elif formating == 'txt':
+            features_two_gates = [template.index("Protoss_Gateway2"),\
+                    template.index("Protoss_Gateway"),\
+                    template.index("Protoss_Zealot")]
         if kmeans:
             two_gates_data_int = filter_out_undef(data.take(\
                     features_two_gates, 1), typ=np.int64)
@@ -677,7 +715,11 @@ if __name__ == "__main__":
         two_gates['timing'] = 'early'
 
         ### Fast DT
-        features_fast_dt = [template.index("ProtossDarkTemplar")]
+        features_fast_dt = []
+        if formating == 'arff':
+            features_fast_dt = [template.index("ProtossDarkTemplar")]
+        elif formating == 'txt':
+            features_fast_dt = [template.index("Protoss_Dark_Templar")]
         if kmeans:
             fast_dt_data_int = filter_out_undef(data.take(\
                     features_fast_dt, 1), typ=np.int64)
@@ -691,24 +733,14 @@ if __name__ == "__main__":
         fast_dt['features'] = features_fast_dt
         fast_dt['timing'] = 'late'
 
-        ### [Disabled: too much covering of other builds + no info on threats]
-        ### Fast Expand
-#        features_fast_exp = [template.index("ProtossFirstExpansion")]
-#        if kmeans:
-#            fast_exp_data_int = filter_out_undef(data.take(\
-#                    features_fast_exp, 1), typ=np.int64)
-#            fast_exp_km = k_means(fast_exp_data_int[1], nbiter=nbiterations,\
-#                    distance = lambda x,y: abs(x-y))
-#        fast_exp_data = filter_out_undef(data.take(features_fast_exp, 1))
-#        if EM:
-#            fast_exp_em = expectation_maximization(fast_exp_data[1],\
-#                    nbiter=nbiterations, monotony=True, normalize=True)
-#        fast_exp = r_em(fast_exp_data[1], nbclusters=2, plot=plotR, name="fast_exp")
-#        fast_exp['features'] = features_fast_exp
-
         ### +1 SpeedZeal
-        features_speedzeal = [template.index("ProtossLegs"),\
-                template.index("ProtossGroundWeapons1")]
+        features_speedzeal = []
+        if formating == 'arff':
+            features_speedzeal = [template.index("ProtossLegs"),\
+                    template.index("ProtossGroundWeapons1")]
+        elif formating == 'txt':
+            features_speedzeal = [template.index("Protoss_Zealot_Speed"),\
+                    template.index("Protoss_Ground_Weapons")]
         if kmeans:
             speedzeal_data_int = filter_out_undef(data.take(\
                     features_speedzeal, 1), typ=np.int64)
@@ -721,26 +753,14 @@ if __name__ == "__main__":
         speedzeal['features'] = features_speedzeal
         speedzeal['timing'] = 'early'
 
-        ### [Disabled: will be infered by composition of corsair + DT]
-        ### Bisu build
-#        features_bisu = [template.index("ProtossFirstExpansion"),\
-#                    template.index("ProtossCorsair"),\
-#                    template.index("ProtossDarkTemplar")]
-#        if kmeans:
-#            bisu_data_int = filter_out_undef(data.take(\
-#                    features_bisu, 1), typ=np.int64)
-#            bisu_km = k_means(bisu_data_int[1], nbiter=nbiterations)
-#        bisu_data = filter_out_undef(data.take(features_bisu, 1))
-#        if EM:
-#            bisu_em = expectation_maximization(bisu_data[1],\
-#                    nbiter=nbiterations, normalize=True, monotony=True)
-#        bisu = r_em(bisu_data[1], nbclusters=2, plot=plotR, name="bisu")
-#        bisu['features'] = features_bisu
-
         ### Fast templars
-        features_templar = [template.index("ProtossStorm"),\
-                    template.index("ProtossTemplar")
-                    ]
+        features_templar = []
+        if formating == 'arff':
+            features_templar = [template.index("ProtossStorm"),\
+                        template.index("ProtossTemplar")]
+        elif formating == 'txt':
+            features_templar = [template.index("Protoss_Psionic_Storm"),\
+                        template.index("Protoss_High_Templar")]
         if kmeans:
             templar_data_int = filter_out_undef(data.take(\
                     features_templar, 1), typ=np.int64)
@@ -754,7 +774,11 @@ if __name__ == "__main__":
         templar['timing'] = 'late'
 
         ### Corsair opening
-        features_corsair = [template.index("ProtossCorsair")]
+        features_corsair = []
+        if formating == 'arff':
+            features_corsair = [template.index("ProtossCorsair")]
+        elif formating == 'txt':
+            features_corsair = [template.index("Protoss_Corsair")]
         if kmeans:
             corsair_data_int = filter_out_undef(data.take(\
                     features_corsair, 1), typ=np.int64)
@@ -768,8 +792,13 @@ if __name__ == "__main__":
         corsair['timing'] = 'early'
 
         ### Nony opening aka fast goons range
-        features_nony = [template.index("ProtossGoon"),\
-                template.index("ProtossRange")]
+        features_nony = []
+        if formating == 'arff':
+            features_nony = [template.index("ProtossGoon"),\
+                    template.index("ProtossRange")]
+        elif formating == 'txt':
+            features_nony = [template.index("Protoss_Dragoon"),\
+                    template.index("Protoss_Dragoon_Range")]
         if kmeans:
             nony_data_int = filter_out_undef(data.take(\
                     features_nony, 1), typ=np.int64)
@@ -783,8 +812,13 @@ if __name__ == "__main__":
         nony['timing'] = 'early'
 
         ### Reaver Drop
-        features_reaver_drop = [template.index("ProtossReavor"),\
-                template.index("ProtossShuttle")]
+        features_reaver_drop = []
+        if formating == 'arff':
+            features_reaver_drop = [template.index("ProtossReavor"),\
+                    template.index("ProtossShuttle")]
+        elif formating == 'txt':
+            features_reaver_drop = [template.index("Protoss_Reaver"),\
+                    template.index("Protoss_Shuttle")]
         if kmeans:
             reaver_drop_data_int = filter_out_undef(data.take(\
                     features_reaver_drop, 1), typ=np.int64)
@@ -797,26 +831,11 @@ if __name__ == "__main__":
         reaver_drop['features'] = features_reaver_drop
         reaver_drop['timing'] = 'late'
 
-        ### [Disabled] Cannon Rush
-#        if kmeans:
-#            cannon_rush_data_int = filter_out_undef(data.take([\
-#                    template.index("ProtossForge"), template.index("ProtossCannon")\
-#                    ], 1), typ=np.int64)
-#            cannon_rush_km = k_means(cannon_rush_data_int[1], nbiter=nbiterations)
-#        cannon_rush_data = filter_out_undef(data.take([\
-#                template.index("ProtossForge"), template.index("ProtossCannon")\
-#                ], 1))
-#        if EM:
-#            cannon_rush_em = expectation_maximization(cannon_rush_data[1],\
-#                    nbiter=nbiterations, normalize=True, monotony=True)
-#        cannon_rush = r_em(cannon_rush_data[1], nbclusters=2, plot=plotR, name="cannon_rush")
 
         two_gates['name'] = "two_gates"
         fast_dt['name'] = "fast_dt"
-        #fast_exp['name'] = "fast_exp" # TODO (not satisfied)
         templar['name'] = "templar"
         speedzeal['name'] = "speedzeal"
-        #bisu['name'] = "bisu"
         corsair['name'] = "corsair"
         nony['name'] = "nony"
         reaver_drop['name'] = "reaver_drop"
@@ -825,26 +844,16 @@ if __name__ == "__main__":
             plot(two_gates, two_gates_data[1])
             print fast_dt
             plot(fast_dt, fast_dt_data[1])
-            #print fast_exp
-            #plot(fast_exp, fast_exp_data[1])
             print templar
             plot(templar, templar_data[1])
             print speedzeal
             plot(speedzeal, speedzeal_data[1])
-            #print bisu
-            #plot(bisu, bisu_data[1])
             print corsair
             plot(corsair, corsair_data[1])
             print nony
             plot(nony,nony_data[1])
             print reaver_drop
             plot(reaver_drop, reaver_drop_data[1])
-            #print cannon_rush
-            #plot(cannon_rush["clusters"],cannon_rush_data[1], "cannon rush",\
-            #        cannon_rush["params"])
-
-                #(fast_exp_data, fast_exp), (speedzeal_data, speedzeal),\
-                #(bisu_data, bisu), (corsair_data, corsair),\
         write_arff(template, annotate(datalist,\
                 (two_gates_data, two_gates), (fast_dt_data, fast_dt),\
                 (templar_data, templar), (speedzeal_data, speedzeal),\
@@ -862,20 +871,16 @@ if __name__ == "__main__":
         # - Vultures harass
         # - Wraith
 
-        ### [Disabled] BBS rush
-#        bbs_data = filter_out_undef(data.take([\
-#                template.index("TerranBarracks"),\
-#                template.index("TerranSecondBarracks"),\
-#                template.index("TerranDepot")], 1))
-#        if EM:
-#            bbs_em = expectation_maximization(bbs_data[1],\
-#                    nbiter=nbiterations, normalize=True, monotony=True)
-#        bbs = r_em(bbs_data[1], nbclusters=2, plot=plotR, name="bbs")
-
         ### Bio push
-        features_bio = [template.index("TerranThirdBarracks"),\
-                template.index("TerranSecondBarracks"),\
-                template.index("TerranBarracks")]
+        features_bio = []
+        if formating == 'arff':
+            features_bio = [template.index("TerranThirdBarracks"),\
+                    template.index("TerranSecondBarracks"),\
+                    template.index("TerranBarracks")]
+        elif formating == 'txt':
+            features_bio = [template.index("Terran_Barracks3"),\
+                    template.index("Terran_Barracks2"),\
+                    template.index("Terran_Barracks")]
         bio_data = filter_out_undef(data.take(features_bio, 1))
         if EM:
             bio_em = expectation_maximization(bio_data[1],\
@@ -885,8 +890,13 @@ if __name__ == "__main__":
         bio['timing'] = 'early'
 
         ### Rax FE
-        features_rax_fe = [template.index("TerranExpansion"),\
-                template.index("TerranBarracks")]
+        features_rax_fe = []
+        if formating == 'arff':
+            features_rax_fe = [template.index("TerranExpansion"),\
+                    template.index("TerranBarracks")]
+        elif formating == 'txt':
+            features_rax_fe = [template.index("Terran_Expansion"),\
+                    template.index("Terran_Barracks")]
         rax_fe_data = filter_out_undef(data.take(features_rax_fe , 1))
         if EM:
             rax_fe_em = expectation_maximization(rax_fe_data[1],\
@@ -907,7 +917,11 @@ if __name__ == "__main__":
 #        siege_exp['timing'] = 'early'
 
         ### 2 Facto (the fast 2nd facto play)
-        features_two_facto = [template.index("TerranSecondFactory")]
+        features_two_facto = []
+        if formating == 'arff':
+            features_two_facto = [template.index("TerranSecondFactory")]
+        elif formating == 'txt':
+            features_two_facto = [template.index("Terran_Factory2")]
                 #template.index("TerranSiege")]
         two_facto_data = filter_out_undef(data.take(features_two_facto, 1))
         if EM:
@@ -918,8 +932,13 @@ if __name__ == "__main__":
         two_facto['timing'] = 'late'
 
         ### Vultures harass
-        features_vultures = [template.index("TerranMines"),\
-                template.index("TerranVulture")]
+        features_vultures = []
+        if formating == 'arff':
+            features_vultures = [template.index("TerranMines"),\
+                    template.index("TerranVulture")]
+        elif formating == 'txt':
+            features_vultures = [template.index("Terran_Spider_Mines"),\
+                    template.index("Terran_Vulture")]
         vultures_data = filter_out_undef(data.take(features_vultures, 1))
         if EM:
             vultures_em = expectation_maximization(vultures_data[1],\
@@ -940,7 +959,11 @@ if __name__ == "__main__":
 #        air['timing'] = 'late'
 
         ### Fast Drop
-        features_drop = [template.index("TerranDropship")]
+        features_drop = []
+        if formating == 'arff':
+            features_drop = [template.index("TerranDropship")]
+        elif formating == 'txt':
+            features_drop = [template.index("Terran_Dropship")]
         drop_data = filter_out_undef(data.take(features_drop, 1))
         if EM:
             drop_em = expectation_maximization(drop_data[1],\
@@ -951,21 +974,15 @@ if __name__ == "__main__":
 
         bio['name'] = "bio"
         rax_fe['name'] = "rax_fe"
-#        siege_exp['name'] = "siege_exp"
         two_facto['name'] = "two_facto"
         vultures['name'] = "vultures"
 #        air['name'] = "air"
         drop['name'] = "drop"
         if plotM:
-            #bbs['name'] = "bbs"
-            #print bbs
-            #plot(bbs, bbs_data[1])
             print bio
             plot(bio, bio_data[1])
             print rax_fe
             plot(rax_fe, rax_fe_data[1])
-#            print siege_exp
-#            plot(siege_exp, siege_exp_data[1])
             print two_facto
             plot(two_facto, two_facto_data[1])
             print vultures
@@ -975,7 +992,6 @@ if __name__ == "__main__":
             print drop
             plot(drop, drop_data[1])
 
-                #(siege_exp_data, siege_exp), (two_facto_data, two_facto),\
         write_arff(template, annotate(datalist,\
                 (bio_data, bio), (rax_fe_data, rax_fe),\
                 (two_facto_data, two_facto),\
@@ -994,23 +1010,16 @@ if __name__ == "__main__":
         #   * fast lurkers (3 hatch lurker)
         #   * hydras push/drop
 
-        ### [Disabled] Very early zerglings rush (4 to 6 pool)
-#        glings_rush_data = filter_out_undef(data.take([\
-#                template.index("ZergPool"),\
-#                template.index("ZergZergling")], 1))
-#        glings_rush_data_int = filter_out_undef(data.take([\
-#                template.index("ZergPool"),\
-#                template.index("ZergZergling")], 1), typ=np.int64)
-#        if EM:
-#            glings_rush_em = expectation_maximization(glings_rush_data[1],\
-#                    nbiter=nbiterations, normalize=True, monotony=True)
-#        glings_rush_km = k_means(glings_rush_data_int[1], nbiter=nbiterations)
-#        glings_rush = r_em(glings_rush_data[1], nbclusters=2, plot=plotR, name="glings_rush")
-
         ### Speedlings rush
-        features_speedlings = [template.index("ZergZerglingSpeed"),\
-                template.index("ZergPool"),\
-                template.index("ZergZergling")]
+        features_speedlings = []
+        if formating == 'arff':
+            features_speedlings = [template.index("ZergZerglingSpeed"),\
+                    template.index("ZergPool"),\
+                    template.index("ZergZergling")]
+        elif formating == 'txt':
+            features_speedlings = [template.index("Zerg_Zergling_Speed"),\
+                    template.index("Zerg_Spawning_Pool"),\
+                    template.index("Zerg_Zergling")]
         speedlings_data = filter_out_undef(data.take(features_speedlings, 1))
         if EM:
             speedlings_em = expectation_maximization(speedlings_data[1],\
@@ -1019,22 +1028,20 @@ if __name__ == "__main__":
         speedlings['features'] = features_speedlings
         speedlings['timing'] = 'early'
 
-        ### [Disabled] Hatch first
-#        fast_exp_data = filter_out_undef(data.take([\
-#                template.index("ZergSecondHatch"),\
-#                template.index("ZergPool")], 1))
-#        if EM:
-#            fast_exp_em = expectation_maximization(fast_exp_data[1],\
-#                    nbiter=nbiterations, normalize=True, monotony=True)
-#        fast_exp = r_em(fast_exp_data[1], nbclusters=2, plot=plotR, name="fast_exp")
-
         ### Fast mutas
-        features_fast_mutas = [template.index("ZergMutalisk"),\
-                template.index("ZergGas")] # TODO
+        features_fast_mutas = []
+        if formating == 'arff':
+            features_fast_mutas = [template.index("ZergMutalisk"),\
+                    template.index("ZergGas")] # TODO
+        elif formating == 'txt':
+            features_fast_mutas = [template.index("Zerg_Mutalisk"),\
+                    template.index("Zerg_Extractor")] # TODO
         fast_mutas_data = filter_out_undef(data.take(features_fast_mutas, 1))
         if kmeans:
-            fast_mutas_data_int = filter_out_undef(data.take([\
-                    template.index("ZergMutalisk")], 1), typ=np.int64)
+            fast_mutas_data_int = filter_out_undef(data.take(\
+                    features_fast_mutas, 1), typ=np.int64)
+            #fast_mutas_data_int = filter_out_undef(data.take([\
+                    #features_fast_mutas[0]], 1), typ=np.int64)
             fast_mutas_km = k_means(fast_mutas_data_int[1], nbiter=nbiterations)
         if EM:
             fast_mutas_em = expectation_maximization(fast_mutas_data[1],\
@@ -1044,8 +1051,13 @@ if __name__ == "__main__":
         fast_mutas['timing'] = 'early'
 
         ### 3 Hatch mutas / Mass mutas
-        features_mutas = [template.index("ZergThirdHatch"),\
-                template.index("ZergMutalisk")]
+        features_mutas = []
+        if formating == 'arff':
+            features_mutas = [template.index("ZergThirdHatch"),\
+                    template.index("ZergMutalisk")]
+        elif formating == 'txt':
+            features_mutas = [template.index("Zerg_Expansion2"),\
+                    template.index("Zerg_Mutalisk")]
         mutas_data = filter_out_undef(data.take(features_mutas, 1))
         if EM:
             mutas_em = expectation_maximization(mutas_data[1],\
@@ -1055,7 +1067,11 @@ if __name__ == "__main__":
         mutas['timing'] = 'late'
 
         ### Fast Lurkers (Third hatch should be late)
-        features_lurkers = [template.index("ZergLurker")]
+        features_lurkers = []
+        if formating == 'arff':
+            features_lurkers = [template.index("ZergLurker")]
+        elif formating == 'txt':
+            features_lurkers = [template.index("Zerg_Lurker")]
         lurkers_data = filter_out_undef(data.take(features_lurkers, 1))
         if EM:
             lurkers_em = expectation_maximization(lurkers_data[1],\
@@ -1065,10 +1081,17 @@ if __name__ == "__main__":
         lurkers['timing'] = 'late'
 
         ### Hydras
-        features_hydras = [template.index("ZergHydra"),\
-                template.index("ZergHydraSpeed"),\
-                template.index("ZergHydraRange")]
-                #template.index("ZergThirdHatch")] # TODO remove 3rd hatch?
+        features_hydras = []
+        if formating == 'arff':
+            features_hydras = [template.index("ZergHydra"),\
+                    template.index("ZergHydraSpeed"),\
+                    template.index("ZergHydraRange")]
+                    #template.index("ZergThirdHatch")] # TODO remove 3rd hatch?
+        elif formating == 'txt':
+            features_hydras = [template.index("Zerg_Hydralisk"),\
+                    template.index("Zerg_Hydralisk_Speed"),\
+                    template.index("Zerg_Hydralisk_Range")]
+                    #template.index("ZergThirdHatch")] # TODO remove 3rd hatch?
         hydras_data = filter_out_undef(data.take(features_hydras, 1))
         if EM:
             hydras_em = expectation_maximization(hydras_data[1],\
