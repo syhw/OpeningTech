@@ -324,7 +324,11 @@ void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
  */
 template<class T>
 void learn_T_and_X(ifstream& inputstream,
+#ifdef LAPLACE_LEARNING
+            plCndLearnObject<plLearnLaplace>& timeLearner,
+#else
             plCndLearnObject<plLearnBellShape>& timeLearner,
+#endif
             plCndLearnObject<plLearnHistogram>& xLearner,
             plSymbol& Opening, plSymbol& X, plSymbol& Time)
 {
@@ -533,7 +537,11 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
     P_lambda = plFunctionalDirac(lambda, X_Obs_conj ,coherence);
 
     // Specification of P(T | X, Opening)
+#ifdef LAPLACE_LEARNING
+    timeLearner = plCndLearnObject<plLearnLaplace>(Time, X^Opening);
+#else
     timeLearner = plCndLearnObject<plLearnBellShape>(Time, X^Opening);
+#endif
     cout << ">>>> Learning from: " << learningFileName << endl;
     ifstream inputstream(learningFileName);
     if (learningFileName[0 + shift] == 'P')
@@ -556,7 +564,11 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
     time_knowing_x_op.push_default(plUniform(Time));
     plValues val(timeLearner.get_computable_object().get_right_variables());
     do {
+#ifdef LAPLACE_LEARNING
+        const plLearnLaplace* t = timeLearner.get_learnt_object_for_value(val);
+#else
         const plLearnBellShape* t = timeLearner.get_learnt_object_for_value(val);
+#endif
         if (t)
         {
             if (t->get_sigma() < MIN_STD_DEV)
@@ -578,7 +590,11 @@ OpeningPredictor::OpeningPredictor(const vector<string>& op,
     /* // Verification of tabulate alignment / order
     plValues val(timeLearner.get_computable_object().get_right_variables());
     do {
+#ifdef LAPLACE_LEARNING
+        const plLearnLaplace* t = timeLearner.get_learnt_object_for_value(val);
+#else
         const plLearnBellShape* t = timeLearner.get_learnt_object_for_value(val);
+#endif
         cout << val << endl;
         if (t)
         {

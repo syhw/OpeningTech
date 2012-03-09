@@ -3,15 +3,18 @@
 
 #define X_KNOWING_OPENING
 #define DIRAC_ON_LAST_OPENING
+//#define LAPLACE_LEARNING
 
 #define LEARN_TIME_LIMIT 1080 // 18 minutes, TODO change
 //#define LEARN_TIME_LIMIT 900 // 15 minutes
 //#define LEARN_TIME_LIMIT 600 // 10 minutes
 //#define GENERATE_X_VALUES
 //#define DEBUG_OUTPUT 1
-#define TECH_TREES
-#define __SERIALIZE__
+//#define TECH_TREES
+//#define __SERIALIZE__
+#ifndef LAPLACE_LEARNING
 #define __MIN_STD_DEV_BELL_SHAPES__
+#endif
 /**
  * PLOT = 0 => no plotting
  * PLOT = 1 => plot P(Opening) over buildings seen for each replay

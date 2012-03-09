@@ -47,7 +47,11 @@ class OpeningPredictor
     plVariablesConjunction X_Obs_conj;
     plExternalFunction coherence;
     plFunctionalDirac P_lambda;
+#ifdef LAPLACE_LEARNING
+    plCndLearnObject<plLearnLaplace> timeLearner;
+#else
     plCndLearnObject<plLearnBellShape> timeLearner;
+#endif
 #ifdef __MIN_STD_DEV_BELL_SHAPES__
     plDistributionMap time_knowing_x_op;
 #endif
