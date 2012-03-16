@@ -496,6 +496,21 @@ def plot(clusterst, data, title='', gaussians=[], separate_plots=False):
     pl.grid(True)
     pl.show()
 
+def opening_probabilities(datalist, *args):
+#    {'features': [37, 34], 'params': [{'mu': array([ 15754.64988219,  13728.3076984 ]), 'sigma': matrix([[  1.27961928e+08,   1.93321051e+07],
+#                [  1.93321051e+07,   1.25958769e+07]]), 'proba': 0.4022966788465614}, {'mu': array([ 9786.01343733,  8517.94454639]), 'sigma': matrix([[ 4046531.0721206 ,  3836400.37897049],
+#                            [ 3836400.37897049,  3834854.52409518]]), 'proba': 0.5977033211534386}], 'timing': 'late', 'clusters': [[0, 1, 2, 4, 6, 8, 10, 11, 19, 28, 34, 35, 40, 43, 44, 47, 48, 49, 50, 51, 52, 53, 54, 56, 57, 60, 71, 72, 73, 74, 75, 77, 80, 83, 90, 91, 92, 93, 96, 98, 99, 100, 102, 110, 111, 112, 113, 114, 116, 121, 122, 127, 134, 136, 139], [3, 5, 7, 9, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22, 23, 24, 25, 26, 27, 29, 30, 31, 32, 33, 36, 37, 38, 39, 41, 42, 45, 46, 55, 58, 59, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 76, 78, 79, 81, 82, 84, 85, 86, 87, 88, 89, 94, 95, 97, 101, 103, 104, 105, 106, 107, 108, 109, 115, 117, 118, 119, 120, 123, 124, 125, 126, 128, 129, 130, 131, 132, 133, 135, 137, 138, 140, 141]], 'quality': 'not computed', 'name': 'reaver_drop'#}
+    return
+    for game in datalist:
+        m = -1.0
+        op = ""
+        for arg in args:
+            p = multi_dim_gaussian_likelihood([game[i] for i in arg['features']], arg['params']['mu'], arg[
+            if p > m:
+                m = p
+                op = arg['name']
+            
+
 def annotate(data, *args):
     def determine_cluster_ind():
         """ 
@@ -652,7 +667,7 @@ if __name__ == "__main__":
     nbiterations = 5 # TODO 100 when clustering for real
     kmeans = False
     EM = False
-    plotR = True
+    plotR = False
     plotM = False
 
     ### q'n'd
@@ -860,6 +875,22 @@ if __name__ == "__main__":
                 (corsair_data, corsair),\
                 (nony_data, nony), (reaver_drop_data, reaver_drop)),\
                 "my"+sys.argv[1])
+
+        ### Applying this learned model to the second argument file
+        if len(sys.argv[2]) > 2:
+            formating = 'UNKNOWN'
+            if (sys.argv[2][-4:] == 'arff'):
+                formating = 'arff'
+            elif (sys.argv[2][-3:] == 'txt'):
+                formating = 'txt'
+            else:
+                print "unknown input format/extension"
+                sys.exit(-1)
+            (template, datalist) = parse(open(sys.argv[2]), formating)
+            datalist /= 24 #?????
+            print opening_probabilities(datalist,\
+                two_gates, fast_dt, templar, speedzeal,\
+                corsair, nony, reaver_drop)
 
     if race == "T":
         # Main openings:
@@ -1106,14 +1137,8 @@ if __name__ == "__main__":
         lurkers['name'] = "lurkers"
         hydras['name'] = "hydras"
         if plotM:
-            #glings_rush['name'] = "glings_rush"
-            #print glings_rush
-            #plot(glings_rush, glings_rush_data[1])
             print speedlings
             plot(speedlings, speedlings_data[1])
-            #fast_exp['name'] = "fast_exp"
-            #print fast_exp
-            #plot(fast_exp, fast_exp_data[1])
             print fast_mutas
             plot(fast_mutas, fast_mutas_data[1])
             print mutas
@@ -1123,9 +1148,10 @@ if __name__ == "__main__":
             print hydras
             plot(hydras, hydras_data[1])
 
-                #(speedlings_data, speedlings), (fast_mutas_data, fast_mutas),\
         write_arff(template, annotate(datalist,\
                 (fast_mutas_data, fast_mutas),\
                 (mutas_data, mutas), (lurkers_data, lurkers),\
                 (hydras_data, hydras)), "my"+sys.argv[1])
-        
+
+
+
