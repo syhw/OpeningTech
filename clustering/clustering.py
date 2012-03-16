@@ -496,21 +496,6 @@ def plot(clusterst, data, title='', gaussians=[], separate_plots=False):
     pl.grid(True)
     pl.show()
 
-def opening_probabilities(datalist, *args):
-#    {'features': [37, 34], 'params': [{'mu': array([ 15754.64988219,  13728.3076984 ]), 'sigma': matrix([[  1.27961928e+08,   1.93321051e+07],
-#                [  1.93321051e+07,   1.25958769e+07]]), 'proba': 0.4022966788465614}, {'mu': array([ 9786.01343733,  8517.94454639]), 'sigma': matrix([[ 4046531.0721206 ,  3836400.37897049],
-#                            [ 3836400.37897049,  3834854.52409518]]), 'proba': 0.5977033211534386}], 'timing': 'late', 'clusters': [[0, 1, 2, 4, 6, 8, 10, 11, 19, 28, 34, 35, 40, 43, 44, 47, 48, 49, 50, 51, 52, 53, 54, 56, 57, 60, 71, 72, 73, 74, 75, 77, 80, 83, 90, 91, 92, 93, 96, 98, 99, 100, 102, 110, 111, 112, 113, 114, 116, 121, 122, 127, 134, 136, 139], [3, 5, 7, 9, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22, 23, 24, 25, 26, 27, 29, 30, 31, 32, 33, 36, 37, 38, 39, 41, 42, 45, 46, 55, 58, 59, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 76, 78, 79, 81, 82, 84, 85, 86, 87, 88, 89, 94, 95, 97, 101, 103, 104, 105, 106, 107, 108, 109, 115, 117, 118, 119, 120, 123, 124, 125, 126, 128, 129, 130, 131, 132, 133, 135, 137, 138, 140, 141]], 'quality': 'not computed', 'name': 'reaver_drop'#}
-    return
-    for game in datalist:
-        m = -1.0
-        op = ""
-        for arg in args:
-            p = multi_dim_gaussian_likelihood([game[i] for i in arg['features']], arg['params']['mu'], arg[
-            if p > m:
-                m = p
-                op = arg['name']
-            
-
 def annotate(data, *args):
     def determine_cluster_ind():
         """ 
@@ -557,11 +542,19 @@ def annotate(data, *args):
     annotations['games'] = copy.deepcopy(data)
     annotations['metadata'] = []
     openings_timings = {}
-    labelind = len(data[0]) - 1
-    # Remove the precedents labels/strategies/openings
-    for game in annotations['games']:
-        game[labelind] = ''
-        annotations['metadata'].append({})
+
+    labelind = len(data[0])
+    if formating == 'arff':
+        labelind = len(data[0]) - 1
+        # Remove the precedents labels/strategies/openings
+        for game in annotations['games']:
+            game[labelind] = ''
+            annotations['metadata'].append({})
+    elif formating == 'txt':
+        for game in annotations['games']:
+            game.append('')
+            annotations['metadata'].append({})
+
     # Determine which are the labels brought by "clusters"
     for (data, clusters) in args:
         # data[0] are the true indices in data of data[1] (filtered data)
@@ -594,6 +587,7 @@ def annotate(data, *args):
         mintime = 10000000.0 # ;)
         maxdim = 1.0 * max([len(v[1]) for v in annotations['metadata'][\
                 annotations['games'].index(game)].itervalues()])
+
         npgame = np.array(game[:len(game)-1], np.float64)
         for (k, v) in annotations['metadata'][annotations['games']\
                 .index(game)].iteritems():
@@ -665,10 +659,10 @@ if __name__ == "__main__":
         plot(t2["clusters"],t_data, "test EM", t2['params'])
         sys.exit(0)
     nbiterations = 5 # TODO 100 when clustering for real
-    kmeans = False
-    EM = False
-    plotR = False
-    plotM = False
+    kmeans = False # use our own k-means
+    EM = False     # use our own EM
+    plotR = False  # display R plots
+    plotM = False  # display matplotlib plots
 
     ### q'n'd
     formating = 'UNKNOWN'
@@ -682,17 +676,21 @@ if __name__ == "__main__":
     (template, datalist) = parse(open(sys.argv[1]), formating)
 
     # build data without the "label"/opening/strategy column
+    # transform the kind & dynamic python list into a static numpy.ndarray
     if formating == 'arff':
         data = np.ndarray([len(datalist), len(datalist[0]) - 1], np.float64)
+        data /= 24
+        for i in range(len(datalist)):
+            for j in range(len(datalist[0]) - 1):
+                data[i][j] = datalist[i][j]
     elif formating == 'txt':
         data = np.ndarray([len(datalist), len(datalist[0])], np.float64)
-    data /= 24
-    # transform the kind & dynamic python list into a static numpy.ndarray
-    for i in range(len(datalist)):
-        for j in range(len(datalist[0]) - 1):
-            data[i][j] = datalist[i][j]
+        data /= 24
+        for i in range(len(datalist)):
+            for j in range(len(datalist[0])):
+                data[i][j] = datalist[i][j]
 
-    race = sys.argv[1].split('_')[1][0] # race that performs the openings
+    race = sys.argv[1].split('/')[-1].split('_')[1][0] # race that performs the openings
     matchup = sys.argv[1][5]            # race against which it performs
 
     if race == "P":
@@ -869,28 +867,27 @@ if __name__ == "__main__":
             plot(nony,nony_data[1])
             print reaver_drop
             plot(reaver_drop, reaver_drop_data[1])
-        write_arff(template, annotate(datalist,\
-                (two_gates_data, two_gates), (fast_dt_data, fast_dt),\
-                (templar_data, templar), (speedzeal_data, speedzeal),\
-                (corsair_data, corsair),\
-                (nony_data, nony), (reaver_drop_data, reaver_drop)),\
-                "my"+sys.argv[1])
 
-        ### Applying this learned model to the second argument file
+        ### Serializing the models
         if len(sys.argv[2]) > 2:
-            formating = 'UNKNOWN'
-            if (sys.argv[2][-4:] == 'arff'):
-                formating = 'arff'
-            elif (sys.argv[2][-3:] == 'txt'):
-                formating = 'txt'
-            else:
-                print "unknown input format/extension"
-                sys.exit(-1)
-            (template, datalist) = parse(open(sys.argv[2]), formating)
-            datalist /= 24 #?????
-            print opening_probabilities(datalist,\
-                two_gates, fast_dt, templar, speedzeal,\
-                corsair, nony, reaver_drop)
+            if "--serialize" in sys.argv[2]:
+                f_ser = open("Protoss_models", 'w')
+                import pickle
+                pickle.dump(two_gates, f_ser)
+                pickle.dump(fast_dt, f_ser)
+                pickle.dump(templar, f_ser)
+                pickle.dump(speedzeal, f_ser)
+                pickle.dump(corsair, f_ser)
+                pickle.dump(nony, f_ser)
+                pickle.dump(reaver_drop, f_ser)
+                f_ser.close()
+        else:
+            write_arff(template, annotate(datalist,\
+                    (two_gates_data, two_gates), (fast_dt_data, fast_dt),\
+                    (templar_data, templar), (speedzeal_data, speedzeal),\
+                    (corsair_data, corsair),\
+                    (nony_data, nony), (reaver_drop_data, reaver_drop)),\
+                    "my"+sys.argv[1])
 
     if race == "T":
         # Main openings:
@@ -1023,13 +1020,25 @@ if __name__ == "__main__":
             print drop
             plot(drop, drop_data[1])
 
-        write_arff(template, annotate(datalist,\
-                (bio_data, bio), (rax_fe_data, rax_fe),\
-                (two_facto_data, two_facto),\
-                (vultures_data, vultures),\
-                (drop_data, drop)),\
-                "my"+sys.argv[1])
-                #(air_data, air),\
+        ### Serializing the models
+        if len(sys.argv[2]) > 2:
+            if "--serialize" in sys.argv[2]:
+                f_ser = open("Terran_models", 'w')
+                import pickle
+                pickle.dump(bio, f_ser)
+                pickle.dump(rax_fe, f_ser)
+                pickle.dump(two_facto, f_ser)
+                pickle.dump(vultures, f_ser)
+                pickle.dump(drop, f_ser)
+                f_ser.close()
+        else:
+            write_arff(template, annotate(datalist,\
+                    (bio_data, bio), (rax_fe_data, rax_fe),\
+                    (two_facto_data, two_facto),\
+                    (vultures_data, vultures),\
+                    (drop_data, drop)),\
+                    "my"+sys.argv[1])
+                    #(air_data, air),\
 
     if race == "Z":
         # Main openings:
@@ -1148,10 +1157,21 @@ if __name__ == "__main__":
             print hydras
             plot(hydras, hydras_data[1])
 
-        write_arff(template, annotate(datalist,\
-                (fast_mutas_data, fast_mutas),\
-                (mutas_data, mutas), (lurkers_data, lurkers),\
-                (hydras_data, hydras)), "my"+sys.argv[1])
-
-
+        ### Serializing the models
+        if len(sys.argv[2]) > 2:
+            if "--serialize" in sys.argv[2]:
+                f_ser = open("Zerg_models", 'w')
+                import pickle
+                pickle.dump(speedlings, f_ser)
+                pickle.dump(fast_mutas, f_ser)
+                pickle.dump(mutas, f_ser)
+                pickle.dump(lurkers, f_ser)
+                pickle.dump(hydras, f_ser)
+                f_ser.close()
+        else:
+            write_arff(template, annotate(datalist,\
+                    (speedlings_data, speedlings),\
+                    (fast_mutas_data, fast_mutas),\
+                    (mutas_data, mutas), (lurkers_data, lurkers),\
+                    (hydras_data, hydras)), "my"+sys.argv[1])
 
