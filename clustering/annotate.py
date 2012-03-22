@@ -129,6 +129,10 @@ import numpy as np
 import clustering
 clustering.formating = 'txt'
 
+p_notes = {'openings' : {}}
+t_notes = {'openings' : {}}
+z_notes = {'openings' : {}}
+
 if len(pdatal):
     print "Protoss player(s) detected in this file"
     f_ser = open("Protoss_models", 'r')
@@ -258,17 +262,33 @@ if len(sys.argv) > 2:
                 op = most_probable_opening(p_notes['openings'][i]) 
             elif "Terran_" in line:
                 j += 1
-                op = most_probable_opening(t_notes['openings'][i]) 
+                op = most_probable_opening(t_notes['openings'][j]) 
             elif "Zerg_" in line:
                 k += 1
-                op = most_probable_opening(z_notes['openings'][i]) 
-            tow.write(line + 'Opening ' + op + ';\n')
+                op = most_probable_opening(z_notes['openings'][k]) 
+            if op != "":
+                tow.write(line + 'Opening ' + op + ';\n')
         tow.close()
     elif sys.argv[2] == '-s':
-#            openings = {}
-#            for game_openings in all_a['openings']:
-#                for o in game_openings:
-#                    if o in openings:
-#                        op
-        pass
+        openings = {}
+        most_prob_openings = {}
+        ngames = 0 # just for verification
+        for game_openings in [t['openings'] for t in [p_notes,
+                                                      t_notes, z_notes]]:
+            for game in game_openings:
+                ngames += 1
+                mpop = most_probable_opening(game)
+                if mpop in most_prob_openings:
+                    most_prob_openings[mpop] += 1
+                else:
+                    most_prob_openings[mpop] = 1
+                for o, p in game.iteritems():
+                    if o in openings:
+                        openings[o] = (openings[o][0]+1, openings[o][1]+p)
+                    else:
+                        openings[o] = (1, p)
+        print most_prob_openings
+        print openings
+        print ngames
+
     
