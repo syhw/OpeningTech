@@ -371,18 +371,6 @@ if len(sys.argv) > 2:
         print "======================================"
         print "distribution on openings per match-ups"
         print matrix_ops
-        print "==========================="
-        print "Example with Skynet's, MPO:"
-        print matrix_mpo['Skynet']
-        print "===================================="
-        print "Example with Skynet's, distributions:"
-        print matrix_ops['Skynet']
-        print "==========================="
-        print "Example with UAlberta's MPO against Skynet:"
-        print matrix_mpo['UAlbertaBot']['Skynet']
-        print "===================================="
-        print "Example with UAlberta's distribution against Skynet:"
-        print matrix_ops['UAlbertaBot']['Skynet']
 
     elif sys.argv[2] == '-s':
         openings = {}
