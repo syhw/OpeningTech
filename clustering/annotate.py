@@ -390,6 +390,12 @@ if len(sys.argv) > 2:
                         openings[o] = (openings[o][0]+1, openings[o][1]+p)
                     else:
                         openings[o] = (1, p)
+        tmpdiv = 0.0
+        for op, v in openings.iteritems():
+            openings[op] = (v[0], v[1] / v[0])
+            tmpdiv += openings[op][1]
+        for op, v in openings.iteritems():
+            openings[op] = (v[0], v[1] / tmpdiv)
         print most_prob_openings
         print openings
         print ngames
