@@ -18,6 +18,11 @@ zdatal = []
 def parse(l):
     if l == '':
         return
+    ### Hack to remove names
+    indn = l.find("Name")
+    if (indn >= 0):
+        l = l[:indn]+l[l.find('; ', indn)+2:]
+    ### /End Hack
     lt = l.split(' ')
     d = []
     le = l.replace('; ',';').split(';')
@@ -108,8 +113,13 @@ def annotate(data, *args):
             annotations['openings'][d[0][i]][clusters['name']] = tmpproba
     return annotations
 
-def most_probable_opening(annotations):
-    pass
+def most_probable_opening(di):
+    mpo = ''
+    mp = -0.1
+    for k, v in di.iteritems():
+        if v > mp:
+            mpo = k
+    return mpo
 
 for line in f:
     parse(line.rstrip('\r\n'))
@@ -156,27 +166,11 @@ if len(pdatal):
             [ptemplate.index("Protoss_Reaver"),\
             ptemplate.index("Protoss_Shuttle")], 1))
 
-    a = annotate(pdata,
+    p_notes = annotate(pdata,
             (two_gates_data, two_gates), (fast_dt_data, fast_dt),\
             (templar_data, templar), (speedzeal_data, speedzeal),\
             (corsair_data, corsair),\
             (nony_data, nony), (reaver_drop_data, reaver_drop))
-    
-    if len(sys.argv) > 2:
-        if sys.argv[2] == '-w':
-            f = open(sys.argv[1], 'r')
-            tow = open(sys.argv[1][:-4] + 'annotated.txt', 'w')
-            i = 0
-            for line in f:
-                line = line.rsplit('\r\n') 
-                if line != '':
-                    i += 1
-                tow.write(line + ' Opening ' 
-                        + most_probable_opening(a['openings'][i]) + ';\n')
-            tow.close()
-        elif sys.argv[2] == '-s':
-            pass
-    
 
 if len(tdatal):
     print "Terran player(s) detected in this file"
@@ -206,6 +200,11 @@ if len(tdatal):
             ttemplate.index("Terran_Vulture")], 1))
     drop_data = clustering.filter_out_undef(tdata.take(
             [ttemplate.index("Terran_Dropship")], 1))
+
+    t_notes = annotate(tdata,
+            (bio_data, bio), (rax_fe_data, rax_fe),\
+            (two_facto_data, two_facto), (vultures_data, vultures),\
+            (drop_data, drop))
 
 if len(zdatal):
     print "Zerg player(s) detected in this file"
@@ -237,5 +236,39 @@ if len(zdatal):
             [ztemplate.index("Zerg_Hydralisk"),\
             ztemplate.index("Zerg_Hydralisk_Speed"),\
             ztemplate.index("Zerg_Hydralisk_Range")], 1))
+
+    z_notes = annotate(zdata,
+            (speedlings_data, speedlings), (fast_mutas_data, fast_mutas),\
+            (mutas_data, mutas), (lurkers_data, lurkers),\
+            (hydras_data, hydras))
         
 
+if len(sys.argv) > 2:
+    if sys.argv[2] == '-w':
+        f = open(sys.argv[1], 'r')
+        tow = open(sys.argv[1][:-4] + '_annotated.txt', 'w')
+        i = -1
+        j = -1
+        k = -1
+        for line in f:
+            line = line.rstrip('\r\n') 
+            op = ""
+            if "Protoss_" in line:
+                i += 1
+                op = most_probable_opening(p_notes['openings'][i]) 
+            elif "Terran_" in line:
+                j += 1
+                op = most_probable_opening(t_notes['openings'][i]) 
+            elif "Zerg_" in line:
+                k += 1
+                op = most_probable_opening(z_notes['openings'][i]) 
+            tow.write(line + 'Opening ' + op + ';\n')
+        tow.close()
+    elif sys.argv[2] == '-s':
+#            openings = {}
+#            for game_openings in all_a['openings']:
+#                for o in game_openings:
+#                    if o in openings:
+#                        op
+        pass
+    
