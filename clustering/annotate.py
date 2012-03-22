@@ -254,21 +254,97 @@ if len(sys.argv) > 2:
         i = -1
         j = -1
         k = -1
+        p1 = ""
+        p2 = ""
+        op = ""
+        ops = {}
+        p1_op = ""
+        p1_ops = {}
+        matchs_ups = {}
         for line in f:
+            p1_op = op
+            p1_ops = ops
+            if p2 != "":
+                if not p1 in matchs_ups:
+                    matchs_ups[p1] = {}
+                if not p2 in matchs_ups[p1]:
+                    matchs_ups[p1][p2] = {'most_probable_openings': [(p1_op, op)],
+                            'openings': [(p1_ops, ops)]}
+                else:
+                    matchs_ups[p1][p2]['most_probable_openings'].append((p1_op, op))
+                    matchs_ups[p1][p2]['openings'].append((p1_ops, ops))
+                p1 = ""
+                p2 = ""
             line = line.rstrip('\r\n') 
             op = ""
             if "Protoss_" in line:
                 i += 1
-                op = most_probable_opening(p_notes['openings'][i]) 
+                ops = p_notes['openings'][i]
+                op = most_probable_opening(ops) 
             elif "Terran_" in line:
                 j += 1
-                op = most_probable_opening(t_notes['openings'][j]) 
+                ops = t_notes['openings'][j]
+                op = most_probable_opening(ops) 
             elif "Zerg_" in line:
                 k += 1
-                op = most_probable_opening(z_notes['openings'][k]) 
+                ops = z_notes['openings'][k]
+                op = most_probable_opening(ops) 
+            if "Name" in line:
+                name = line[line.find("Name")+5:line.find(";",line.find("Name"))]
+                if p1 != "":
+                    p2 = name
+                else:
+                    p1 = name
             if op != "":
                 tow.write(line + 'Opening ' + op + ';\n')
         tow.close()
+
+        matrix_mpo = {}
+        matrix_ops = {}
+        for plyr1, di in matchs_ups.iteritems():
+            if plyr1 not in matrix_mpo:
+                matrix_mpo[plyr1] = {}
+            if plyr1 not in matrix_ops:
+                matrix_ops[plyr1] = {}
+            for plyr2, ops in di.iteritems():
+                if plyr2 not in matrix_mpo:
+                    matrix_mpo[plyr2] = {}
+                if plyr2 not in matrix_ops:
+                    matrix_ops[plyr2] = {}
+                if plyr1 not in matrix_mpo[plyr2]:
+                    matrix_mpo[plyr2][plyr1] = {}
+                if plyr1 not in matrix_ops[plyr2]:
+                    matrix_ops[plyr2][plyr1] = {}
+                if plyr2 not in matrix_mpo[plyr1]:
+                    matrix_mpo[plyr1][plyr2] = {}
+                if plyr2 not in matrix_ops[plyr1]:
+                    matrix_ops[plyr1][plyr2] = {}
+                for m in ops['most_probable_openings']:
+                    if m[0] not in matrix_mpo[plyr1][plyr2]:
+                        matrix_mpo[plyr1][plyr2][m[0]] = 1
+                    else:
+                        matrix_mpo[plyr1][plyr2][m[0]] += 1
+                    if m[1] not in matrix_mpo[plyr2][plyr1]:
+                        matrix_mpo[plyr2][plyr1][m[1]] = 1
+                    else:
+                        matrix_mpo[plyr2][plyr1][m[1]] += 1
+                for match in ops['openings']:
+                    for k, v in match[0].iteritems():
+                        if k not in matrix_ops[plyr1][plyr2]:
+                            matrix_ops[plyr1][plyr2][k] = v
+                        else:
+                            matrix_ops[plyr1][plyr2][k] += v
+                    for k, v in match[1].iteritems():
+                        if k not in matrix_ops[plyr2][plyr1]:
+                            matrix_ops[plyr2][plyr1][k] = v
+                        else:
+                            matrix_ops[plyr2][plyr1][k] += v
+        print "most probable openings per match-ups (player1->player2->p1_openings)"
+        print matrix_mpo
+        print "======================================"
+        print "distribution on openings per match-ups"
+        print matrix_ops
+
     elif sys.argv[2] == '-s':
         openings = {}
         most_prob_openings = {}
