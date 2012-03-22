@@ -248,6 +248,7 @@ if len(zdatal):
         
 
 if len(sys.argv) > 2:
+    players_list = []
     if sys.argv[2] == '-w':
         f = open(sys.argv[1], 'r')
         tow = open(sys.argv[1][:-4] + '_annotated.txt', 'w')
@@ -262,9 +263,7 @@ if len(sys.argv) > 2:
         p1_ops = {}
         matchs_ups = {}
         for line in f:
-            p1_op = op
-            p1_ops = ops
-            if p2 != "":
+            if p1 != "" and p2 != "":
                 if not p1 in matchs_ups:
                     matchs_ups[p1] = {}
                 if not p2 in matchs_ups[p1]:
@@ -275,6 +274,8 @@ if len(sys.argv) > 2:
                     matchs_ups[p1][p2]['openings'].append((p1_ops, ops))
                 p1 = ""
                 p2 = ""
+            p1_op = op
+            p1_ops = ops
             line = line.rstrip('\r\n') 
             op = ""
             if "Protoss_" in line:
@@ -295,9 +296,35 @@ if len(sys.argv) > 2:
                     p2 = name
                 else:
                     p1 = name
+                if name not in players_list:
+                    players_list.append(name)
             if op != "":
                 tow.write(line + 'Opening ' + op + ';\n')
         tow.close()
+
+#DEBUG        mmpo = {}
+#DEBUG        for p1 in players_list:
+#DEBUG            mmpo[p1] = {}
+#DEBUG            for p2 in players_list:
+#DEBUG                mmpo[p1][p2] = {}
+#DEBUG        for p1 in players_list:
+#DEBUG            #print 'p1:', p1
+#DEBUG            for p2 in players_list:
+#DEBUG                #print 'p2:', p2
+#DEBUG                if p1 in matchs_ups and p2 in matchs_ups[p1]:
+#DEBUG                    for opgames in matchs_ups[p1][p2]['most_probable_openings']:
+#DEBUG                        # print opgames
+#DEBUG                        if opgames[0] not in mmpo[p1][p2]:
+#DEBUG                            mmpo[p1][p2][opgames[0]] = 1
+#DEBUG                        else:
+#DEBUG                            mmpo[p1][p2][opgames[0]] += 1
+#DEBUG                        if opgames[1] not in mmpo[p2][p1]:
+#DEBUG                            mmpo[p2][p1][opgames[1]] = 1
+#DEBUG                        else:
+#DEBUG                            mmpo[p2][p1][opgames[1]] += 1
+#DEBUG        print " >>>>>>>>>>>>> "
+#DEBUG        print mmpo
+#DEBUG        print " <<<<<<<<<<<<< "
 
         matrix_mpo = {}
         matrix_ops = {}
@@ -344,6 +371,18 @@ if len(sys.argv) > 2:
         print "======================================"
         print "distribution on openings per match-ups"
         print matrix_ops
+        print "==========================="
+        print "Example with Skynet's, MPO:"
+        print matrix_mpo['Skynet']
+        print "===================================="
+        print "Example with Skynet's, distributions:"
+        print matrix_ops['Skynet']
+        print "==========================="
+        print "Example with UAlberta's MPO against Skynet:"
+        print matrix_mpo['UAlbertaBot']['Skynet']
+        print "===================================="
+        print "Example with UAlberta's distribution against Skynet:"
+        print matrix_ops['UAlbertaBot']['Skynet']
 
     elif sys.argv[2] == '-s':
         openings = {}
