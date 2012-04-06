@@ -207,13 +207,13 @@ def r_em(t, nbclusters=0, plot=False, name=""):
         from rpy2.robjects import r
         import rpy2.robjects.numpy2ri # auto-translates numpy array to R ones
         rpy2.robjects.numpy2ri.activate()
+        r.library("mclust")
     except:
         print "ERROR: You can't use 'r_em()' without rpy2 and R+library mclust"
         sys.exit(-1)
     nbobs = t.shape[0]
     nbfeatures = t.shape[1]
     result = {}
-    r.library("mclust")
     if nbclusters:
         model = r.Mclust(t, G=nbclusters)
         if name == 'templar':
