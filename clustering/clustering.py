@@ -701,6 +701,15 @@ def write_arff(template, annotations,fn):
     return 
 
 if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print "Usage:"
+        print "python clustering.py *_X*.[txt|arff] [--serialize] [--plotR] [--plotM]"
+        print "with X being the race to be analysed"
+        print "--serialize will dump the gaussian mixtures params in a $Race_models file"
+        print "--plotR will plot R graphics"
+        print "--plotM will plot the parameters of the GM with matplotlib"
+        print "other arguments than the .txt or .arff input are optinals"
+        sys.exit(-1)
     if sys.argv[1] == "test":
         #t_data = np.array([[1,1],[11,11]], np.float64)
         #t_data = np.array([[1,1],[0,1],[1,0],[10,10],[11,9],\
@@ -721,6 +730,11 @@ if __name__ == "__main__":
     EM = False     # use our own EM
     plotR = False  # display R plots
     plotM = False  # display matplotlib plots
+    if len(sys.argv) > 2:
+        if '--plotR' in sys.argv[2:]:
+            plotR = True
+        if '--plotM' in sys.argv[2:]:
+            plotM = True
 
     ### q'n'd
     formating = 'UNKNOWN'
@@ -927,8 +941,8 @@ if __name__ == "__main__":
             plot(reaver_drop, reaver_drop_data[1])
 
         ### Serializing the models
-        if len(sys.argv[2]) > 2:
-            if "--serialize" in sys.argv[2]:
+        if len(sys.argv) > 2:
+            if "--serialize" in sys.argv[2:]:
                 f_ser = open("Protoss_models", 'w')
                 import pickle
                 pickle.dump(two_gates, f_ser)
@@ -1079,8 +1093,8 @@ if __name__ == "__main__":
             plot(drop, drop_data[1])
 
         ### Serializing the models
-        if len(sys.argv[2]) > 2:
-            if "--serialize" in sys.argv[2]:
+        if len(sys.argv) > 2:
+            if "--serialize" in sys.argv[2:]:
                 f_ser = open("Terran_models", 'w')
                 import pickle
                 pickle.dump(bio, f_ser)
@@ -1216,8 +1230,8 @@ if __name__ == "__main__":
             plot(hydras, hydras_data[1])
 
         ### Serializing the models
-        if len(sys.argv[2]) > 2:
-            if "--serialize" in sys.argv[2]:
+        if len(sys.argv) > 2:
+            if "--serialize" in sys.argv[2:]:
                 f_ser = open("Zerg_models", 'w')
                 import pickle
                 pickle.dump(speedlings, f_ser)
