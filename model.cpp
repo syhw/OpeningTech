@@ -257,7 +257,7 @@ iovoid usage()
     cout << " v stands for versus [compulsory placeholder]" << endl;
     cout << " - S = T or P or Z, other race of the matchup [compulsory]" 
         << endl;
-    cout << "what is compulsory is to have R and S in positions 1 and 3!" 
+    cout << "it is compulsory to have R and S in positions [0|1] and [2|3]!"
         << endl;
 }
 
