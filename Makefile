@@ -53,7 +53,7 @@ mymodel: model.cpp
 	g++ -ggdb -arch i386 -DMY_OPENINGS_LABELS -I$(PROBT_INCLUDE) model.cpp -L$(PROBT_LIB) -lpl -o mymodel
 
 mymodel_with_serialization: model.cpp
-	g++ -ggdb -arch i386 -DMY_OPENINGS_LABELS -I$(BOOST_INCLUDE) -I$(PROBT_INCLUDE) model.cpp -L$(BOOST_STAGE_LIB) -L$(PROBT_LIB) -lpl -lboost_serialization -o mymodel 
+	g++ -ggdb -arch i386 -D__SERIALIZE__ -DMY_OPENINGS_LABELS -I$(BOOST_INCLUDE) -I$(PROBT_INCLUDE) model.cpp -L$(BOOST_STAGE_LIB) -L$(PROBT_LIB) -lpl -lboost_serialization -o mymodel 
 
 test_x_values: tests
 	./test_x_values
@@ -116,6 +116,10 @@ ttbenchs: tt
 	for name in [TPZ]v[TPZ].txt; do echo "$${name%.*}" >> ttbenchs.txt &&\
 		./tt l$$name t$$name | grep ">>>" >> ttbenchs.txt\
 		&& echo "\n" >> ttbenchs.txt; done
+
+learn_all: model mymodel
+	for name in [TPZ]v[TPZ].txt; do echo $name && ./model $name; done
+	for name in [TPZ]v[TPZ]x.txt; do echo $name && ./mymodel $name; done
 
 .PHONY: model mymodel tests techtrees tt
 
