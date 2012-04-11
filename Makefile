@@ -117,9 +117,10 @@ ttbenchs: tt
 		./tt l$$name t$$name | grep ">>>" >> ttbenchs.txt\
 		&& echo "\n" >> ttbenchs.txt; done
 
-learn_all: model mymodel
-	for name in [TPZ]v[TPZ].txt; do echo $name && ./model $name; done
-	for name in [TPZ]v[TPZ]x.txt; do echo $name && ./mymodel $name; done
+learn_all: model_with_serialization mymodel_with_serialization
+	DYLD_LIBRARY_PATH=$(BOOST_STAGE_LIB):$(PROBT_LIB):$(DYLD_LIBRARY_PATH) 
+	for name in [TPZ]v[TPZ].txt; do echo $$name && ./model $$name; done
+	for name in [TPZ]v[TPZ]x.txt; do echo $$name && ./mymodel $$name; done
 
 .PHONY: model mymodel tests techtrees tt
 
