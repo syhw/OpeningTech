@@ -39,22 +39,22 @@ The prediction will always be against X or W, for instance in ZvT, the predictio
 
 1. To just compile and run the Opening prediction model with Ben Weber's openings labels: 
 
-    make model
-    make run OR (with appropriate DYLD_LIBRARY_PATH) ./model XvT.txt [WvZ.txt]
+        make model
+        make run OR (with appropriate DYLD_LIBRARY_PATH) ./model XvT.txt [WvZ.txt]
 
 2. To compile and run the Opening prediction model with Ben's openings labels and serialization, you need to be able to link to a boost >= 1.45 serialization dylib/dll/so:
 
-    make model_with_serialization
-    make run_with_serialization OR (with appropriate DYLD_LIBRARY_PATH) ./model XvT.txt [WvZ.txt]
+        make model_with_serialization
+        make run_with_serialization OR (with appropriate DYLD_LIBRARY_PATH) ./model XvT.txt [WvZ.txt]
 
 3. The same with my openings (c.f. clustering/clustering.py):
 
-    make mymodel[_with_serialization]
-    make run[_with_serialization] OR (with appropriate DYLD_LIBRARY_PATH) ./mymodel XvY.txt [WvZ.txt]
+        make mymodel[_with_serialization]
+        make run[_with_serialization] OR (with appropriate DYLD_LIBRARY_PATH) ./mymodel XvY.txt [WvZ.txt]
 
 4. To compile and run the (build/)tech trees prediction only:
 
-    make tt
-    make run_tt OR (with appropriate DYLD_LIBRARY_PATH) ./tt XvY.txt [WvZ.txt]
+        make tt
+        make run_tt OR (with appropriate DYLD_LIBRARY_PATH) ./tt XvY.txt [WvZ.txt]
 
 5. A lot of plotting options, see Makefile
