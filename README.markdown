@@ -52,15 +52,18 @@ The prediction will always be against X or W, for instance in ZvT, the predictio
 
         make model_with_serialization
         make run_with_serialization OR (with appropriate DYLD_LIBRARY_PATH) ./model XvT.txt [WvZ.txt]
+        ex here: ./model PvT.txt
 
 3. The same with my openings (c.f. clustering/clustering.py):
 
         make mymodel[_with_serialization]
         make run[_with_serialization] OR (with appropriate DYLD_LIBRARY_PATH) ./mymodel XvY.txt [WvZ.txt]
+        ex here: ./mymodel PvTx.txt
 
 4. To compile and run the (build/)tech trees prediction only:
 
         make tt
         make run_tt OR (with appropriate DYLD_LIBRARY_PATH) ./tt XvY.txt [WvZ.txt]
+        ex here: ./tt PvT.txt
 
 5. A lot of plotting options, see Makefile
