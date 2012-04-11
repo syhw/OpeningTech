@@ -1178,7 +1178,7 @@ int main(int argc, const char *argv[])
 
     OpeningPredictor op = OpeningPredictor(openings, argv[1]);
 
-    if (argc < 3)
+    if (argc < 3) // learning only
         return 0;
     ifstream inputfile_test(argv[2]);
     string input;
@@ -1243,6 +1243,7 @@ int main(int argc, const char *argv[])
 
 std::vector<double> OpeningPredictor::prior_openings(char them, char us)
 {
+    /// Hardcoded openings numbers from Ben Weber dataset
     std::vector<double> r;
     if (them == 'P')
     {
