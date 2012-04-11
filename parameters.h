@@ -32,5 +32,8 @@
 
 //#define MY_OPENINGS_LABELS
 //#define WITH_OPENINGS_PRIOR
+#ifndef MY_OPENINGS_LABELS
+#undef WITH_OPENINGS_PRIOR
+#endif
 
 #endif
