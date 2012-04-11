@@ -176,9 +176,7 @@ std::string pruneOpeningVal(std::string& input);
 struct tech_trees
 {
     std::vector<std::set<int> > vector_X; // build tree (BT) as sets
-#ifdef TECH_TREES
     std::vector<std::vector<int> > set_distances_X; // distances between BT
-#endif
     tech_trees(std::ifstream& fin)
     {
         // Fill vector_X
@@ -205,7 +203,6 @@ struct tech_trees
         vector_X.reserve(ret_set.size());
         std::copy(ret_set.begin(), ret_set.end(),
                 std::back_inserter(vector_X));
-#ifdef TECH_TREES
         // Fill set_distances_X
         for (unsigned int i = 0; i < vector_X.size(); ++i)
         {
@@ -216,7 +213,6 @@ struct tech_trees
             }
             set_distances_X.push_back(tmp);
         }
-#endif
     }
     int set_distance(unsigned int i, unsigned int j)
     {

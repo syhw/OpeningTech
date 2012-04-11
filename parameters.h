@@ -3,7 +3,7 @@
 
 #define X_KNOWING_OPENING
 #define DIRAC_ON_LAST_OPENING
-//#define LAPLACE_LEARNING
+//#define LAPLACE_LEARNING // learning histograms with laplace smoothing
 
 #define LEARN_TIME_LIMIT 1080 // 18 minutes, TODO change
 //#define LEARN_TIME_LIMIT 900 // 15 minutes
@@ -13,7 +13,7 @@
 //#define TECH_TREES
 //#define __SERIALIZE__
 #ifndef LAPLACE_LEARNING
-#define __MIN_STD_DEV_BELL_SHAPES__
+#define __MIN_STD_DEV_BELL_SHAPES__ // impose minimum standard deviations
 #endif
 /**
  * PLOT = 0 => no plotting
