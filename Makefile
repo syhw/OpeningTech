@@ -37,6 +37,9 @@ run:
 	DYLD_LIBRARY_PATH=$(PROBT_LIB):$(DYLD_LIBRARY_PATH) ./model lPvP.txt tPvP.txt
 	echo $(PROBT_LIB)
 
+run_tt:
+	DYLD_LIBRARY_PATH=$(PROBT_LIB):$(DYLD_LIBRARY_PATH) ./tt lPvP.txt tPvP.txt
+
 run_with_serialization:
 	DYLD_LIBRARY_PATH=$(BOOST_STAGE_LIB):$(PROBT_LIB):$(DYLD_LIBRARY_PATH) ./model lPvP.txt tPvP.txt
 	echo $(BOOST_STAGE_LIB)
@@ -50,7 +53,7 @@ mymodel: model.cpp
 	g++ -ggdb -arch i386 -DMY_OPENINGS_LABELS -I$(PROBT_INCLUDE) model.cpp -L$(PROBT_LIB) -lpl -o mymodel
 
 mymodel_with_serialization: model.cpp
-	g++ -ggdb -arch i386 -DMY_OPENINGS_LABELS -I$(BOOST_INCLUDE) -I$(PROBT_INCLUDE) model.cpp -L$(BOOST_STAGE_LIB) -L$(PROBT_LIB) -lpl -lboost_serialization-xgcc42-mt -o mymodel 
+	g++ -ggdb -arch i386 -DMY_OPENINGS_LABELS -I$(BOOST_INCLUDE) -I$(PROBT_INCLUDE) model.cpp -L$(BOOST_STAGE_LIB) -L$(PROBT_LIB) -lpl -lboost_serialization -o mymodel 
 
 test_x_values: tests
 	./test_x_values
