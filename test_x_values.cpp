@@ -37,11 +37,17 @@ void print_set(const std::set<int>& s)
 int main(int argc, char* argv[])
 {
     std::ifstream fin1("lTall.txt"); /// all protoss matches
-    std::vector<std::set<int> > terran = get_X_values(fin1);
     std::ifstream fin2("lPall.txt"); /// all protoss matches
-    std::vector<std::set<int> > protoss = get_X_values(fin2);
     std::ifstream fin3("lZall.txt"); /// all protoss matches
+#ifdef GENERATE_X_VALUES
+    std::vector<std::set<int> > terran = get_X_values(fin1);
+    std::vector<std::set<int> > protoss = get_X_values(fin2);
     std::vector<std::set<int> > zerg = get_X_values(fin3);
+#else
+    std::vector<std::set<int> > terran = tech_trees(fin1).vector_X;
+    std::vector<std::set<int> > protoss = tech_trees(fin2).vector_X;
+    std::vector<std::set<int> > zerg = tech_trees(fin3).vector_X;
+#endif
 #ifdef FILE_OUTPUT
 std::ofstream terran_fout("terran_possible_tech_trees.txt");
 std::ofstream protoss_fout("protoss_possible_tech_trees.txt");

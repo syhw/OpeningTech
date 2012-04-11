@@ -1,5 +1,6 @@
 #include <iostream>
 #include <map>
+#include "x_values.h"
 #include "replays.h"
 
 using namespace std;

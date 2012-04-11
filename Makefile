@@ -28,7 +28,8 @@ tests: test_x_values.cpp test_functional_dirac.cpp test_lambda.cpp test_getOpeni
 	g++ -ggdb test_getOpeningVal.cpp -o test_getOpeningVal
 	g++ -ggdb test_getBuildings.cpp -o test_getBuildings
 
-all: tests model techtrees
+all: tests model tt
+	#techtrees
 	make run
 	[ -x /usr/bin/say ] && say "Battlecruiser operational!"
 

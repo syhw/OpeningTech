@@ -74,7 +74,11 @@ void test_X_possible(plValues& lambda, const plValues& X_Obs_conj)
 int main(int argc, const char *argv[])
 {
     ifstream fin("PvP.txt");
+#ifdef GENERATE_X_VALUES
     protoss_X = get_X_values(fin);
+#else
+    protoss_X = tech_trees(fin).vector_X;
+#endif
 
     plSymbol X("X", plIntegerType(0, protoss_X.size()));
     std::vector<plSymbol> observed;

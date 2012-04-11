@@ -3,6 +3,7 @@
 
 #include <string>
 #include <iostream>
+#include <map>
 
 /// Copyright Gabriel Synnaeve 2011
 /// This code is under 3-clauses (new) BSD License
