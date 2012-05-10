@@ -1,3 +1,11 @@
 ﻿Original "scm*.arff" datasets from Ben Weber and Michael Matteas (UCSC)
 They can be found here: http://eis.ucsc.edu/StarCraft_Data_Mining
 
+If you want to label a .txt or an .arff, just to:
+        python clustering.py *_X*.{txt|arff} [--serialize] [--plotR] [--plotM]
+with X being the race to be analysed
+If you want to annote an existing *_X*.txt file, you need to use clustering.py
+with --serialize on it first and then:
+        python annotate.py *_X*.txt -w
+
+
