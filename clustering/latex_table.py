@@ -7,6 +7,9 @@ for line in f:
     #print previous
     l = line.rstrip('\r\n')
     if "scm" in l:
+        active = False
+    if "myscm" in l:
+        active = True
         first = l.split('_')[1][0]
         fakemu = l.split('_')[0][-3:]
         if first == fakemu[0]:
@@ -14,13 +17,16 @@ for line in f:
         else:
             mu = first + 'v' + fakemu[0]
         a[mu] = {}
-    elif ':' in l:
-        l = l.rstrip(':')
-        #print l
-        previous = l
-    else:
-        a[mu][previous] = l.strip(' ')
-#print a
+    if active:
+        if ':' in l:
+            l = l.rstrip(':')
+            #print l
+            previous = l
+        else:
+            a[mu][previous] = l.strip(' ')
+
+print a
+
 for KK in range(10):
     i = 0
     s = "" 

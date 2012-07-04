@@ -18,8 +18,11 @@ zdatal = []
 def parse(l):
     if l == '':
         return
-    ### Hack to remove names
+    ### Hack to remove names and winners
     indn = l.find("Name")
+    if (indn >= 0):
+        l = l[:indn]+l[l.find('; ', indn)+2:]
+    indn = l.find("Winner")
     if (indn >= 0):
         l = l[:indn]+l[l.find('; ', indn)+2:]
     ### /End Hack
@@ -298,8 +301,14 @@ if len(sys.argv) > 2:
                     p1 = name
                 if name not in players_list:
                     players_list.append(name)
-            if op != "":
-                tow.write(line + 'Opening ' + op + ';\n')
+            if "Winner" in line:
+                if op == "":
+                    tow.write(line + 'Opening Unknown;\n')
+                else:
+                    tow.write(line + 'Opening ' + op + ';\n')
+            else:
+                if op != "":
+                    tow.write(line + 'Opening ' + op + ';\n')
         tow.close()
 
 #DEBUG        mmpo = {}
